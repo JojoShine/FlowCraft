@@ -1,0 +1,186 @@
+:root {
+  /* Surfaces */
+  --canvas: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-raised: #F2F2F4;
+  --surface-sunken: #EDEDF0;
+  --surface-overlay: #F4F4F5;
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-default: rgba(0, 0, 0, 0.11);
+  --border-strong: rgba(0, 0, 0, 0.17);
+
+  /* Text */
+  --ink: #18181B;
+  --ink-1: #3F3F46;
+  --ink-2: #52525B;
+  --ink-3: #8B8B93;
+  --ink-4: #A1A1AA;
+  --ink-5: #C7C7CC;
+
+  /* Primary action */
+  --primary: #18181B;
+  --primary-ink: #FAFAFA;
+
+  /* Text on colored backgrounds */
+  --on-accent: #FFFFFF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Overlay */
+  --overlay: rgba(24, 24, 27, 0.5);
+
+  /* Status colors */
+  --blue: #3B82F6;
+  --green: #10B981;
+  --amber: #F59E0B;
+  --red: #EF4444;
+  --purple: #8B5CF6;
+  --pink: #EC4899;
+  --cyan: #06B6D4;
+  --indigo: #6366F1;
+  --lime: #84CC16;
+  --teal: #14B8A6;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+
+  /* Transition */
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition: all 150ms ease;
+}
+
+[data-theme="dark"] {
+  /* Surfaces */
+  --canvas: #09090B;
+  --surface: #18181B;
+  --surface-raised: #27272A;
+  --surface-sunken: #111113;
+  --surface-overlay: #1F1F23;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.17);
+
+  /* Text */
+  --ink: #FAFAFA;
+  --ink-1: #E4E4E7;
+  --ink-2: #A1A1AA;
+  --ink-3: #71717A;
+  --ink-4: #52525B;
+  --ink-5: #3F3F46;
+
+  /* Primary action */
+  --primary: #FAFAFA;
+  --primary-ink: #18181B;
+
+  /* Text on colored backgrounds */
+  --on-accent: #FFFFFF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.7);
+
+  /* Status colors (slightly brighter for dark bg) */
+  --blue: #60A5FA;
+  --green: #34D399;
+  --amber: #FBBF24;
+  --red: #F87171;
+  --purple: #A78BFA;
+  --pink: #F472B6;
+  --cyan: #22D3EE;
+  --indigo: #818CF8;
+  --lime: #A3E635;
+  --teal: #2DD4BF;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+#root { min-height: 100vh; }
+
+/* Hide scrollbar for kanban tasks */
+.kanban-tasks-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.kanban-tasks-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for search results */
+.search-results-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.search-results-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for project space content */
+.ps-scroll::-webkit-scrollbar {
+  display: none;
+}
+.ps-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes toastSlideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

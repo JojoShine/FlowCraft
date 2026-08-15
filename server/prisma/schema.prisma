@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedProjects  Project[]    @relation("ProjectOwner")
+  assignedTasks  Task[]       @relation("TaskAssignee")
+  createdArtifacts Artifact[] @relation("ArtifactCreator")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  description String?
+  status      String   @default("active")
+  progress    Int      @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  ownerId     String
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  phases    Phase[]
+  tasks     Task[]
+  artifacts Artifact[]
+  reports   Report[]
+
+  @@index([ownerId])
+}
+
+model Phase {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int
+  status    String   @default("upcoming")
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks Task[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  type        String
+  priority    String   @default("med")
+  status      String   @default("todo")
+  startDate   DateTime?
+  dueDate     DateTime?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId     String?
+  phase       Phase?   @relation(fields: [phaseId], references: [id])
+  assigneeId  String?
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  artifacts   Artifact[]
+  column      String   @default("todo")
+  isMilestone Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([phaseId])
+  @@index([column])
+}
+
+model Artifact {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  status    String   @default("draft")
+  filePath  String?
+  content   String?
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creatorId String?
+  creator   User?    @relation("ArtifactCreator", fields: [creatorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([type])
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  name        String
+  category    String
+  description String?
+  content     String
+  fileType    String   @default("html")
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id        String   @id @default(uuid())
+  type      String
+  label     String
+  content   String
+  date      DateTime
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([date])
+  @@index([type])
+}

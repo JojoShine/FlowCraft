@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --canvas:#FAFAFA;--surface:#FFFFFF;--surface-raised:#F2F2F4;--surface-sunken:#EDEDF0;
+  --border-subtle:rgba(0,0,0,.07);--border-default:rgba(0,0,0,.11);--border-strong:rgba(0,0,0,.17);
+  --ink:#18181B;--ink-1:#3F3F46;--ink-2:#52525B;--ink-3:#8B8B93;--ink-4:#C7C7CC;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --shadow-h:0 4px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.04);
+  --shadow-d:0 8px 30px rgba(0,0,0,.10),0 2px 8px rgba(0,0,0,.04);
+  --ease:cubic-bezier(.25,.1,.25,1);--t-fast:150ms;--t-norm:200ms;--t-slow:300ms;
+  --sidebar-w:240px;--ai-w:360px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Geist',system-ui,sans-serif;background:var(--canvas);color:var(--ink);font-size:14px;line-height:1.6;min-height:100dvh;display:flex;-webkit-font-smoothing:antialiased;overflow:hidden}
+::selection{background:var(--ink);color:var(--canvas)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-default);border-radius:3px}
+:focus-visible{outline:2px solid var(--ink-3);outline-offset:2px;border-radius:var(--r-sm)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ink-3);outline-offset:2px}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar-w);height:100dvh;background:var(--surface);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;flex-shrink:0}
+.sidebar-hd{height:56px;padding:0 16px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:10px}
+.sidebar-logo{width:28px;height:28px;background:var(--ink);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center}
+.sidebar-logo svg{width:16px;height:16px;color:var(--canvas)}
+.sidebar-brand{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.sidebar-nav{flex:1;overflow-y:auto;padding:8px}
+.nav-group{margin-bottom:4px}
+.nav-label{font-size:11px;font-weight:500;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;padding:10px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:var(--r-md);color:var(--ink-2);font-size:13px;cursor:pointer;transition:all var(--t-fast);text-decoration:none;position:relative}
+.nav:hover{background:var(--surface-raised);color:var(--ink)}
+.nav.on{background:var(--surface-raised);color:var(--ink);font-weight:500}
+.nav svg{width:18px;height:18px;flex-shrink:0;opacity:.55}.nav.on svg{opacity:1}
+.nav-badge{margin-left:auto;font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink-3);font-weight:500}
+.sidebar-ft{padding:8px;border-top:1px solid var(--border-subtle)}
+.proj-switch{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);cursor:pointer;transition:background var(--t-fast);position:relative}
+.proj-switch:hover{background:var(--surface-raised)}
+.proj-av{width:28px;height:28px;border-radius:var(--r-sm);background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--ink-2);flex-shrink:0}
+.proj-info{flex:1;min-width:0}.proj-nm{font-size:13px;font-weight:500}.proj-ph{font-size:11px;color:var(--ink-3)}
+
+/* Project Dropdown */
+.proj-dropdown{position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-d);padding:6px;margin-bottom:4px;display:none;z-index:200}
+.proj-dropdown.open{display:block}
+.proj-dd-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);cursor:pointer;transition:background var(--t-fast)}
+.proj-dd-item:hover{background:var(--surface-raised)}
+.proj-dd-item.current{background:var(--surface-raised)}
+.proj-dd-nm{font-size:13px;font-weight:500}.proj-dd-ph{font-size:11px;color:var(--ink-3)}
+
+/* ── Main ── */
+.main{margin-left:var(--sidebar-w);flex:1;height:100dvh;display:flex;flex-direction:column;overflow:hidden;transition:margin-right var(--t-norm)}
+.main.ai-open{margin-right:var(--ai-w)}
+
+/* Topbar */
+.topbar{height:56px;min-height:56px;background:var(--surface);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;padding:0 24px;gap:12px}
+.breadcrumb{font-size:14px;font-weight:500}
+.topbar-acts{margin-left:auto;display:flex;align-items:center;gap:6px}
+.search-btn{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid var(--border-default);border-radius:var(--r-md);background:var(--surface);color:var(--ink-3);font-size:13px;cursor:pointer;transition:border-color var(--t-fast)}
+.search-btn:hover{border-color:var(--border-strong)}
+.search-btn svg{width:14px;height:14px}
+.kbd{font-family:'Geist Mono',monospace;font-size:10px;background:var(--surface-raised);padding:2px 5px;border-radius:3px;color:var(--ink-3)}
+.ibtn{width:32px;height:32px;border-radius:var(--r-md);border:none;background:transparent;color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--t-fast);position:relative}
+.ibtn:hover{background:var(--surface-raised);color:var(--ink)}
+.ibtn svg{width:18px;height:18px}
+.ibtn.on{background:var(--ink);color:var(--canvas)}
+.ibtn .dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--ink)}
+
+/* Content */
+.content{flex:1;overflow-y:auto;padding:28px}
+
+/* ── Page Views ── */
+.page{display:none}.page.on{display:block}
+#page-project-space{background:var(--surface);min-height:100%;padding:24px 32px}
+
+/* ── Workbench ── */
+.pg-hd{margin-bottom:28px;display:flex;align-items:flex-end;justify-content:space-between}
+.pg-title{font-size:24px;font-weight:600;letter-spacing:-.03em;line-height:1.2}
+.pg-date{font-family:'Geist Mono',monospace;font-size:12px;color:var(--ink-3)}
+.pg-sub{font-size:13px;color:var(--ink-3);margin-top:4px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow);transition:box-shadow var(--t-norm)}
+.stat:hover{box-shadow:var(--shadow-h)}
+.stat-lb{font-size:11px;color:var(--ink-3);font-weight:500;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.stat-val{font-family:'Geist Mono',monospace;font-size:28px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.stat-ch{font-size:11px;color:var(--ink-3);margin-top:8px;font-family:'Geist Mono',monospace}
+
+.sec{margin-bottom:28px}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-tt{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.sec-act{font-size:12px;color:var(--ink-3);cursor:pointer;transition:color var(--t-fast)}
+.sec-act:hover{color:var(--ink)}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+/* Task List */
+.tlist{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.titem{position:relative;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:12px 12px 12px 16px;cursor:pointer;transition:all .15s ease;overflow:hidden}
+.titem::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--card-accent,var(--ink-4));border-radius:3px 0 0 3px;opacity:.6;transition:opacity .15s ease}
+.titem:hover{border-color:var(--border-default);box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.titem:hover::before{opacity:1}
+.titem-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.tcheck{width:15px;height:15px;border:1.5px solid var(--border-strong);border-radius:4px;flex-shrink:0;cursor:pointer;transition:all var(--t-fast);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.tcheck:hover{border-color:var(--ink)}
+.tcheck.done{background:var(--ink);border-color:var(--ink)}
+.tcheck.done::after{content:'';display:block;width:5px;height:5px;background:var(--canvas);border-radius:1px}
+.ttitle{flex:1;font-size:13px;font-weight:500;line-height:1.4;color:var(--ink);letter-spacing:-.01em;min-width:0}
+.titem.done .ttitle{color:var(--ink-3)}
+.tpri{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tpri.high{background:var(--ink)}.tpri.med{background:var(--ink-3)}.tpri.low{background:var(--border-default)}
+.titem-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ttype{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:color-mix(in srgb,var(--card-accent,var(--ink-4)) 10%,transparent);color:var(--card-accent,var(--ink-3))}
+.ttype svg{width:10px;height:10px}
+.tdivider{width:1px;height:9px;background:var(--border-subtle)}
+.tphase{font-size:10px;font-weight:500;color:var(--ink-3)}
+.tstatus{font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px}
+.tstatus.done{background:var(--surface-raised);color:var(--ink-3)}
+.tstatus.active{background:var(--ink);color:var(--surface)}
+.tdue{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink-3);margin-left:auto}
+.titem-art{display:flex;align-items:center;gap:5px;margin-top:8px;padding-top:7px;border-top:1px solid var(--border-subtle);font-size:10px;color:var(--ink-2);cursor:pointer;transition:all .15s ease}
+.titem-art:hover{color:var(--ink)}
+.titem-art svg{width:11px;height:11px;color:var(--ink-3);flex-shrink:0}
+.titem-art span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.titem-art::after{content:'演示';font-size:9px;color:var(--ink-3);padding:1px 5px;background:var(--surface-raised);border-radius:3px;transition:all .15s ease}
+.titem-art:hover::after{background:var(--ink);color:var(--surface)}
+.tdel{opacity:0;position:absolute;top:8px;right:8px;color:var(--ink-3);cursor:pointer;transition:all var(--t-fast);padding:2px}
+.titem:hover .tdel{opacity:1}
+.tdel:hover{color:var(--ink)}
+.tdel svg{width:13px;height:13px}
+
+/* Project Cards */
+.pcards{display:flex;flex-direction:column;gap:12px}
+.pcard{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow);cursor:pointer;transition:all var(--t-norm)}
+.pcard:hover{box-shadow:var(--shadow-h);transform:translateY(-1px)}
+.pcard-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.pcard-nm{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.pcard-st{font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;background:var(--surface-raised);color:var(--ink-2)}
+.pcard-desc{font-size:13px;color:var(--ink-2);line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard-timeline{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace}
+.pcard-timeline svg{width:12px;height:12px;color:var(--ink-4);flex-shrink:0}
+.pbar-bg{height:3px;background:var(--surface-sunken);border-radius:2px;overflow:hidden}
+.pbar-fill{height:100%;background:var(--ink-2);border-radius:2px;transition:width .4s ease}
+.pbar-lb{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace}
+
+/* Artifact List */
+.alist{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+.aitem{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background var(--t-fast)}
+.aitem:last-child{border-bottom:none}.aitem:hover{background:var(--canvas)}
+.aicon{width:32px;height:32px;border-radius:var(--r-md);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.aicon svg{width:16px;height:16px;color:var(--ink-2)}
+.ainfo{flex:1;min-width:0}.aname{font-size:14px;font-weight:500}.ameta{font-size:11px;color:var(--ink-3);margin-top:1px;display:flex;gap:8px}.ainfo .art-card-task{margin-top:5px;padding:4px 8px;font-size:11px;width:fit-content;max-width:100%}
+.astatus{font-size:11px;font-weight:500;color:var(--ink-3);flex-shrink:0}
+
+/* ── Kanban Page ── */
+.kanban{display:flex;gap:12px;flex:1;overflow-x:auto;padding-bottom:24px}
+.kcol{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden;max-height:calc(100dvh - 200px)}
+.kcol-hd{padding:12px 14px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between}
+.kcol-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.kcol-count{font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink-3);font-weight:500}
+.kcol-body{flex:1;padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:60px}
+.kcard{position:relative;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:12px 12px 12px 16px;cursor:grab;transition:all .15s ease;user-select:none;overflow:hidden}
+.kcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--card-accent,var(--ink-4));border-radius:3px 0 0 3px;opacity:.6;transition:opacity .15s ease}
+.kcard:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.kcard:hover::before{opacity:1}
+.kcard.dragging{opacity:.5;box-shadow:var(--shadow-d)}
+.kcard-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.kcard-title{flex:1;font-size:13px;font-weight:500;line-height:1.4;color:var(--ink);letter-spacing:-.01em}
+.kcard-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.kcard-type{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:color-mix(in srgb,var(--card-accent,var(--ink-4)) 10%,transparent);color:var(--card-accent,var(--ink-3))}
+.kcard-type svg{width:10px;height:10px}
+.kcard-divider{width:1px;height:9px;background:var(--border-subtle)}
+.kcard-phase{font-size:10px;font-weight:500;color:var(--ink-3)}
+.kcard-date{font-family:'Geist Mono',monospace;font-size:10px;color:var(--ink-3);margin-left:auto}
+.kcard-art{display:flex;align-items:center;gap:5px;margin-top:8px;padding-top:7px;border-top:1px solid var(--border-subtle);font-size:10px;color:var(--ink-2);cursor:pointer;transition:all .15s ease}
+.kcard-art:hover{color:var(--ink)}
+.kcard-art svg{width:11px;height:11px;color:var(--ink-3);flex-shrink:0}
+.kcard-art span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.kcard-art::after{content:'演示';font-size:9px;color:var(--ink-3);padding:1px 5px;background:var(--surface-raised);border-radius:3px;transition:all .15s ease}
+.kcard-art:hover::after{background:var(--ink);color:var(--surface)}
+.kcard.done .kcard-title{color:var(--ink-3)}
+.kcard.drag-over{border:2px dashed var(--border-strong);background:var(--surface-raised)}
+.kcol-body .drop-zone{height:4px;border-radius:2px;transition:all var(--t-fast)}
+.kcol-body .drop-zone.active{height:40px;background:var(--surface-sunken);border:2px dashed var(--border-default);border-radius:var(--r-md)}
+
+/* ── Projects Page ── */
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.proj-card{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow);cursor:pointer;transition:all var(--t-norm)}
+.proj-card:hover{box-shadow:var(--shadow-h);transform:translateY(-1px)}
+.proj-card-hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.proj-card-av{width:36px;height:36px;border-radius:var(--r-md);background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--ink-2)}
+.proj-card-nm{font-size:16px;font-weight:600;letter-spacing:-.02em}
+.proj-card-type{font-size:11px;color:var(--ink-3)}
+.proj-card-desc{font-size:13px;color:var(--ink-2);line-height:1.5;margin-bottom:14px}
+.proj-card-bar{margin-bottom:8px}
+.proj-card-ft{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace}
+.proj-card-timeline{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace}
+.proj-card-timeline svg{width:12px;height:12px;color:var(--ink-4);flex-shrink:0}
+.proj-card-team{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle)}
+.proj-card-avatars{display:flex;margin-right:auto}
+.proj-card-avatar{width:22px;height:22px;border-radius:50%;background:var(--surface-sunken);border:1.5px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--ink-2);margin-left:-6px}
+.proj-card-avatar:first-child{margin-left:0}
+.proj-card-owner{font-size:10px;color:var(--ink-3)}
+.proj-card-stakeholders{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+.proj-card-stag{font-size:10px;padding:1px 6px;border-radius:3px;background:var(--surface-raised);color:var(--ink-3)}
+
+/* ── Templates Page ── */
+.tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.tpl-card{position:relative;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:22px 24px;cursor:pointer;transition:all var(--t-norm);overflow:hidden}
+.tpl-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tpl-accent,var(--ink-4));opacity:.5;transition:opacity .15s ease}
+.tpl-card:hover{border-color:var(--border-default);box-shadow:var(--shadow-h);transform:translateY(-1px)}
+.tpl-card:hover::before{opacity:1}
+.tpl-card-hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.tpl-icon{width:40px;height:40px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:color-mix(in srgb,var(--tpl-accent,var(--ink-4)) 8%,var(--surface-raised))}
+.tpl-icon svg{width:20px;height:20px;color:var(--tpl-accent,var(--ink-3))}
+.tpl-card-info{flex:1;min-width:0}
+.tpl-card-nm{font-size:15px;font-weight:600;letter-spacing:-.02em;color:var(--ink);margin-bottom:2px}
+.tpl-card-cat{font-size:10px;font-weight:500;color:var(--tpl-accent,var(--ink-3));padding:1px 6px;border-radius:3px;background:color-mix(in srgb,var(--tpl-accent,var(--ink-4)) 8%,var(--surface-raised));display:inline-block}
+.tpl-card-desc{font-size:12px;color:var(--ink-2);line-height:1.6;margin-bottom:16px}
+.tpl-card-ft{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border-subtle)}
+.tpl-card-uses{font-size:10px;color:var(--ink-4);font-family:'Geist Mono',monospace}
+.tpl-card-action{font-size:11px;font-weight:500;color:var(--ink-3);display:flex;align-items:center;gap:4px;transition:all var(--t-fast)}
+.tpl-card:hover .tpl-card-action{color:var(--ink)}
+.tpl-card-action svg{width:12px;height:12px;transition:transform var(--t-fast)}
+.tpl-card:hover .tpl-card-action svg{transform:translateX(2px)}
+
+/* ── Artifacts Page ── */
+.art-filters{display:flex;gap:6px;margin-bottom:16px}
+.art-filter{height:30px;padding:0 12px;border-radius:20px;border:1px solid var(--border-default);background:transparent;font-family:'Geist',sans-serif;font-size:12px;color:var(--ink-2);cursor:pointer;transition:all var(--t-fast)}
+.art-filter:hover{border-color:var(--border-strong)}
+.art-filter.on{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.art-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.art-card{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow);cursor:pointer;transition:all var(--t-norm);display:flex;flex-direction:column;gap:10px}
+.art-card:hover{box-shadow:var(--shadow-h);transform:translateY(-1px)}
+.art-card-hd{display:flex;align-items:flex-start;gap:10px}
+.art-card-icon{width:32px;height:32px;border-radius:var(--r-md);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.art-card-icon svg{width:16px;height:16px;color:var(--ink-2)}
+.art-card-info{flex:1;min-width:0}
+.art-card-nm{font-size:14px;font-weight:500;line-height:1.3}
+.art-card-type{font-size:11px;color:var(--ink-3);margin-top:1px}
+.art-card-st{font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;background:var(--surface-raised);color:var(--ink-2);flex-shrink:0;align-self:flex-start}
+.art-card-task{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);padding:6px 8px;background:var(--canvas);border-radius:var(--r-sm)}
+.art-card-task svg{width:12px;height:12px;flex-shrink:0;opacity:.5}
+.art-card-task span{color:var(--ink-2);font-weight:500}
+.art-card-ft{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--ink-3);font-family:'Geist Mono',monospace}
+.art-demo-btn{margin-top:10px;width:100%;padding:6px 0;font-size:12px;font-weight:500;font-family:'Geist',sans-serif;color:var(--ink);background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--r-sm);cursor:pointer;transition:all var(--t-fast)}
+.art-demo-btn:hover{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.art-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.art-type-grid .art-type-card:last-child:nth-child(3n-1){grid-column:2/3}
+.art-type-card{padding:16px 12px;border:1px solid var(--border-subtle);border-radius:var(--r-lg);cursor:pointer;transition:all .15s ease;text-align:center;background:var(--surface);position:relative}
+.art-type-card:hover{border-color:var(--border-default);background:var(--canvas);transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.art-type-card:active{transform:translateY(0);box-shadow:none}
+.art-type-icon{width:32px;height:32px;margin:0 auto 10px;border-radius:var(--r-md);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;transition:all .15s ease}
+.art-type-card:hover .art-type-icon{background:var(--ink);color:var(--surface)}
+.art-type-icon svg{width:16px;height:16px;color:inherit}
+.art-type-label{font-size:12px;font-weight:500;margin-bottom:3px;letter-spacing:-.01em}
+.art-type-desc{font-size:10px;color:var(--ink-3);line-height:1.3}
+.art-workflow-hint{display:flex;align-items:center;gap:14px;padding:16px;background:var(--canvas);border-radius:var(--r-md);border:1px solid var(--border-subtle)}
+.art-workflow-hint svg{color:var(--ink-3);flex-shrink:0}
+.art-workflow-hint .hint{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+/* ── Report Calendar ── */
+.rpt-stats{display:flex;gap:16px;margin-bottom:16px}
+.rpt-stat{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-md);flex:1}
+.rpt-stat-num{font-size:20px;font-weight:600;color:var(--ink);font-family:'Geist Mono',monospace;letter-spacing:-.02em}
+.rpt-stat-label{font-size:11px;color:var(--ink-3);line-height:1.3}
+.rpt-filters{display:flex;gap:4px;flex-wrap:wrap}
+.rpt-filter{padding:5px 12px;font-size:11px;font-weight:500;border:1px solid var(--border-subtle);border-radius:20px;background:transparent;cursor:pointer;color:var(--ink-3);transition:all var(--t-fast);font-family:'Geist',sans-serif}
+.rpt-filter.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.rpt-filter:not(.on):hover{background:var(--surface-raised);color:var(--ink-2)}
+.rpt-cal{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);margin-top:16px}
+.rpt-dh{padding:10px 8px;text-align:center;font-size:11px;font-weight:500;color:var(--ink-3);background:var(--canvas);border-bottom:1px solid var(--border-subtle)}
+.rpt-cell{min-height:100px;padding:6px 8px;border-right:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background var(--t-fast);display:flex;flex-direction:column;gap:3px}
+.rpt-cell:nth-child(7n){border-right:none}
+.rpt-cell:hover{background:var(--canvas)}
+.rpt-cell.out{opacity:.25}
+.rpt-cell.today{background:color-mix(in srgb,var(--ink) 4%,var(--surface))}
+.rpt-cell.today .rpt-d{background:var(--ink);color:var(--surface);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.rpt-d{font-size:11px;color:var(--ink-2);font-family:'Geist Mono',monospace;padding:1px 3px}
+.rpt-ev{font-size:10px;padding:2px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.5;display:flex;align-items:center;gap:4px;transition:opacity var(--t-fast)}
+.rpt-ev:hover{opacity:.75}
+.rpt-ev .rpt-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.rpt-ev.daily{background:var(--surface-raised);color:var(--ink-2)}.rpt-ev.daily .rpt-dot{background:var(--ink-4)}
+.rpt-ev.weekly{background:var(--surface-raised);color:var(--ink-2)}.rpt-ev.weekly .rpt-dot{background:var(--ink-3)}
+.rpt-ev.monthly{background:color-mix(in srgb,var(--ink-2) 10%,var(--surface-raised));color:var(--ink-1)}.rpt-ev.monthly .rpt-dot{background:var(--ink-2)}
+.rpt-ev.quarterly{background:color-mix(in srgb,var(--ink) 8%,var(--surface-raised));color:var(--ink-1);font-weight:500}.rpt-ev.quarterly .rpt-dot{background:var(--ink)}
+.rpt-ev.yearly{background:var(--ink);color:var(--surface);font-weight:500}.rpt-ev.yearly .rpt-dot{background:var(--surface)}
+.rpt-legend{display:flex;gap:12px;align-items:center;margin-top:12px}
+.rpt-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink-3)}
+.rpt-legend-item .rpt-dot{width:6px;height:6px;border-radius:50%}
+
+/* ── Demo / Presentation View ── */
+.demo-list{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.demo-card{background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:all var(--t-norm)}
+.demo-card:hover{border-color:var(--border-default);box-shadow:var(--shadow-h);transform:translateY(-1px)}
+.demo-thumb{height:160px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border-subtle);position:relative;overflow:hidden}
+.demo-thumb svg{width:40px;height:40px;color:var(--ink-4);transition:transform var(--t-norm)}
+.demo-card:hover .demo-thumb svg{transform:scale(1.08)}
+.demo-thumb .demo-type-badge{position:absolute;top:10px;left:10px;font-size:10px;font-weight:500;padding:2px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--border-subtle);color:var(--ink-3);backdrop-filter:blur(4px)}
+.demo-thumb .demo-device-badge{position:absolute;top:10px;right:10px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:var(--surface);border:1px solid var(--border-subtle)}
+.demo-thumb .demo-device-badge svg{width:12px;height:12px;color:var(--ink-3)}
+.demo-body{padding:14px 16px}
+.demo-nm{font-size:14px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px;color:var(--ink)}
+.demo-desc{font-size:11px;color:var(--ink-3);line-height:1.4;margin-bottom:4px}
+.demo-meta{font-size:10px;color:var(--ink-4);font-family:'Geist Mono',monospace}
+.demo-go-btn{margin-top:12px;width:100%;padding:7px 0;font-size:12px;font-weight:500;font-family:'Geist',sans-serif;color:var(--ink);background:var(--surface-raised);border:1px solid var(--border-subtle);border-radius:var(--r-sm);cursor:pointer;transition:all var(--t-fast)}
+.demo-go-btn:hover{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.demo-stage{display:none;position:fixed;top:0;left:var(--sidebar-w);right:0;bottom:0;z-index:100;background:var(--canvas);flex-direction:column}
+.demo-stage.active{display:flex}
+.demo-stage-hd{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border-subtle);flex-shrink:0}
+.demo-stage-title{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+.demo-stage-acts{display:flex;align-items:center;gap:8px}
+.demo-stage-body{flex:1;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:#E4E4E7}
+.demo-stage-body iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.demo-stage-body.device{background:#E4E4E7}
+.phone-frame{width:390px;height:calc(100% - 40px);max-height:844px;background:#1A1A1A;border-radius:44px;padding:12px;box-shadow:0 25px 60px rgba(0,0,0,.25),0 0 0 1px rgba(255,255,255,.08) inset;position:relative}
+.phone-frame .phone-screen{width:100%;height:100%;border-radius:34px;overflow:hidden;background:#000;position:relative}
+.phone-frame .phone-screen::-webkit-scrollbar{display:none}
+.phone-frame .phone-screen iframe{position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:34px}
+.phone-frame .phone-screen iframe::-webkit-scrollbar{display:none}
+.phone-frame .phone-notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#1A1A1A;border-radius:0 0 16px 16px;z-index:10}
+.demo-stage-placeholder{text-align:center;color:var(--ink-3);position:relative;z-index:1}
+.demo-stage-placeholder svg{width:64px;height:64px;color:var(--ink-4);margin-bottom:12px}
+.demo-stage-placeholder p{font-size:13px}
+
+/* ── Calendar View ── */
+.cal-view{display:none;flex:1;flex-direction:column;gap:0}
+.cal-view.active{display:flex}
+.cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cal-nav{display:flex;align-items:center;gap:12px}
+.cal-nav button{width:32px;height:32px;border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-2);transition:all var(--t-fast)}
+.cal-nav button:hover{background:var(--canvas);border-color:var(--border-default)}
+.cal-month{font-size:16px;font-weight:600;color:var(--ink);min-width:120px;text-align:center}
+.cal-today{font-size:12px;color:var(--ink-3);padding:4px 10px;border:1px solid var(--border-subtle);border-radius:var(--r-md);background:var(--surface);cursor:pointer;transition:all var(--t-fast)}
+.cal-today:hover{background:var(--canvas)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);flex:1;border:1px solid var(--border-subtle);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.cal-dh{padding:8px;text-align:center;font-size:11px;font-weight:500;color:var(--ink-3);background:var(--canvas);border-bottom:1px solid var(--border-subtle)}
+.cal-cell{min-height:100px;padding:6px;border-right:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background var(--t-fast);display:flex;flex-direction:column;gap:4px}
+.cal-cell:nth-child(7n){border-right:none}
+.cal-cell:hover{background:var(--canvas)}
+.cal-cell.out{opacity:.35}
+.cal-cell.today{background:var(--surface-raised)}
+.cal-cell.today .cal-d{background:var(--ink);color:var(--surface);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.cal-d{font-size:12px;color:var(--ink-2);font-family:'Geist Mono',monospace;padding:2px 4px}
+.cal-ev{font-size:10px;padding:2px 6px;border-radius:var(--r-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.4}
+.cal-ev.task{background:var(--surface-raised);color:var(--ink-2);border-left:2px solid var(--ink-3)}
+.cal-ev.art{background:var(--surface-raised);color:var(--ink-2);border-left:2px solid var(--ink-4)}
+.view-toggle{display:inline-flex;border:1px solid var(--border-subtle);border-radius:var(--r-sm);overflow:hidden}
+.view-toggle button{padding:3px 8px;font-size:10px;border:none;background:transparent;cursor:pointer;color:var(--ink-3);transition:all var(--t-fast);font-family:'Geist',sans-serif}
+.view-toggle button.on{background:var(--ink);color:var(--surface)}
+.view-toggle button:not(.on):hover{background:var(--canvas)}
+
+/* ── Drawer Panel ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;opacity:0;pointer-events:none;transition:opacity var(--t-norm)}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;width:480px;height:100dvh;background:var(--surface);z-index:410;transform:translateX(100%);transition:transform var(--t-norm);display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.08)}
+.drawer.open{transform:translateX(0)}
+.drawer-hd{height:56px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);flex-shrink:0}
+.drawer-hd h3{font-size:15px;font-weight:600}
+.drawer-close{width:32px;height:32px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);color:var(--ink-3);transition:all var(--t-fast)}
+.drawer-close:hover{background:var(--canvas);color:var(--ink)}
+.drawer-body{flex:1;overflow-y:auto;padding:20px}
+.drawer-ft{padding:12px 20px;border-top:1px solid var(--border-subtle);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.drawer-field{margin-bottom:16px}
+.drawer-field label{display:block;font-size:12px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
+/* Custom Select */
+.cselect{position:relative}
+.cselect-btn{width:100%;padding:8px 12px;border:1px solid var(--border-subtle);border-radius:var(--r-sm);font-size:13px;font-family:'Geist',sans-serif;color:var(--ink);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border var(--t-fast);user-select:none}
+.cselect-btn:hover{border-color:var(--border-default)}
+.cselect.open .cselect-btn{border-color:var(--ink-3)}
+.cselect-arrow{width:14px;height:14px;color:var(--ink-3);flex-shrink:0;transition:transform var(--t-fast)}
+.cselect.open .cselect-arrow{transform:rotate(180deg)}
+.cselect-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border-default);border-radius:var(--r-sm);box-shadow:var(--shadow-h);z-index:100;max-height:200px;overflow-y:auto;display:none}
+.cselect.open .cselect-drop{display:block}
+.cselect-opt{padding:7px 12px;font-size:13px;font-family:'Geist',sans-serif;color:var(--ink);cursor:pointer;transition:background var(--t-fast)}
+.cselect-opt:hover{background:var(--canvas)}
+.cselect-opt.on{background:var(--surface-raised);font-weight:500}
+
+.drawer-field input,.drawer-field textarea,.drawer-field select{width:100%;padding:8px 12px;border:1px solid var(--border-subtle);border-radius:var(--r-sm);font-size:13px;font-family:'Geist',sans-serif;color:var(--ink);background:var(--surface);outline:none;transition:border var(--t-fast),box-shadow var(--t-fast)}
+.drawer-field input:focus,.drawer-field textarea:focus,.drawer-field select:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.drawer-field textarea{min-height:80px;resize:vertical}
+.drawer-field .hint{font-size:11px;color:var(--ink-4);margin-top:4px}
+.drawer-section{font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-subtle)}
+.drawer-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;border:1px solid var(--border-subtle);border-radius:var(--r-sm);color:var(--ink-3);margin-right:6px;margin-bottom:6px;cursor:pointer;transition:all var(--t-fast)}
+.drawer-tag:hover{border-color:var(--ink-3);color:var(--ink-2)}
+.drawer-tag.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.drawer-ai-bar{margin-top:16px;padding:12px;background:var(--canvas);border-radius:var(--r-md);display:flex;align-items:center;gap:8px}
+.drawer-ai-bar svg{width:16px;height:16px;color:var(--ink-3);flex-shrink:0}
+.drawer-ai-bar span{font-size:12px;color:var(--ink-3)}
+.drawer-ai-bar button{margin-left:auto;font-size:11px;padding:4px 10px;border:1px solid var(--border-subtle);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;color:var(--ink-2);font-family:'Geist',sans-serif;transition:all var(--t-fast)}
+.drawer-ai-bar button:hover{border-color:var(--ink-3)}
+
+/* Drawer Attachments */
+.drawer-attach-zone{border:1.5px dashed var(--border-default);border-radius:var(--r-md);padding:20px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all var(--t-fast);color:var(--ink-3)}
+.drawer-attach-zone:hover{border-color:var(--ink-3);color:var(--ink-2);background:var(--canvas)}
+.drawer-attach-zone svg{width:20px;height:20px}
+.drawer-attach-zone span{font-size:12px}
+.drawer-attach-zone .hint{font-size:11px;color:var(--ink-4)}
+.drawer-attach-list{display:flex;flex-direction:column;gap:0;margin-top:10px}
+.drawer-attach-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border-subtle);font-size:12px}
+.drawer-attach-item:first-child{border-top:none}
+.drawer-attach-icon{width:28px;height:28px;border-radius:var(--r-sm);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.drawer-attach-icon svg{width:14px;height:14px;color:var(--ink-2)}
+.drawer-attach-info{flex:1;min-width:0}
+.drawer-attach-name{font-size:12px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-attach-meta{font-size:10px;color:var(--ink-3);font-family:'Geist Mono',monospace;margin-top:1px}
+.drawer-attach-rm{width:22px;height:22px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);color:var(--ink-3);transition:all var(--t-fast)}
+.drawer-attach-rm:hover{background:var(--surface-raised);color:var(--ink)}
+.drawer-attach-rm svg{width:13px;height:13px}
+.dialog-overlay{position:fixed;inset:0;background:rgba(24,24,27,.5);backdrop-filter:blur(4px);z-index:500;opacity:0;pointer-events:none;transition:opacity .2s ease;display:flex;align-items:center;justify-content:center}
+.dialog-overlay.open{opacity:1;pointer-events:auto}
+.dialog{background:var(--surface);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 32px rgba(0,0,0,.12);width:460px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(8px) scale(.98);transition:transform .25s cubic-bezier(.34,1.56,.64,1);overflow:hidden}
+.dialog-overlay.open .dialog{transform:translateY(0) scale(1)}
+.dialog-hd{padding:16px 20px 14px;display:flex;align-items:center;gap:12px}
+.dialog-hd h3{font-size:14px;font-weight:600;letter-spacing:-.01em;flex:1}
+.dialog-back{width:28px;height:28px;border:1px solid var(--border-subtle);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--ink-3);transition:all .15s ease}
+.dialog-back:hover{background:var(--surface-raised);color:var(--ink);border-color:var(--border-default)}
+.dialog-back svg{width:14px;height:14px}
+.dialog-close{width:28px;height:28px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--ink-3);transition:all .15s ease}
+.dialog-close:hover{background:var(--surface-raised);color:var(--ink)}
+.dialog-close svg{width:14px;height:14px}
+.dialog-body{padding:4px 20px 20px;overflow-y:auto;flex:1}
+.dialog-ft{padding:12px 20px;border-top:1px solid var(--border-subtle);display:flex;gap:8px;justify-content:flex-end;background:var(--canvas)}
+.dialog-step{font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace;padding:0 20px 8px;letter-spacing:.02em}
+
+/* ── Project Space ── */
+.ps-hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.ps-hd-acts{display:flex;align-items:center;gap:10px}
+
+
+/* Phase Sections */
+.ps-phases{display:flex;flex-direction:column;gap:0}
+.ps-phase-section{border-top:1px solid var(--border-subtle);padding:0}
+.ps-phase-section.upcoming{opacity:.35}
+.ps-phase-hd{display:flex;align-items:center;gap:10px;padding:14px 0;cursor:pointer;transition:opacity var(--t-fast);user-select:none}
+.ps-phase-hd:hover{opacity:.7}
+.ps-phase-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:all var(--t-fast)}
+.ps-phase-section.done .ps-phase-dot{background:var(--ink-3)}
+.ps-phase-section.active .ps-phase-dot{width:10px;height:10px;background:var(--ink);box-shadow:0 0 0 3px rgba(24,24,27,.1)}
+.ps-phase-section.upcoming .ps-phase-dot{background:transparent;border:1.5px solid var(--ink-3)}
+.ps-phase-name{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.ps-phase-dates{font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ps-phase-stats{margin-left:auto;display:flex;gap:14px;font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink-3)}
+.ps-phase-chevron{width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);transition:transform var(--t-fast);flex-shrink:0}
+.ps-phase-section.collapsed .ps-phase-chevron{transform:rotate(-90deg)}
+
+/* Phase Body — task card grid */
+.ps-phase-body{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 0 20px 18px}
+.ps-phase-section.collapsed .ps-phase-body{display:none}
+
+/* Task Cards */
+.ps-task-card{position:relative;padding:12px 14px 12px 18px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);cursor:pointer;transition:all .15s ease;overflow:hidden}
+.ps-task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--card-accent,var(--ink-4));border-radius:3px 0 0 3px;opacity:.6;transition:opacity .15s ease}
+.ps-task-card:hover{border-color:var(--border-default);box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
+.ps-task-card:hover::before{opacity:1}
+.ps-task-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.ps-task-check{width:16px;height:16px;border:1.5px solid var(--border-strong);border-radius:4px;flex-shrink:0;cursor:pointer;transition:all .15s ease;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.ps-task-check:hover{border-color:var(--ink)}
+.ps-task-check.done{background:var(--ink);border-color:var(--ink)}
+.ps-task-check.done::after{content:'';display:block;width:6px;height:6px;background:var(--canvas);border-radius:1px}
+.ps-task-title{flex:1;font-size:13px;font-weight:500;line-height:1.4;min-width:0;color:var(--ink);letter-spacing:-.01em}
+.ps-task-card:hover .ps-task-title{color:var(--ink)}
+.ps-task-badges{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.ps-task-badge{width:20px;height:20px;border-radius:4px;background:var(--surface-raised);display:flex;align-items:center;justify-content:center}
+.ps-task-badge svg{width:11px;height:11px;color:var(--ink-3)}
+.ps-task-badge.mile{background:color-mix(in srgb,#F59E0B 12%,transparent)}
+.ps-task-badge.mile svg{color:#F59E0B}
+.ps-task-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ps-task-type{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;background:color-mix(in srgb,var(--card-accent,var(--ink-4)) 10%,transparent);color:var(--card-accent,var(--ink-3))}
+.ps-task-type svg{width:11px;height:11px}
+.ps-task-divider{width:1px;height:10px;background:var(--border-subtle)}
+.ps-task-phase{font-size:11px;font-weight:500;color:var(--ink-3)}
+.ps-task-status{font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.ps-task-status.done{background:var(--surface-raised);color:var(--ink-3)}
+.ps-task-status.active{background:var(--ink);color:var(--surface)}
+.ps-task-due{font-family:'Geist Mono',monospace;font-size:11px;color:var(--ink-3);margin-left:auto}
+.ps-task-pri{display:none}
+.ps-task-card-art{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border-subtle);font-size:11px;color:var(--ink-2);cursor:pointer;transition:all .15s ease}
+.ps-task-card-art:hover{color:var(--ink)}
+.ps-task-card-art svg{width:13px;height:13px;color:var(--ink-3);flex-shrink:0}
+.ps-task-card-art span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ps-task-card-art::after{content:'演示';font-size:10px;color:var(--ink-3);margin-left:auto;padding:1px 6px;background:var(--surface-raised);border-radius:3px;transition:all .15s ease}
+.ps-task-card-art:hover::after{background:var(--ink);color:var(--surface)}
+
+/* Link rows — compact under cards */
+.ps-links-bar{display:flex;align-items:center;gap:12px;padding:8px 0 12px 18px;flex-wrap:wrap}
+.ps-link-chip{font-size:11px;color:var(--ink-3);display:flex;align-items:center;gap:4px}
+.ps-link-chip .url{color:var(--ink-2);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.ps-link-chip .url:hover{color:var(--ink)}
+
+/* Calendar view */
+.ps-cal-view{display:none;flex-direction:column;gap:16px}
+.ps-cal-view.active{display:flex}
+
+/* Empty phase state */
+.ps-empty{font-size:12px;color:var(--ink-3);padding:12px 0;text-align:center}
+
+/* ── Command Palette ── */
+.cmd-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding-top:20vh;opacity:0;pointer-events:none;transition:opacity var(--t-fast)}
+.cmd-overlay.open{opacity:1;pointer-events:auto}
+.cmd-box{width:520px;background:var(--surface);border:1px solid var(--border-default);border-radius:var(--r-lg);box-shadow:var(--shadow-d);overflow:hidden;transform:scale(.98) translateY(-8px);transition:transform var(--t-norm)}
+.cmd-overlay.open .cmd-box{transform:scale(1) translateY(0)}
+.cmd-input{width:100%;height:48px;border:none;outline:none;padding:0 16px;font-family:'Geist',sans-serif;font-size:15px;color:var(--ink);background:transparent;border-bottom:1px solid var(--border-subtle)}
+.cmd-input::placeholder{color:var(--ink-3)}
+.cmd-results{max-height:320px;overflow-y:auto;padding:6px}
+.cmd-group-label{font-size:11px;font-weight:500;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px 4px}
+.cmd-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);cursor:pointer;transition:background var(--t-fast);font-size:13px;color:var(--ink-2)}
+.cmd-item:hover,.cmd-item.sel{background:var(--surface-raised);color:var(--ink)}
+.cmd-item svg{width:16px;height:16px;opacity:.5}
+.cmd-item-hint{margin-left:auto;font-size:11px;color:var(--ink-3)}
+
+/* ── Notifications ── */
+.notif-panel{position:absolute;top:44px;right:0;width:320px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:var(--r-lg);box-shadow:var(--shadow-d);z-index:200;display:none;overflow:hidden}
+.notif-panel.open{display:block}
+.notif-hd{padding:12px 16px;border-bottom:1px solid var(--border-subtle);font-size:13px;font-weight:600}
+.notif-item{padding:10px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:background var(--t-fast)}
+.notif-item:hover{background:var(--canvas)}
+.notif-item:last-child{border-bottom:none}
+.notif-text{font-size:13px;line-height:1.4}
+.notif-time{font-size:11px;color:var(--ink-3);font-family:'Geist Mono',monospace;margin-top:2px}
+
+
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--ink-2);margin-bottom:4px}
+.form-input{width:100%;height:36px;border:1px solid var(--border-default);border-radius:var(--r-md);padding:0 10px;font-family:'Geist',sans-serif;font-size:13px;color:var(--ink);outline:none;transition:border-color var(--t-fast)}
+.form-input:focus{border-color:var(--ink)}
+.form-select{width:100%;height:36px;border:1px solid var(--border-default);border-radius:var(--r-md);padding:0 32px 0 10px;font-family:'Geist',sans-serif;font-size:13px;color:var(--ink);outline:none;background:var(--surface);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2371717A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border var(--t-fast)}
+.form-select:hover{border-color:var(--ink-3)}
+
+/* ── AI Panel ── */
+.ai-panel{width:var(--ai-w);height:100dvh;background:var(--surface);border-left:1px solid var(--border-subtle);position:fixed;top:0;right:0;z-index:90;display:flex;flex-direction:column;transform:translateX(100%);transition:transform var(--t-norm)}
+.ai-panel.open{transform:translateX(0)}
+.ai-hd{height:56px;min-height:56px;padding:0 18px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between}
+.ai-title{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.ai-body{flex:1;padding:16px 18px;overflow-y:auto}
+.ai-msg{margin-bottom:16px}
+.ai-role{font-size:11px;font-weight:500;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ai-text{font-size:13.5px;line-height:1.65}
+.ai-text p{margin-bottom:6px}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ai-chip{font-size:12px;padding:5px 12px;border:1px solid var(--border-default);border-radius:20px;cursor:pointer;color:var(--ink-2);transition:all var(--t-fast)}
+.ai-chip:hover{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.ai-ft{padding:12px 18px;border-top:1px solid var(--border-subtle)}
+.ai-input-w{display:flex;align-items:center;gap:8px;border:1px solid var(--border-default);border-radius:var(--r-md);padding:6px 10px;transition:border-color var(--t-fast)}
+.ai-input-w:focus-within{border-color:var(--ink)}
+.ai-input{flex:1;border:none;outline:none;font-family:'Geist',sans-serif;font-size:13px;color:var(--ink);background:transparent}
+.ai-input::placeholder{color:var(--ink-3)}
+.ai-send{width:28px;height:28px;border-radius:var(--r-sm);background:var(--ink);border:none;color:var(--canvas);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity var(--t-fast)}
+.ai-send:hover{opacity:.8}
+.ai-send svg{width:14px;height:14px}
+.ai-typing{display:flex;gap:4px;padding:8px 0}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--ink-3);animation:typing 1.2s infinite}
+.ai-typing span:nth-child(2){animation-delay:.2s}.ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+/* ── Buttons ── */
+.btn{height:36px;padding:0 16px;border-radius:var(--r-md);font-family:'Geist',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--t-fast);border:none}
+.btn:active{transform:translateY(1px)}
+.btn-p{background:var(--ink);color:var(--canvas)}.btn-p:hover{opacity:.9}
+.btn-s{background:var(--surface);color:var(--ink);border:1px solid var(--border-default)}.btn-s:hover{background:var(--surface-raised)}
+.btn-g{background:transparent;color:var(--ink-2);border:none}.btn-g:hover{background:var(--surface-raised);color:var(--ink)}
+
+/* ── Animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .3s var(--ease) both}
+.d1{animation-delay:.03s}.d2{animation-delay:.06s}.d3{animation-delay:.09s}.d4{animation-delay:.12s}.d5{animation-delay:.15s}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--canvas);padding:10px 20px;border-radius:var(--r-md);font-size:13px;font-weight:500;opacity:0;transition:all var(--t-norm);z-index:600;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-hd">
+    <div class="sidebar-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+    <span class="sidebar-brand">TaskHub</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-label">工作区</div>
+      <a class="nav on" data-page="workbench"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>工作台</a>
+      <a class="nav" data-page="kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>任务看板</a>
+      <a class="nav" data-page="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><path d="M9 20v-6h6v6"/></svg>项目<span class="nav-badge">4</span></a>
+      <a class="nav" data-page="artifacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/></svg>产物<span class="nav-badge">12</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">工具</div>
+      <a class="nav" data-page="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>文档模板</a>
+      <a class="nav" data-page="prototypes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><polygon points="10 8 10 12 14 10 10 8" fill="currentColor" stroke="none"/></svg>演示</a>
+      <a class="nav" data-page="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>汇报</a>
+    </div>
+  </nav>
+  <div class="sidebar-ft">
+    <div class="proj-switch" id="projSwitch">
+      <div class="proj-av" id="projAv">智医</div>
+      <div class="proj-info"><div class="proj-nm" id="projNm">智慧医疗平台</div><div class="proj-ph" id="projPh">原型设计阶段</div></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3)"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="proj-dropdown" id="projDropdown">
+        <div class="proj-dd-item current" data-proj="0"><div class="proj-av">智医</div><div><div class="proj-dd-nm">智慧医疗平台</div><div class="proj-dd-ph">原型设计阶段</div></div></div>
+        <div class="proj-dd-item" data-proj="1"><div class="proj-av">文旅</div><div><div class="proj-dd-nm">文旅数据看板</div><div class="proj-dd-ph">开发实施阶段</div></div></div>
+        <div class="proj-dd-item" data-proj="2"><div class="proj-av">商城</div><div><div class="proj-dd-nm">跨境电商系统</div><div class="proj-dd-ph">方案设计阶段</div></div></div>
+        <div class="proj-dd-item" data-proj="3"><div class="proj-av">政务</div><div><div class="proj-dd-nm">政务服务平台</div><div class="proj-dd-ph">调研梳理阶段</div></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main ai-open" id="main">
+  <div class="topbar">
+    <div class="breadcrumb" id="breadcrumb" style="visibility:hidden"></div>
+    <div class="topbar-acts">
+      <button class="search-btn" id="searchBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜索项目、产物、任务...<span class="kbd">⌘K</span></button>
+      <div style="position:relative">
+        <button class="ibtn" id="notifBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="dot"></span></button>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-hd">通知</div>
+          <div class="notif-item"><div class="notif-text">「异地就医申请流程图」待确认事项已更新</div><div class="notif-time">10 分钟前</div></div>
+          <div class="notif-item"><div class="notif-text">实施方案 v2.1 已被确认</div><div class="notif-time">2 小时前</div></div>
+          <div class="notif-item"><div class="notif-text">任务「完成原型设计」即将到期</div><div class="notif-time">今日 09:00</div></div>
+        </div>
+      </div>
+      <button class="ibtn on" id="aiToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></button>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <!-- ══ Workbench ══ -->
+    <div class="page on" id="page-workbench">
+      <div class="pg-hd anim d1"><div><div class="pg-title">工作台</div><p class="pg-sub">当前有 3 项待处理任务，2 个项目进行中</p></div><span class="pg-date">2026-08-12 周三</span></div>
+      <div class="stats anim d2">
+        <div class="stat"><div class="stat-lb">进行中任务</div><div class="stat-val" id="statActive">7</div><div class="stat-ch">+2 本周新增</div></div>
+        <div class="stat"><div class="stat-lb">已完成</div><div class="stat-val" id="statDone">23</div><div class="stat-ch">+5 本周完成</div></div>
+        <div class="stat"><div class="stat-lb">待确认事项</div><div class="stat-val">4</div><div class="stat-ch">2 项超过 3 天</div></div>
+        <div class="stat"><div class="stat-lb">项目产物</div><div class="stat-val">12</div><div class="stat-ch">3 份本周新增</div></div>
+      </div>
+      <div class="sec anim d3">
+        <div class="sec-hd"><h2 class="sec-tt">今日任务</h2><button class="btn btn-g" id="addTaskBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新建任务</button></div>
+        <div class="tlist" id="taskList"></div>
+      </div>
+      <div class="two-col">
+        <div class="sec anim d4">
+          <div class="sec-hd"><h2 class="sec-tt">进行中项目</h2><span class="sec-act" data-nav="projects">全部项目 →</span></div>
+          <div class="pcards" id="wbProjects"></div>
+        </div>
+        <div class="sec anim d5">
+          <div class="sec-hd"><h2 class="sec-tt">最近产物</h2><span class="sec-act" data-nav="artifacts">产物中心 →</span></div>
+          <div class="alist">
+            <div class="aitem"><div class="aicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="ainfo"><div class="aname">实施方案 v2.1</div><div class="ameta"><span>文档</span><span>08-11</span></div><div class="art-card-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>梳理项目建设内容</span></div></div></div>
+            <div class="aitem"><div class="aicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div><div class="ainfo"><div class="aname">智慧医院线上接入原型</div><div class="ameta"><span>原型</span><span>08-12</span></div><div class="art-card-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>完成线上接入页面原型</span></div></div></div>
+            <div class="aitem"><div class="aicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="ainfo"><div class="aname">挂号业务流程图</div><div class="ameta"><span>流程图</span><span>08-10</span></div><div class="art-card-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>梳理挂号业务流程</span></div></div></div>
+            <div class="aitem"><div class="aicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div><div class="ainfo"><div class="aname">功能清单与排期表</div><div class="ameta"><span>表格</span><span>08-09</span></div><div class="art-card-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>制定开发排期计划</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Projects ══ -->
+    <div class="page" id="page-projects">
+      <div class="pg-hd anim d1"><div><div class="pg-title">项目</div><p class="pg-sub">管理所有项目，跟踪进度与阶段</p></div><button class="btn btn-p" id="newProjBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新建项目</button></div>
+      <div class="proj-grid anim d2" id="projGrid"></div>
+    </div>
+
+    <!-- ══ Artifacts ══ -->
+    <div class="page" id="page-artifacts">
+      <div class="pg-hd anim d1"><div><div class="pg-title">产物中心</div><p class="pg-sub">所有产物均关联任务，产物驱动开发流程</p><div class="view-toggle" id="artViewToggle" style="margin-top:6px"><button class="on" data-view="grid">卡片</button><button data-view="calendar">日历</button></div></div><button class="btn btn-p" id="newArtBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新建产物</button></div>
+      <div class="art-filters anim d2">
+        <button class="art-filter on" data-filter="all">全部 <span style="font-family:'Geist Mono',monospace;font-size:10px;opacity:.6">12</span></button>
+        <button class="art-filter" data-filter="doc">文档</button>
+        <button class="art-filter" data-filter="proto">原型</button>
+        <button class="art-filter" data-filter="flow">流程图</button>
+        <button class="art-filter" data-filter="table">表格</button>
+        <button class="art-filter" data-filter="report">汇报</button>
+      </div>
+      <div class="art-grid anim d3" id="artGrid"></div>
+      <div class="cal-view" id="artCalendar"></div>
+    </div>
+
+    <!-- ══ Kanban ══ -->
+    <div class="page" id="page-kanban" style="display:none;flex-direction:column;height:100%">
+      <div class="pg-hd anim d1"><div><div class="pg-title">任务看板</div><p class="pg-sub">拖拽卡片更新任务状态</p><div class="view-toggle" id="taskViewToggle" style="margin-top:6px"><button class="on" data-view="kanban">看板</button><button data-view="calendar">日历</button></div></div><button class="btn btn-p" id="addTaskBtn2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新建任务</button></div>
+      <div class="kanban anim d2" id="kanban"></div>
+      <div class="cal-view" id="taskCalendar"></div>
+    </div>
+
+    <!-- ══ Templates ══ -->
+    <div class="page" id="page-templates">
+      <div class="pg-hd anim d1"><div><div class="pg-title">文档模板</div><p class="pg-sub">使用模板快速生成标准化文档</p></div></div>
+      <div class="tpl-grid anim d2" id="tplGrid"></div>
+    </div>
+
+    <!-- ══ Demo / Presentation ══ -->
+    <div class="page" id="page-prototypes" style="position:relative">
+      <div class="pg-hd anim d1"><div><div class="pg-title">演示</div><p class="pg-sub">选择原型、流程图等产物进行全屏演示查看</p></div></div>
+      <div class="demo-list anim d2" id="demoList"></div>
+      <div class="demo-stage" id="demoStage">
+        <div class="demo-stage-hd">
+          <div class="demo-stage-title"><button class="btn btn-g" id="demoBack" style="height:28px;font-size:11px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="15 18 9 12 15 6"/></svg>返回列表</button><span id="demoStageName"></span></div>
+          <div class="demo-stage-acts">
+            <button class="btn btn-g" style="height:28px;font-size:11px" onclick="toast('已复制链接')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>复制链接</button>
+            <button class="btn btn-g" style="height:28px;font-size:11px" onclick="toast('新窗口打开')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>新窗口</button>
+          </div>
+        </div>
+        <div class="demo-stage-body" id="demoStageBody">
+          <div class="demo-stage-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg><p>选择左侧项目开始演示</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Reports ══ -->
+    <div class="page" id="page-reports">
+      <div class="pg-hd anim d1"><div><div class="pg-title">汇报</div><p class="pg-sub">AI 自动生成日报、周报、月报、季度报、年报</p></div><button class="btn btn-p" id="aiReportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>AI 生成汇报</button></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px" class="anim d2">
+        <div class="rpt-filters" id="rptFilters">
+          <button class="rpt-filter on" data-rpt="all">全部</button>
+          <button class="rpt-filter" data-rpt="daily">日报</button>
+          <button class="rpt-filter" data-rpt="weekly">周报</button>
+          <button class="rpt-filter" data-rpt="monthly">月报</button>
+          <button class="rpt-filter" data-rpt="quarterly">季度报</button>
+          <button class="rpt-filter" data-rpt="yearly">年报</button>
+        </div>
+        <div class="cal-nav">
+          <button id="rptPrev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <div class="cal-month" id="rptMonth">2026年8月</div>
+          <button id="rptNext"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+      <div class="rpt-stats anim d2" id="rptStats"></div>
+      <div class="rpt-cal anim d3" id="rptCal"></div>
+      <div class="rpt-legend anim d3">
+        <div class="rpt-legend-item"><span class="rpt-dot" style="background:var(--ink-4)"></span>日报</div>
+        <div class="rpt-legend-item"><span class="rpt-dot" style="background:var(--ink-3)"></span>周报</div>
+        <div class="rpt-legend-item"><span class="rpt-dot" style="background:var(--ink-2)"></span>月报</div>
+        <div class="rpt-legend-item"><span class="rpt-dot" style="background:var(--ink)"></span>季度报</div>
+        <div class="rpt-legend-item"><span class="rpt-dot" style="background:var(--ink);width:8px;height:8px"></span>年报</div>
+        <span style="margin-left:auto;font-size:10px;color:var(--ink-4)">所有汇报均由 AI 自动生成</span>
+      </div>
+    </div>
+
+    <!-- ══ Project Space ══ -->
+    <div class="page" id="page-project-space">
+      <div class="ps-hd anim d1">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-g" id="projBackBtn" style="height:30px;font-size:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+          <div>
+            <div class="pg-title" id="projSpaceName">智慧医疗平台</div>
+            <p class="pg-sub" id="projSpaceSub">原型设计阶段 · 45%</p>
+          </div>
+        </div>
+        <div class="ps-hd-acts">
+          <div class="view-toggle" id="psViewToggle"><button class="on" data-view="phase">阶段</button><button data-view="calendar">日历</button></div>
+        </div>
+      </div>
+      <div id="psPhaseView">
+        <div class="ps-phases anim d2" id="psPhases"></div>
+      </div>
+      <div class="ps-cal-view" id="psCalView"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hd"><h3 id="drawerTitle">新建任务</h3><button class="drawer-close" id="drawerClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-ft" id="drawerFt"></div>
+</div>
+
+<!-- Dialog -->
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog">
+    <div class="dialog-hd"><button class="dialog-back" id="dialogBack" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button><h3 id="dialogTitle"></h3><button class="dialog-close" id="dialogClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="dialog-step" id="dialogStep" style="display:none"></div>
+    <div class="dialog-body" id="dialogBody"></div>
+    <div class="dialog-ft" id="dialogFt"></div>
+  </div>
+</div>
+
+<!-- AI Panel -->
+<aside class="ai-panel open" id="aiPanel">
+  <div class="ai-hd"><span class="ai-title">AI 项目助手</span><button class="ibtn" id="aiClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="ai-body" id="aiBody">
+    <div class="ai-msg"><div class="ai-role">AI</div><div class="ai-text"><p>当前项目「智慧医疗平台」处于原型设计阶段，已完成 45%。有 4 项待确认事项需要处理。</p><p>我可以帮你推进以下工作：</p></div><div class="ai-chips"><div class="ai-chip" data-msg="帮我生成本周的项目周报">生成项目周报</div><div class="ai-chip" data-msg="补全实施方案的第三章内容">补全实施方案</div><div class="ai-chip" data-msg="根据方案生成 HTML 原型页面">生成原型页面</div><div class="ai-chip" data-msg="从实施方案中拆解开发任务">拆解开发任务</div><div class="ai-chip" data-msg="检查当前项目阶段的缺失项">检查缺失项</div></div></div>
+    <div class="ai-msg"><div class="ai-role">你</div><div class="ai-text"><p>帮我生成本周的项目周报</p></div></div>
+    <div class="ai-msg"><div class="ai-role">AI</div><div class="ai-text"><p>已根据本周完成任务和产物变更生成周报草稿：</p><p><strong>本周完成：</strong><br>· 智慧医院线上接入页面原型<br>· 实施方案 v2.1 更新<br>· 挂号业务流程图评审通过</p><p><strong>进行中：</strong><br>· 南京医疗挂号接口文档编写<br>· 异地就医申请流程确认</p><p><strong>风险项：</strong><br>· 2 项待确认事项超过 3 天未响应</p></div></div>
+  </div>
+  <div class="ai-ft"><div class="ai-input-w"><input class="ai-input" id="aiInput" type="text" placeholder="输入问题或指令..."><button class="ai-send" id="aiSend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div></div>
+</aside>
+
+<!-- Command Palette -->
+<div class="cmd-overlay" id="cmdOverlay">
+  <div class="cmd-box">
+    <input class="cmd-input" id="cmdInput" type="text" placeholder="搜索或输入命令...">
+    <div class="cmd-results" id="cmdResults"></div>
+  </div>
+</div>
+
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──
+const projects = [
+  {name:'智慧医疗平台',phase:'开发实施阶段',av:'智医',type:'医疗健康应用',desc:'南京市智慧医疗服务接入平台，涵盖线上挂号、异地就医、医保资讯、云药房等核心模块。',progress:45,stage:'4/8',start:'07-15',end:'12-31',owner:'张明',stakeholders:['陈处长','王科长'],members:['李婷','王磊','赵薇','刘洋']},
+  {name:'文旅数据看板',phase:'开发实施阶段',av:'文旅',type:'数据看板',desc:'全域旅游数据可视化看板，整合景区客流、消费趋势、交通热力等多维数据。',progress:72,stage:'6/8',start:'06-01',end:'10-31',owner:'李婷',stakeholders:['周局长'],members:['张明','赵薇']},
+  {name:'跨境电商系统',phase:'方案设计阶段',av:'商城',type:'商城系统',desc:'面向东南亚市场的跨境电商平台，支持多币种、多语言、国际物流对接。',progress:20,stage:'3/8',start:'08-01',end:'02-28',owner:'王磊',stakeholders:['David Chen','林总'],members:['张明','李婷','刘洋']},
+  {name:'政务服务平台',phase:'调研梳理阶段',av:'政务',type:'政务应用',desc:'一站式政务服务平台，整合社保、公积金、户籍等公共服务事项的线上办理。',progress:10,stage:'2/8',start:'08-10',end:'03-31',owner:'赵薇',stakeholders:['李主任','张处长'],members:['王磊','刘洋']}
+];
+
+const taskTypes={
+  requirement:{label:'需求',color:'#3B82F6',icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'},
+  prototype:{label:'原型设计',color:'#8B5CF6',icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>'},
+  design:{label:'设计',color:'#EC4899',icon:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'},
+  development:{label:'开发',color:'#10B981',icon:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'},
+  testing:{label:'测试',color:'#F59E0B',icon:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>'},
+  document:{label:'文档',color:'#6366F1',icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
+  review:{label:'评审',color:'#06B6D4',icon:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'},
+  risk:{label:'风险',color:'#EF4444',icon:'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'},
+  research:{label:'调研',color:'#84CC16',icon:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'},
+  deploy:{label:'部署',color:'#14B8A6',icon:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'}
+};
+
+let tasks = [
+  {id:1,title:'完成智慧医院线上接入页面原型',type:'prototype',phase:'原型设计',due:'08-12',pri:'low',done:true,art:{type:'proto',name:'智慧医院线上接入原型'}},
+  {id:2,title:'编写南京医疗挂号模块接口文档',type:'document',phase:'原型设计',due:'今日 18:00',pri:'high',done:false,art:{type:'doc',name:'接口文档 — 挂号模块'}},
+  {id:3,title:'确认异地就医申请业务流程图',type:'prototype',phase:'原型设计',due:'今日',pri:'high',done:false,art:{type:'flow',name:'异地就医流程图'}},
+  {id:4,title:'评审医保资讯列表页原型设计',type:'review',phase:'原型设计',due:'明日 10:00',pri:'med',done:false},
+  {id:5,title:'更新项目实施方案第三章内容',type:'document',phase:'方案设计',due:'08-14',pri:'med',done:false},
+  {id:6,title:'对接医保接口 SDK',type:'development',phase:'开发实施',due:'08-15',pri:'med',done:false},
+  {id:7,title:'整理调研纪要 — 云药房模块',type:'research',phase:'调研梳理',due:'08-16',pri:'low',done:false},
+];
+
+const kanbanData = {
+  '待处理': [
+    {title:'评审医保资讯列表页原型',type:'review',phase:'原型设计',date:'08-13'},
+    {title:'更新实施方案第三章',type:'document',phase:'方案设计',date:'08-14'},
+    {title:'对接医保接口 SDK',type:'development',phase:'开发实施',date:'08-15'},
+    {title:'整理云药房调研纪要',type:'research',phase:'调研梳理',date:'08-16',art:{type:'doc',name:'云药房调研纪要'}},
+  ],
+  '进行中': [
+    {title:'编写挂号模块接口文档',type:'document',phase:'原型设计',date:'今日',art:{type:'doc',name:'接口文档 — 挂号模块'}},
+    {title:'确认异地就医流程图',type:'prototype',phase:'原型设计',date:'今日',art:{type:'flow',name:'异地就医流程图'}},
+    {title:'云药房查询页面原型',type:'prototype',phase:'原型设计',date:'08-14',art:{type:'proto',name:'云药房查询页面原型'}},
+  ],
+  '待验证': [
+    {title:'线上挂号接口联调',type:'testing',phase:'开发实施',date:'08-10'},
+    {title:'首页布局适配测试',type:'testing',phase:'开发实施',date:'08-11'},
+    {title:'科室列表页交互验证',type:'testing',phase:'开发实施',date:'08-11'},
+  ],
+  '已完成': [
+    {title:'完成智慧医院线上接入原型',type:'prototype',phase:'原型设计',date:'08-12',art:{type:'proto',name:'智慧医院线上接入原型'}},
+    {title:'实施方案 v2.1 更新',type:'document',phase:'方案设计',date:'08-11',art:{type:'doc',name:'实施方案 v2.1'}},
+    {title:'挂号业务流程图评审',type:'review',phase:'方案设计',date:'08-10',art:{type:'flow',name:'挂号业务流程图'}},
+    {title:'需求清单确认',type:'requirement',phase:'项目线索',date:'08-08',art:{type:'table',name:'需求清单'}},
+  ]
+};
+
+const cmdItems = [
+  {group:'导航',items:[
+    {label:'工作台',icon:'grid',page:'workbench'},{label:'项目',icon:'home',page:'projects'},
+    {label:'产物中心',icon:'box',page:'artifacts'},{label:'任务看板',icon:'bar',page:'kanban'},
+    {label:'文档模板',icon:'file',page:'templates'},{label:'原型',icon:'layers',page:'prototypes'},
+    {label:'汇报',icon:'check',page:'reports'},
+  ]},
+  {group:'操作',items:[
+    {label:'新建任务',icon:'plus',action:'newTask'},{label:'新建项目',icon:'plus',action:'newProj'},
+    {label:'AI 生成周报',icon:'ai',action:'aiReport'},{label:'AI 生成原型',icon:'ai',action:'aiProto'},
+  ]},
+];
+
+// ── Helpers ──
+const $=s=>document.querySelector(s);const $$=s=>document.querySelectorAll(s);
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function updateStats(){const done=tasks.filter(t=>t.done).length;const active=tasks.filter(t=>!t.done).length;$('#statDone').textContent=23+done-1;$('#statActive').textContent=active}
+
+// ── Render Tasks ──
+function renderTasks(){
+  const list=$('#taskList');
+  list.innerHTML=tasks.map(t=>{
+    const statusLabel=t.done?'已完成':'进行中';
+    const statusCls=t.done?'done':'active';
+    const typeInfo=taskTypes[t.type]||taskTypes.requirement;
+    const typeBadge=`<span class="ttype" style="--card-accent:${typeInfo.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${typeInfo.icon}</svg>${typeInfo.label}</span>`;
+    const artRow=t.art?`<div class="titem-art" onclick="event.stopPropagation();openArtDemo('${t.art.name}')" title="点击演示"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artBadgeSvg[t.art.type]||artBadgeSvg.doc}</svg><span>${t.art.name}</span></div>`:'';
+    return`<div class="titem${t.done?' done':''}" data-id="${t.id}" style="--card-accent:${typeInfo.color}">
+      <div class="titem-top"><div class="tcheck${t.done?' done':''}" data-id="${t.id}"></div><div class="ttitle">${t.title}</div></div>
+      <div class="titem-meta">${typeBadge}<span class="tdivider"></span><span class="tstatus ${statusCls}">${statusLabel}</span><span class="tdue">${t.due}</span></div>
+      ${artRow}
+      <div class="tdel" data-id="${t.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></div>
+    </div>`}).join('');
+  updateStats();
+}
+
+// ── Task Interactions ──
+$('#taskList').addEventListener('click',e=>{
+  const check=e.target.closest('.tcheck');
+  if(check){const id=+check.dataset.id;const t=tasks.find(x=>x.id===id);t.done=!t.done;renderTasks();toast(t.done?'任务已完成':'任务已恢复');return}
+  const del=e.target.closest('.tdel');
+  if(del){const id=+del.dataset.id;tasks=tasks.filter(x=>x.id!==id);renderTasks();toast('任务已删除');return}
+});
+
+// ── Navigation ──
+const pageNames={workbench:'工作台',projects:'项目',artifacts:'产物中心',kanban:'任务看板',templates:'文档模板',prototypes:'演示',reports:'汇报'};
+function navigateTo(page){
+  $$('.nav').forEach(n=>n.classList.toggle('on',n.dataset.page===page));
+  $$('.page').forEach(p=>{p.classList.remove('on');p.style.display='none'});
+  const el=$(`#page-${page}`);
+  if(el){
+    el.classList.add('on');
+    el.style.display=page==='kanban'?'flex':'block';
+  }
+  const content=$('#content');
+  if(page==='kanban'){content.style.overflow='hidden';content.style.display='flex';content.style.flexDirection='column';content.style.height='100%'}
+  else{content.style.overflow='';content.style.display='';content.style.flexDirection='';content.style.height=''}
+  $('#breadcrumb').textContent=pageNames[page]||page;
+  content.scrollTop=0;
+}
+$$('.nav').forEach(n=>n.addEventListener('click',e=>{e.preventDefault();navigateTo(n.dataset.page)}));
+$$('[data-nav]').forEach(el=>el.addEventListener('click',()=>navigateTo(el.dataset.nav)));
+
+function findTaskByTitle(title){
+  for(const p of projSpaceData.phases){
+    const t=p.tasks.find(x=>x.title===title);
+    if(t)return t;
+  }
+  return tasks.find(x=>x.title===title);
+}
+
+function openTaskDrawer(title){
+  const t=findTaskByTitle(title);
+  if(t)openDrawer('任务详情',taskDetailForm(t),'<button class="btn btn-p" onclick="closeDrawer();toast(\'已更新\')">保存</button><button class="btn btn-g" onclick="closeDrawer()">取消</button>');
+}
+
+// ── Kanban ──
+function renderKanban(){
+  const kb=$('#kanban');
+  kb.innerHTML=Object.entries(kanbanData).map(([col,cards])=>`<div class="kcol" data-col="${col}">
+    <div class="kcol-hd"><div class="kcol-title">${col}<span class="kcol-count">${cards.length}</span></div></div>
+    <div class="kcol-body" data-col="${col}">${cards.map((c,i)=>{
+      const isDone=col==='已完成';
+      const typeInfo=taskTypes[c.type]||taskTypes.requirement;
+      const typeBadge=`<span class="kcard-type" style="--card-accent:${typeInfo.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${typeInfo.icon}</svg>${typeInfo.label}</span>`;
+      const artRow=c.art?`<div class="kcard-art" onclick="event.stopPropagation();openArtDemo('${c.art.name}')" title="点击演示"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artBadgeSvg[c.art.type]||artBadgeSvg.doc}</svg><span>${c.art.name}</span></div>`:'';
+      return`<div class="kcard${isDone?' done':''}" data-col="${col}" data-idx="${i}" style="--card-accent:${typeInfo.color}">
+        <div class="kcard-top"><div class="kcard-title">${c.title}</div></div>
+        <div class="kcard-meta">${typeBadge}<span class="kcard-divider"></span><span class="kcard-phase">${c.phase}</span><span class="kcard-date">${c.date}</span></div>
+        ${artRow}
+      </div>`}).join('')}</div></div>`).join('');
+  initKanban();
+}
+
+const kbState={dragEl:null,ghost:null,startX:0,startY:0,isDragging:false,inited:false};
+
+function initKanban(){
+  $$('.kcard').forEach(card=>{
+    card.addEventListener('mousedown',e=>{
+      if(e.button!==0)return;
+      kbState.dragEl=card;kbState.startX=e.clientX;kbState.startY=e.clientY;kbState.isDragging=false;
+    });
+  });
+
+  if(kbState.inited)return;
+  kbState.inited=true;
+
+  document.addEventListener('mousemove',e=>{
+    const s=kbState;if(!s.dragEl)return;
+    const dx=e.clientX-s.startX,dy=e.clientY-s.startY;
+    if(!s.isDragging&&Math.abs(dx)<5&&Math.abs(dy)<5)return;
+    if(!s.isDragging){
+      s.isDragging=true;
+      s.ghost=s.dragEl.cloneNode(true);
+      s.ghost.style.cssText='position:fixed;z-index:999;pointer-events:none;opacity:.85;width:'+s.dragEl.offsetWidth+'px;transform:rotate(2deg);box-shadow:var(--shadow-h)';
+      document.body.appendChild(s.ghost);
+      s.dragEl.style.opacity='0.3';
+    }
+    if(s.ghost){s.ghost.style.left=(e.clientX-s.dragEl.offsetWidth/2)+'px';s.ghost.style.top=(e.clientY-20)+'px'}
+    $$('.kcol-body').forEach(b=>{
+      const r=b.getBoundingClientRect();
+      b.style.background=(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)?'var(--surface-sunken)':'';
+    });
+  });
+
+  document.addEventListener('mouseup',e=>{
+    const s=kbState;if(!s.dragEl)return;
+    if(s.isDragging){
+      if(s.ghost){document.body.removeChild(s.ghost);s.ghost=null}
+      s.dragEl.style.opacity='';
+      let targetCol=null;
+      $$('.kcol-body').forEach(b=>{
+        const r=b.getBoundingClientRect();
+        if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)targetCol=b.dataset.col;
+        b.style.background='';
+      });
+      if(targetCol&&targetCol!==s.dragEl.dataset.col){
+        const fromCol=s.dragEl.dataset.col;
+        const title=s.dragEl.querySelector('.kcard-title').textContent;
+        const phase=s.dragEl.querySelector('.kcard-phase').textContent;
+        const srcCard=kanbanData[fromCol].find(c=>c.title===title&&c.phase===phase);
+        kanbanData[fromCol]=kanbanData[fromCol].filter(c=>!(c.title===title&&c.phase===phase));
+        if(srcCard)kanbanData[targetCol].push(srcCard);
+        renderKanban();toast(`已移至「${targetCol}」`);
+      }
+    } else {
+      const title=s.dragEl.querySelector('.kcard-title').textContent;
+      openTaskDrawer(title);
+    }
+    s.dragEl=null;s.isDragging=false;
+  });
+}
+
+// ── AI Panel ──
+function toggleAI(){$('#aiPanel').classList.toggle('open');$('#main').classList.toggle('ai-open');$('#aiToggle').classList.toggle('on')}
+$('#aiToggle').addEventListener('click',toggleAI);
+$('#aiClose').addEventListener('click',toggleAI);
+
+const aiResponses={
+  '帮我生成本周的项目周报':'已根据本周任务和产物变更生成周报草稿，请查看汇报中心。',
+  '补全实施方案的第三章内容':'已为「实施方案 v2.1」第三章「建设内容」补全了以下内容：\n\n1. 智慧医院线上接入模块\n2. 医保资讯服务模块\n3. 云药房查询模块\n\n请确认内容是否准确。',
+  '根据方案生成 HTML 原型页面':'已根据方案生成 6 个 HTML 原型页面，存入 prototype/ 目录：\n· 首页\n· 科室列表\n· 医生详情\n· 预约确认\n· 挂号成功\n· 我的预约',
+  '从实施方案中拆解开发任务':'已从方案中拆解出 18 个开发任务：\n\n前端开发 × 8\n后端开发 × 6\n接口对接 × 3\n测试验收 × 1\n\n已添加到任务看板「待处理」列。',
+  '检查当前项目阶段的缺失项':'当前「原型设计」阶段缺失项：\n\n· 异地就医申请原型（未创建）\n· 云药房查询原型（草稿状态）\n· 交互说明文档（未创建）\n· 原型评审记录（未创建）\n\n建议优先补全以上产物。'
+};
+
+function sendAI(msg){
+  const body=$('#aiBody');
+  body.innerHTML+=`<div class="ai-msg"><div class="ai-role">你</div><div class="ai-text"><p>${msg}</p></div></div>`;
+  body.innerHTML+=`<div class="ai-msg" id="aiTyping"><div class="ai-role">AI</div><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
+  body.scrollTop=body.scrollHeight;
+  $('#aiInput').value='';
+  setTimeout(()=>{
+    const typing=$('#aiTyping');if(typing)typing.remove();
+    const resp=aiResponses[msg]||'已收到你的指令，正在处理中。请稍候...';
+    const formatted=resp.replace(/\n/g,'<br>');
+    body.innerHTML+=`<div class="ai-msg"><div class="ai-role">AI</div><div class="ai-text"><p>${formatted}</p></div></div>`;
+    body.scrollTop=body.scrollHeight;
+  },1200);
+}
+
+$('#aiSend').addEventListener('click',()=>{const v=$('#aiInput').value.trim();if(v)sendAI(v)});
+$('#aiInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v)sendAI(v)}});
+$$('.ai-chip').forEach(c=>c.addEventListener('click',()=>sendAI(c.dataset.msg)));
+
+// ── Command Palette ──
+function openCmd(){$('#cmdOverlay').classList.add('open');$('#cmdInput').value='';$('#cmdInput').focus();renderCmd('')}
+function closeCmd(){$('#cmdOverlay').classList.remove('open')}
+function renderCmd(q){
+  const r=$('#cmdResults');const ql=q.toLowerCase();
+  r.innerHTML=cmdItems.map(g=>{
+    const items=g.items.filter(i=>!q||i.label.toLowerCase().includes(ql));
+    if(!items.length)return'';
+    return`<div class="cmd-group-label">${g.group}</div>${items.map(i=>`<div class="cmd-item" data-page="${i.page||''}" data-action="${i.action||''}">${i.label}</div>`).join('')}`;
+  }).join('');
+}
+$('#searchBtn').addEventListener('click',openCmd);
+$('#cmdOverlay').addEventListener('click',e=>{if(e.target===$('#cmdOverlay'))closeCmd()});
+$('#cmdInput').addEventListener('input',e=>renderCmd(e.target.value));
+$('#cmdInput').addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeCmd();
+  if(e.key==='Enter'){const sel=$('.cmd-item');if(sel)sel.click()}
+});
+$('#cmdResults').addEventListener('click',e=>{
+  const item=e.target.closest('.cmd-item');if(!item)return;
+  closeCmd();
+  if(item.dataset.page)navigateTo(item.dataset.page);
+  if(item.dataset.action==='newTask')openDrawer('新建任务',newTaskForm);
+  if(item.dataset.action==='newProj')toast('新建项目（功能演示）');
+  if(item.dataset.action==='aiReport'){if(!$('#aiPanel').classList.contains('open'))toggleAI();sendAI('帮我生成本周的项目周报')}
+  if(item.dataset.action==='aiProto'){if(!$('#aiPanel').classList.contains('open'))toggleAI();sendAI('根据方案生成 HTML 原型页面')}
+});
+
+// ── Keyboard Shortcuts ──
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCmd()}
+  if(e.key==='Escape'){closeCmd();closeDrawer();$('#notifPanel').classList.remove('open');$('#projDropdown').classList.remove('open')}
+});
+
+// ── Notifications ──
+$('#notifBtn').addEventListener('click',e=>{e.stopPropagation();$('#notifPanel').classList.toggle('open');$('#projDropdown').classList.remove('open')});
+
+// ── Project Switcher ──
+$('#projSwitch').addEventListener('click',e=>{e.stopPropagation();$('#projDropdown').classList.toggle('open');$('#notifPanel').classList.remove('open')});
+$$('.proj-dd-item').forEach(item=>item.addEventListener('click',()=>{
+  const i=+item.dataset.proj;const p=projects[i];
+  $('#projAv').textContent=p.av;$('#projNm').textContent=p.name;$('#projPh').textContent=p.phase;
+  $$('.proj-dd-item').forEach(x=>x.classList.remove('current'));item.classList.add('current');
+  $('#projDropdown').classList.remove('open');toast(`已切换至「${p.name}」`);
+}));
+
+
+// ── Artifacts ──
+const artIcons = {
+  doc:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+  proto:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>',
+  flow:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  table:'<path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>',
+  report:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/>'
+};
+const artTypeNames = {doc:'文档',proto:'原型',flow:'流程图',table:'表格',report:'汇报'};
+const artifacts = [
+  {type:'doc',name:'实施方案 v2.1',status:'已确认',task:'梳理项目建设内容',date:'2026-08-11'},
+  {type:'proto',name:'智慧医院线上接入原型',status:'待确认',task:'完成线上接入页面原型',date:'2026-08-12'},
+  {type:'flow',name:'挂号业务流程图',status:'已确认',task:'梳理挂号业务流程',date:'2026-08-10'},
+  {type:'table',name:'功能清单与排期表',status:'开发中引用',task:'整理功能清单',date:'2026-08-09'},
+  {type:'table',name:'待确认事项清单',status:'4 项待处理',task:'生成待确认事项',date:'2026-08-08'},
+  {type:'doc',name:'调研纪要 — 医保接口对接',status:'已确认',task:'调研医保接口对接方案',date:'2026-08-07'},
+  {type:'flow',name:'异地就医数据流图',status:'草稿',task:'梳理异地就医数据流',date:'2026-08-06'},
+  {type:'report',name:'第 3 周项目周报',status:'已提交',task:'汇总本周进展',date:'2026-08-05'},
+  {type:'proto',name:'医保资讯列表页原型',status:'草稿',task:'设计医保资讯页面',date:'2026-08-05'},
+  {type:'doc',name:'接口文档 — 挂号模块',status:'开发中引用',task:'编写挂号模块接口文档',date:'2026-08-04'},
+  {type:'table',name:'数据字典',status:'草稿',task:'整理数据库表结构',date:'2026-08-03'},
+  {type:'report',name:'阶段汇报 — 方案设计',status:'已提交',task:'方案设计阶段总结',date:'2026-08-01'},
+];
+function renderArtifacts(filter='all'){
+  const grid=$('#artGrid');
+  const list=filter==='all'?artifacts:artifacts.filter(a=>a.type===filter);
+  grid.innerHTML=list.map(a=>`<div class="art-card" data-type="${a.type}">
+    <div class="art-card-hd">
+      <div class="art-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artIcons[a.type]}</svg></div>
+      <div class="art-card-info"><div class="art-card-nm">${a.name}</div><div class="art-card-type">${artTypeNames[a.type]}</div></div>
+      <div class="art-card-st">${a.status}</div>
+    </div>
+    <div class="art-card-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>关联任务：<span>${a.task}</span></div>
+    <div class="art-card-ft"><span>${a.type.toUpperCase()}</span><span>${a.date}</span></div>
+    <button class="art-demo-btn" onclick="${(a.type==='proto'||a.type==='flow')?`openArtDemo('${a.name}')`:`toast('查看产物：${a.name}')`}">${(a.type==='proto'||a.type==='flow')?'去演示':'查看产物'}</button>
+  </div>`).join('');
+}
+$$('.art-filter').forEach(f=>f.addEventListener('click',()=>{
+  $$('.art-filter').forEach(x=>x.classList.remove('on'));f.classList.add('on');
+  renderArtifacts(f.dataset.filter);
+}));
+
+// ── New Artifact (Dialog) ──
+const artTypeDescs={proto:{label:'原型',desc:'上传文件或文件夹',icon:'proto'},flow:{label:'流程图',desc:'Excalidraw 在线绘图',icon:'flow'},doc:{label:'文档',desc:'Notion 在线写作',icon:'doc'},table:{label:'表格',desc:'上传文件',icon:'table'},report:{label:'汇报',desc:'上传文件',icon:'report'}};
+
+let dialogStep=0;
+let selectedArtType=null;
+
+function openDialog(title,bodyHtml,ftHtml,step){
+  $('#dialogTitle').textContent=title;
+  $('#dialogBody').innerHTML=bodyHtml;
+  $('#dialogFt').innerHTML=ftHtml||'';
+  const stepEl=$('#dialogStep');
+  const backBtn=$('#dialogBack');
+  if(step){stepEl.textContent=step;stepEl.style.display='block'}else{stepEl.style.display='none'}
+  backBtn.style.display=dialogStep>0?'flex':'none';
+  $('#dialogOverlay').classList.add('open');
+  initCustomSelects&&initCustomSelects();
+}
+function closeDialog(){$('#dialogOverlay').classList.remove('open');dialogStep=0;selectedArtType=null}
+$('#dialogClose').addEventListener('click',closeDialog);
+$('#dialogOverlay').addEventListener('click',e=>{if(e.target===$('#dialogOverlay'))closeDialog()});
+$('#dialogBack').addEventListener('click',()=>{
+  if(dialogStep===1){
+    dialogStep=0;
+    const typeCards=Object.entries(artTypeDescs).map(([k,v])=>`<div class="art-type-card" data-type="${k}"><div class="art-type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artIcons[k]}</svg></div><div class="art-type-label">${v.label}</div><div class="art-type-desc">${v.desc}</div></div>`).join('');
+    openDialog('选择产物类型',`<div class="art-type-grid">${typeCards}</div>`,'');
+  }
+});
+
+$('#newArtBtn').addEventListener('click',()=>{
+  dialogStep=0;
+  const typeCards=Object.entries(artTypeDescs).map(([k,v])=>`<div class="art-type-card" data-type="${k}"><div class="art-type-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artIcons[k]}</svg></div><div class="art-type-label">${v.label}</div><div class="art-type-desc">${v.desc}</div></div>`).join('');
+  openDialog('选择产物类型',`<div class="art-type-grid">${typeCards}</div>`,'');
+});
+
+$('#dialogBody').addEventListener('click',e=>{
+  const card=e.target.closest('.art-type-card');
+  if(!card)return;
+  const type=card.dataset.type;
+  selectedArtType=type;
+  dialogStep=1;
+  openArtCreateForm(type);
+});
+
+function openArtCreateForm(type){
+  const info=artTypeDescs[type];
+  let bodyHtml=`<div class="drawer-field"><label>产物名称</label><input type="text" placeholder="输入产物名称" id="artNameInput"></div>`;
+
+  if(type==='proto'){
+    bodyHtml+=`<div class="drawer-field"><label>上传原型</label><div class="drawer-attach-zone" onclick="toast('选择文件或文件夹')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>点击上传文件或文件夹</span><div class="hint">支持 .html / .zip / 文件夹</div></div></div>`;
+  } else if(type==='flow'){
+    bodyHtml+=`<div class="drawer-field"><label>绘图方式</label><div class="art-workflow-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px">${artIcons.flow}</svg><div><div style="font-weight:500;font-size:13px">Excalidraw 绘图区</div><div class="hint">创建后进入在线绘图编辑器</div></div></div></div>`;
+  } else if(type==='doc'){
+    bodyHtml+=`<div class="drawer-field"><label>写作方式</label><div class="art-workflow-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px">${artIcons.doc}</svg><div><div style="font-weight:500;font-size:13px">Notion 写作区</div><div class="hint">创建后进入富文本编辑器</div></div></div></div>`;
+  } else {
+    bodyHtml+=`<div class="drawer-field"><label>上传文件</label><div class="drawer-attach-zone" onclick="toast('选择文件')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>点击上传文件</span><div class="hint">支持常见文件格式预览</div></div></div>`;
+  }
+
+  bodyHtml+=`<div class="drawer-field"><label>关联任务</label><select id="artTaskSelect"><option value="">选择关联任务</option><option>完成线上接入页面原型</option><option>梳理挂号业务流程</option><option>整理功能清单</option><option>调研医保接口对接方案</option></select></div>`;
+
+  const ftHtml=`<button class="btn btn-g" onclick="closeDialog()">取消</button><button class="btn btn-p" onclick="closeDialog();toast('产物已创建')">创建</button>`;
+  openDialog(`新建${info.label}`,bodyHtml,ftHtml,`步骤 2 / 2 — ${info.label}`);
+}
+
+// ── Close dropdowns on outside click ──
+document.addEventListener('click',()=>{$('#notifPanel').classList.remove('open');$('#projDropdown').classList.remove('open')});
+
+// ── Calendar ──
+let calState = { year: 2026, month: 7 };
+const dayNames = ['一','二','三','四','五','六','日'];
+
+function renderCalendar(container, items, type) {
+  const { year, month } = calState;
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  let startDow = firstDay.getDay(); if (startDow === 0) startDow = 7;
+  const totalDays = lastDay.getDate();
+  const prevLast = new Date(year, month, 0).getDate();
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const today = new Date();
+  const isToday = (d) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
+
+  const itemMap = {};
+  items.forEach(item => {
+    const d = new Date(item.dateStr);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = d.getDate();
+      if (!itemMap[key]) itemMap[key] = [];
+      itemMap[key].push(item);
+    }
+  });
+
+  let cells = dayNames.map(d => `<div class="cal-dh">${d}</div>`).join('');
+  for (let i = 1; i < startDow; i++) {
+    cells += `<div class="cal-cell out"><div class="cal-d">${prevLast - startDow + 1 + i}</div></div>`;
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    const evts = itemMap[d] || [];
+    const cls = isToday(d) ? 'cal-cell today' : 'cal-cell';
+    const evHtml = evts.map(e => `<div class="cal-ev ${type}" title="${e.label}">${e.label}</div>`).join('');
+    cells += `<div class="${cls}"><div class="cal-d">${d}</div>${evHtml}</div>`;
+  }
+  const remaining = 7 - ((startDow - 1 + totalDays) % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) {
+      cells += `<div class="cal-cell out"><div class="cal-d">${i}</div></div>`;
+    }
+  }
+
+  container.innerHTML = `
+    <div class="cal-hd">
+      <div class="cal-nav">
+        <button class="cal-prev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <div class="cal-month">${year}年${monthNames[month]}</div>
+        <button class="cal-next"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+      <button class="cal-today">今天</button>
+    </div>
+    <div class="cal-grid">${cells}</div>`;
+
+  container.querySelector('.cal-prev').addEventListener('click', () => {
+    calState.month--; if (calState.month < 0) { calState.month = 11; calState.year--; }
+    renderCalendar(container, items, type);
+  });
+  container.querySelector('.cal-next').addEventListener('click', () => {
+    calState.month++; if (calState.month > 11) { calState.month = 0; calState.year++; }
+    renderCalendar(container, items, type);
+  });
+  container.querySelector('.cal-today').addEventListener('click', () => {
+    calState.year = today.getFullYear(); calState.month = today.getMonth();
+    renderCalendar(container, items, type);
+  });
+}
+
+const taskCalItems = [
+  {label:'评审医保资讯列表页原型',dateStr:'2026-08-13'},
+  {label:'更新实施方案第三章',dateStr:'2026-08-14'},
+  {label:'对接医保接口 SDK',dateStr:'2026-08-15'},
+  {label:'整理云药房调研纪要',dateStr:'2026-08-16'},
+  {label:'编写挂号模块接口文档',dateStr:'2026-08-12'},
+  {label:'确认异地就医流程图',dateStr:'2026-08-12'},
+  {label:'云药房查询页面原型',dateStr:'2026-08-14'},
+  {label:'线上挂号接口联调',dateStr:'2026-08-10'},
+  {label:'首页布局适配测试',dateStr:'2026-08-11'},
+  {label:'完成智慧医院线上接入原型',dateStr:'2026-08-12'},
+  {label:'实施方案 v2.1 更新',dateStr:'2026-08-11'},
+];
+
+function renderTaskCal() { renderCalendar($('#taskCalendar'), taskCalItems, 'task'); }
+function renderArtCal() {
+  const items = artifacts.map(a => ({label:a.name,dateStr:a.date}));
+  renderCalendar($('#artCalendar'), items, 'art');
+}
+
+$('#taskViewToggle').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  $$('#taskViewToggle button').forEach(b => b.classList.remove('on')); btn.classList.add('on');
+  const v = btn.dataset.view;
+  $('#kanban').style.display = v === 'kanban' ? 'flex' : 'none';
+  const cal = $('#taskCalendar');
+  if (v === 'calendar') { cal.classList.add('active'); renderTaskCal(); } else { cal.classList.remove('active'); }
+});
+
+$('#artViewToggle').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  $$('#artViewToggle button').forEach(b => b.classList.remove('on')); btn.classList.add('on');
+  const v = btn.dataset.view;
+  $('#artGrid').style.display = v === 'grid' ? 'grid' : 'none';
+  $('.art-filters').style.display = v === 'grid' ? 'flex' : 'none';
+  const cal = $('#artCalendar');
+  if (v === 'calendar') { cal.classList.add('active'); renderArtCal(); } else { cal.classList.remove('active'); }
+});
+
+// ── Report Calendar ──
+let rptState = { year: 2026, month: 7, filter: 'all' };
+const rptMonthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const rptDayNames = ['一','二','三','四','五','六','日'];
+
+const reportData = [
+  {type:'daily',label:'日报',date:'2026-08-12'},{type:'daily',label:'日报',date:'2026-08-11'},
+  {type:'daily',label:'日报',date:'2026-08-10'},{type:'daily',label:'日报',date:'2026-08-09'},
+  {type:'daily',label:'日报',date:'2026-08-08'},{type:'daily',label:'日报',date:'2026-08-07'},
+  {type:'daily',label:'日报',date:'2026-08-06'},{type:'daily',label:'日报',date:'2026-08-05'},
+  {type:'daily',label:'日报',date:'2026-08-04'},{type:'daily',label:'日报',date:'2026-08-03'},
+  {type:'daily',label:'日报',date:'2026-08-02'},{type:'daily',label:'日报',date:'2026-08-01'},
+  {type:'weekly',label:'第3周周报',date:'2026-08-10'},{type:'weekly',label:'第2周周报',date:'2026-08-03'},
+  {type:'monthly',label:'7月月报',date:'2026-08-01'},
+  {type:'daily',label:'日报',date:'2026-07-31'},{type:'daily',label:'日报',date:'2026-07-30'},
+  {type:'weekly',label:'第1周周报',date:'2026-07-27'},
+  {type:'quarterly',label:'Q2 季度报',date:'2026-07-01'},
+  {type:'daily',label:'日报',date:'2026-07-15'},{type:'daily',label:'日报',date:'2026-07-10'},
+  {type:'monthly',label:'6月月报',date:'2026-07-01'},
+  {type:'yearly',label:'2025 年报',date:'2026-01-05'},
+];
+
+function renderReportCal(){
+  const {year,month,filter}=rptState;
+  const firstDay=new Date(year,month,1);const lastDay=new Date(year,month+1,0);
+  let startDow=firstDay.getDay();if(startDow===0)startDow=7;
+  const totalDays=lastDay.getDate();const prevLast=new Date(year,month,0).getDate();
+  const today=new Date();
+  const isToday=(d)=>today.getFullYear()===year&&today.getMonth()===month&&today.getDate()===d;
+
+  const monthReports=reportData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===year&&d.getMonth()===month});
+  const filtered=filter==='all'?monthReports:monthReports.filter(r=>r.type===filter);
+  const itemMap={};
+  filtered.forEach(r=>{
+    const d=new Date(r.date);
+    if(d.getFullYear()===year&&d.getMonth()===month){
+      const key=d.getDate();if(!itemMap[key])itemMap[key]=[];itemMap[key].push(r);
+    }
+  });
+
+  const typeCounts={};monthReports.forEach(r=>{typeCounts[r.type]=(typeCounts[r.type]||0)+1});
+  const topType=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0];
+  const typeLabels={daily:'日报',weekly:'周报',monthly:'月报',quarterly:'季度报',yearly:'年报'};
+  $('#rptStats').innerHTML=`
+    <div class="rpt-stat"><div class="rpt-stat-num">${monthReports.length}</div><div class="rpt-stat-label">本月汇报<br>总数</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-num">${typeCounts.daily|| 0}</div><div class="rpt-stat-label">日报</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-num">${(typeCounts.weekly||0)+(typeCounts.monthly||0)+(typeCounts.quarterly||0)+(typeCounts.yearly||0)}</div><div class="rpt-stat-label">周/月/季/年</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-num">${topType?typeLabels[topType[0]]:'—'}</div><div class="rpt-stat-label">最多类型</div></div>`;
+
+  $('#rptMonth').textContent=`${year}年${rptMonthNames[month]}`;
+  let cells=rptDayNames.map(d=>`<div class="rpt-dh">${d}</div>`).join('');
+  for(let i=1;i<startDow;i++) cells+=`<div class="rpt-cell out"><div class="rpt-d">${prevLast-startDow+1+i}</div></div>`;
+  for(let d=1;d<=totalDays;d++){
+    const evts=itemMap[d]||[];
+    const cls=isToday(d)?'rpt-cell today':'rpt-cell';
+    const evHtml=evts.map(e=>`<div class="rpt-ev ${e.type}" title="${e.label}"><span class="rpt-dot"></span>${e.label}</div>`).join('');
+    cells+=`<div class="${cls}"><div class="rpt-d">${d}</div>${evHtml}</div>`;
+  }
+  const remaining=7-((startDow-1+totalDays)%7);
+  if(remaining<7) for(let i=1;i<=remaining;i++) cells+=`<div class="rpt-cell out"><div class="rpt-d">${i}</div></div>`;
+  $('#rptCal').innerHTML=cells;
+}
+
+$('#rptFilters').addEventListener('click',e=>{
+  const btn=e.target.closest('.rpt-filter');if(!btn)return;
+  $$('#rptFilters .rpt-filter').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  rptState.filter=btn.dataset.rpt;renderReportCal();
+});
+$('#rptPrev').addEventListener('click',()=>{rptState.month--;if(rptState.month<0){rptState.month=11;rptState.year--}renderReportCal()});
+$('#rptNext').addEventListener('click',()=>{rptState.month++;if(rptState.month>11){rptState.month=0;rptState.year++}renderReportCal()});
+$('#aiReportBtn').addEventListener('click',()=>toast('AI 正在生成汇报...'));
+
+// ── Templates ──
+const tplIcons={
+  doc:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  clipboard:'<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+  code:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'
+};
+const templates=[
+  {name:'实施方案',icon:'doc',accent:'#52525B',cat:'文档',desc:'标准实施方案结构，包含建设背景、建设目标、建设内容、技术路线、实施计划等章节。',uses:12},
+  {name:'调研纪要',icon:'clipboard',accent:'#71717A',cat:'文档',desc:'调研记录标准格式，包含调研对象、调研内容、关键发现、待确认事项。',uses:8},
+  {name:'项目周报',icon:'chart',accent:'#3F3F46',cat:'汇报',desc:'项目周报标准结构，自动汇总本周完成任务、进行中任务和风险项。',uses:24},
+  {name:'接口文档',icon:'code',accent:'#52525B',cat:'文档',desc:'API 接口文档标准格式，包含请求方式、参数说明、返回示例、错误码。',uses:5},
+];
+
+function renderTemplates(){
+  const grid=$('#tplGrid');
+  grid.innerHTML=templates.map(t=>{
+    const iconSvg=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${tplIcons[t.icon]}</svg>`;
+    return`<div class="tpl-card" style="--tpl-accent:${t.accent}">
+      <div class="tpl-card-hd">
+        <div class="tpl-icon">${iconSvg}</div>
+        <div class="tpl-card-info">
+          <div class="tpl-card-nm">${t.name}</div>
+          <span class="tpl-card-cat">${t.cat}</span>
+        </div>
+      </div>
+      <div class="tpl-card-desc">${t.desc}</div>
+      <div class="tpl-card-ft">
+        <span class="tpl-card-uses">已使用 ${t.uses} 次</span>
+        <span class="tpl-card-action">使用模板<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </div>
+    </div>`}).join('');
+}
+
+// ── Demo / Presentation ──
+const demoItems = [
+  {name:'智慧医院线上接入原型',type:'原型',date:'08-12',icon:'proto',desc:'线上挂号、预约、报到全流程原型',file:'hospital.html',device:'phone'},
+  {name:'挂号业务流程图',type:'流程图',date:'08-10',icon:'flow',desc:'挂号业务完整流程'},
+  {name:'异地就医数据流图',type:'流程图',date:'08-06',icon:'flow',desc:'异地就医数据流转示意'},
+  {name:'医保资讯列表页原型',type:'原型',date:'08-05',icon:'proto',desc:'医保政策资讯列表与详情'},
+  {name:'云药房查询原型',type:'原型',date:'08-03',icon:'proto',desc:'药品查询与详情展示'},
+  {name:'功能清单与排期表',type:'表格',date:'08-09',icon:'table',desc:'功能模块开发排期'},
+];
+const demoIcons = {
+  proto:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>',
+  flow:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  table:'<path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>'
+};
+
+function renderDemoList(){
+  const list=$('#demoList');
+  const thumbBgs={proto:'linear-gradient(135deg,#F4F4F5 0%,#E4E4E7 100%)',flow:'linear-gradient(135deg,#F4F4F5 0%,#EAEAEF 100%)',table:'linear-gradient(135deg,#F2F2F4 0%,#E8E8EC 100%)'};
+  const phoneIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>';
+  list.innerHTML=demoItems.map((d,i)=>{
+    const deviceBadge=d.device==='phone'?`<div class="demo-device-badge">${phoneIcon}</div>`:'';
+    return`<div class="demo-card" data-idx="${i}">
+    <div class="demo-thumb" style="background:${thumbBgs[d.icon]||thumbBgs.proto}"><span class="demo-type-badge">${d.type}</span>${deviceBadge}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${demoIcons[d.icon]}</svg></div>
+    <div class="demo-body"><div class="demo-nm">${d.name}</div><div class="demo-desc">${d.desc}</div><div class="demo-meta">${d.date}</div><button class="demo-go-btn" data-idx="${i}">去演示</button></div>
+  </div>`}).join('');
+}
+
+$('#demoList').addEventListener('click',e=>{
+  const card=e.target.closest('.demo-card');if(!card)return;
+  const item=demoItems[card.dataset.idx];
+  $('#demoStageName').textContent=item.name;
+  const body=$('#demoStageBody');
+  if(item.file&&item.device==='phone'){
+    body.classList.add('device');
+    body.innerHTML=`<div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><iframe src="${item.file}"></iframe></div></div>`;
+  } else if(item.file){
+    body.classList.remove('device');
+    body.innerHTML=`<iframe src="${item.file}"></iframe>`;
+  } else {
+    body.classList.remove('device');
+    body.innerHTML=`<div class="demo-stage-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${demoIcons[item.icon]}</svg><p>${item.name}</p><p style="font-size:11px;margin-top:4px;opacity:.6">原型文件待上传</p></div>`;
+  }
+  $('#demoStage').classList.add('active');
+});
+
+$('#demoBack').addEventListener('click',()=>{$('#demoStage').classList.remove('active')});
+
+function openArtDemo(name){
+  navigateTo('prototypes');
+  const idx=demoItems.findIndex(d=>d.name===name);
+  if(idx>=0){
+    const item=demoItems[idx];
+    $('#demoStageName').textContent=item.name;
+    const body=$('#demoStageBody');
+    if(item.file&&item.device==='phone'){
+      body.classList.add('device');
+      body.innerHTML=`<div class="phone-frame"><div class="phone-notch"></div><div class="phone-screen"><iframe src="${item.file}"></iframe></div></div>`;
+    } else if(item.file){
+      body.classList.remove('device');
+      body.innerHTML=`<iframe src="${item.file}"></iframe>`;
+    } else {
+      body.classList.remove('device');
+      body.innerHTML=`<div class="demo-stage-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${demoIcons[item.icon]}</svg><p>${item.name}</p><p style="font-size:11px;margin-top:4px;opacity:.6">原型文件待上传</p></div>`;
+    }
+    $('#demoStage').classList.add('active');
+  } else {
+    toast('未找到匹配的演示文件');
+  }
+}
+
+// ── Drawer ──
+function openDrawer(title, bodyHtml, ftHtml){
+  $('#drawerTitle').textContent=title;
+  $('#drawerBody').innerHTML=bodyHtml;
+  $('#drawerFt').innerHTML=ftHtml||'<button class="btn btn-p" onclick="closeDrawer();toast(\'已保存\')">保存</button><button class="btn btn-g" onclick="closeDrawer()">取消</button>';
+  $('#drawer').classList.add('open');
+  $('#drawerOverlay').classList.add('open');
+  initCustomSelects();
+}
+
+const cselectArrowSvg='<svg class="cselect-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function initCustomSelects(){
+  $$('#drawerBody select').forEach(sel=>{
+    const wrap=document.createElement('div');
+    wrap.className='cselect';
+    const selected=sel.options[sel.selectedIndex];
+    const btn=document.createElement('div');
+    btn.className='cselect-btn';
+    btn.innerHTML=`<span>${selected?selected.textContent:''}</span>${cselectArrowSvg}`;
+    const drop=document.createElement('div');
+    drop.className='cselect-drop';
+    [...sel.options].forEach((opt,i)=>{
+      const d=document.createElement('div');
+      d.className='cselect-opt'+(opt.selected?' on':'');
+      d.textContent=opt.textContent;
+      d.addEventListener('click',()=>{
+        sel.selectedIndex=i;
+        btn.querySelector('span').textContent=opt.textContent;
+        drop.querySelectorAll('.cselect-opt').forEach(o=>o.classList.remove('on'));
+        d.classList.add('on');
+        wrap.classList.remove('open');
+      });
+      drop.appendChild(d);
+    });
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      $$('.cselect.open').forEach(c=>{if(c!==wrap)c.classList.remove('open')});
+      wrap.classList.toggle('open');
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(drop);
+    sel.style.display='none';
+    sel.parentNode.insertBefore(wrap,sel);
+  });
+}
+
+document.addEventListener('click',()=>{$$('.cselect.open').forEach(c=>c.classList.remove('open'))});
+function closeDrawer(){$('#drawer').classList.remove('open');$('#drawerOverlay').classList.remove('open')}
+$('#drawerClose').addEventListener('click',closeDrawer);
+$('#drawerOverlay').addEventListener('click',closeDrawer);
+
+const uploadSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+const rmSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const fileIconSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+
+const newTaskForm=`
+  <div class="drawer-field"><label>任务标题</label><input placeholder="输入任务名称"></div>
+  <div class="drawer-field"><label>任务类型</label><select id="drawerTaskType">${Object.entries(taskTypes).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></div>
+  <div class="drawer-field"><label>所属项目</label><select id="drawerProject"><option>智慧医疗平台</option><option>文旅数据看板</option><option>跨境电商系统</option></select></div>
+  <div class="drawer-field"><label>所属阶段</label><select id="drawerPhase"><option>调研梳理</option><option>方案设计</option><option>原型设计</option><option selected>开发实施</option><option>测试交付</option><option>复盘归档</option></select></div>
+  <div class="drawer-field"><label>优先级</label><div><span class="drawer-tag" onclick="this.classList.toggle('on')">低</span><span class="drawer-tag on" onclick="this.classList.toggle('on')">中</span><span class="drawer-tag" onclick="this.classList.toggle('on')">高</span></div></div>
+  <div class="drawer-field"><label>截止时间</label><input type="date" value="2026-08-15"></div>
+  <div class="drawer-field"><label>描述</label><textarea placeholder="任务描述..."></textarea></div>
+  <div class="drawer-field"><label>依赖附件</label><div class="drawer-attach-zone" onclick="toast('选择文件')">${uploadSvg}<span>点击上传或拖拽文件到此处</span><div class="hint">支持文档、设计稿、接口文件等</div></div></div>
+  <div class="drawer-ai-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg><span>AI 可根据标题自动拆解子任务</span><button onclick="toast('AI 正在拆解...')">AI 拆解</button></div>`;
+
+const newProjForm=`
+  <div class="drawer-field"><label>项目名称</label><input placeholder="输入项目名称"></div>
+  <div class="drawer-field"><label>项目类型</label><select><option>政务应用</option><option>后台管理系统</option><option>小程序 / APP</option><option>数据看板</option><option>商城系统</option><option>医疗健康应用</option><option>自定义项目</option></select></div>
+  <div class="drawer-field"><label>项目描述</label><textarea placeholder="简要描述项目背景和目标..." style="min-height:60px"></textarea></div>
+  <div class="drawer-section">时间与周期</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="drawer-field"><label>开始日期</label><input type="date" value="2026-08-13"></div>
+    <div class="drawer-field"><label>结束日期</label><input type="date" value="2026-12-31"></div>
+  </div>
+  <div class="drawer-section">团队与干系人</div>
+  <div class="drawer-field"><label>项目负责人</label><select><option>张明</option><option>李婷</option><option>王磊</option><option>赵薇</option></select></div>
+  <div class="drawer-field"><label>干系人</label><input placeholder="输入干系人姓名，回车添加" id="stakeholderInput"></div>
+  <div class="drawer-field"><label>项目成员</label><input placeholder="输入成员姓名，回车添加" id="memberInput"></div>
+  <div class="drawer-section">阶段设置</div>
+  <div class="drawer-field"><label>起始阶段</label><select><option selected>项目线索</option><option>调研梳理</option><option>方案设计</option><option>原型设计</option><option>开发实施</option></select></div>
+  <div class="drawer-ai-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg><span>AI 可根据描述生成实施方案和任务拆解</span><button onclick="toast('AI 正在生成...')">AI 生成</button></div>`;
+
+function taskDetailForm(t){
+  const depsHtml=t.deps&&t.deps.length?`<div class="drawer-attach-list">${t.deps.map(f=>`<div class="drawer-attach-item"><div class="drawer-attach-icon">${fileIconSvg}</div><div class="drawer-attach-info"><div class="drawer-attach-name">${f.name}</div><div class="drawer-attach-meta">${f.size}</div></div><button class="drawer-attach-rm" onclick="toast('已移除')">${rmSvg}</button></div>`).join('')}</div>`:'';
+  const outsHtml=t.outputs&&t.outputs.length?`<div class="drawer-attach-list">${t.outputs.map(f=>`<div class="drawer-attach-item"><div class="drawer-attach-icon">${fileIconSvg}</div><div class="drawer-attach-info"><div class="drawer-attach-name">${f.name}</div><div class="drawer-attach-meta">${f.size}</div></div><button class="drawer-attach-rm" onclick="toast('已移除')">${rmSvg}</button></div>`).join('')}</div>`:'';
+  return`
+  <div class="drawer-field"><label>任务标题</label><input value="${t.title}"></div>
+  <div class="drawer-section">属性</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="drawer-field"><label>状态</label><select><option>待处理</option><option selected>进行中</option><option>待验证</option><option>已完成</option></select></div>
+    <div class="drawer-field"><label>优先级</label><select><option>低</option><option${t.pri==='med'?' selected':''}>中</option><option${t.pri==='high'?' selected':''}>高</option></select></div>
+  </div>
+  <div class="drawer-field"><label>截止时间</label><input value="${t.due}"></div>
+  <div class="drawer-section">依赖附件</div>
+  <div class="drawer-field">${depsHtml}<div class="drawer-attach-zone" onclick="toast('选择文件')">${uploadSvg}<span>上传任务依赖文件</span><div class="hint">接口文档、设计稿、需求说明等</div></div></div>
+  <div class="drawer-section">任务产出</div>
+  <div class="drawer-field">${outsHtml}<div class="drawer-attach-zone" onclick="toast('选择文件')">${uploadSvg}<span>上传任务产出物</span><div class="hint">完成后上传交付物</div></div></div>
+  <div class="drawer-field"><label>验收标准</label><textarea placeholder="输入验收标准..."></textarea></div>
+  <div class="drawer-ai-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg><span>AI 可辅助生成验收标准</span><button onclick="toast('AI 正在生成...')">AI 生成</button></div>`}
+
+// Wire up new task buttons
+document.addEventListener('click',e=>{
+  if(e.target.closest('#addTaskBtn,#addTaskBtn2')){e.preventDefault();openDrawer('新建任务',newTaskForm)}
+});
+
+// Wire up new project button
+document.addEventListener('click',e=>{
+  if(e.target.closest('#newProjBtn')){e.preventDefault();openDrawer('新建项目',newProjForm,'<button class="btn btn-p" onclick="closeDrawer();toast(\'项目已创建\')">创建项目</button><button class="btn btn-g" onclick="closeDrawer()">取消</button>')}
+});
+
+// Wire up task card click → drawer
+$('#taskList').addEventListener('click',e=>{
+  const card=e.target.closest('.titem');if(!card)return;
+  if(e.target.closest('.tcheck')||e.target.closest('.tdel'))return;
+  const id=+card.dataset.id;const t=tasks.find(x=>x.id===id);if(!t)return;
+  openDrawer('任务详情',taskDetailForm(t),'<button class="btn btn-p" onclick="closeDrawer();toast(\'已更新\')">保存</button><button class="btn btn-g" onclick="closeDrawer()">取消</button>');
+});
+
+// ── Project Space ──
+const projSpaceData = {
+  name:'智慧医疗平台',sub:'开发实施阶段 · 进行中',
+  currentPhase:4,
+  phases:[
+    {name:'项目线索',status:'done',startDate:'07-15',endDate:'07-20',
+      tasks:[
+        {id:201,title:'确认项目建设目标与范围',type:'review',tag:'评审',due:'07-16',pri:'high',done:true,mile:true},
+        {id:202,title:'收集甲方需求文档',type:'requirement',tag:'文档',due:'07-18',pri:'med',done:true,art:{type:'doc',name:'项目建设方案初稿'}},
+        {id:203,title:'明确项目干系人',type:'requirement',tag:'待确认',due:'07-20',pri:'low',done:true,art:{type:'table',name:'干系人清单'}},
+      ],
+      links:[{label:'需求文档',url:'Confluence 链接'}],
+    },
+    {name:'调研梳理',status:'done',startDate:'07-21',endDate:'07-31',
+      tasks:[
+        {id:204,title:'调研医保接口对接方案',type:'research',tag:'调研',due:'07-23',pri:'high',done:true,art:{type:'doc',name:'调研纪要 — 医保接口对接'}},
+        {id:205,title:'梳理线上挂号业务流程',type:'research',tag:'调研',due:'07-25',pri:'high',done:true,art:{type:'flow',name:'挂号业务流程图'}},
+        {id:206,title:'整理调研纪要 — 云药房模块',type:'document',tag:'文档',due:'07-28',pri:'med',done:true,art:{type:'doc',name:'调研报告汇总'}},
+        {id:207,title:'异地就医数据流分析',type:'research',tag:'调研',due:'07-30',pri:'med',done:true,mile:true},
+      ],
+      links:[],
+    },
+    {name:'方案设计',status:'done',startDate:'08-01',endDate:'08-06',
+      tasks:[
+        {id:208,title:'编写实施方案 v1.0',type:'document',tag:'文档',due:'08-02',pri:'high',done:true,art:{type:'doc',name:'实施方案 v2.1'}},
+        {id:209,title:'设计系统架构方案',type:'design',tag:'文档',due:'08-04',pri:'high',done:true,art:{type:'doc',name:'系统架构设计文档'}},
+        {id:210,title:'整理功能清单与排期表',type:'document',tag:'文档',due:'08-05',pri:'med',done:true,art:{type:'table',name:'功能清单与排期表'}},
+        {id:211,title:'实施方案 v2.1 修订',type:'document',tag:'文档',due:'08-06',pri:'med',done:true,mile:true},
+      ],
+      links:[{label:'设计稿',url:'Figma 链接'},{label:'接口文档',url:'Swagger 地址'}],
+    },
+    {name:'原型设计',status:'done',startDate:'08-07',endDate:'08-18',
+      tasks:[
+        {id:101,title:'完成智慧医院线上接入页面原型',type:'prototype',tag:'原型',due:'08-12',pri:'low',done:true,art:{type:'proto',name:'智慧医院线上接入原型'}},
+        {id:102,title:'编写南京医疗挂号模块接口文档',type:'document',tag:'文档',due:'08-12',pri:'high',done:true,art:{type:'doc',name:'接口文档 — 挂号模块'}},
+        {id:103,title:'确认异地就医申请业务流程图',type:'prototype',tag:'待确认',due:'08-12',pri:'high',done:true,art:{type:'flow',name:'挂号业务流程图'}},
+        {id:104,title:'评审医保资讯列表页原型设计',type:'review',tag:'评审',due:'08-13',pri:'med',done:true,art:{type:'proto',name:'医保资讯列表页原型'},mile:true},
+        {id:105,title:'更新项目实施方案第三章内容',type:'document',tag:'文档',due:'08-14',pri:'med',done:true},
+        {id:106,title:'对接医保接口 SDK',type:'development',tag:'开发',due:'08-15',pri:'med',done:true},
+      ],
+      links:[{label:'设计稿',url:'Figma 链接'},{label:'测试环境',url:'http://test.example.com'}],
+    },
+    {name:'开发实施',status:'active',startDate:'08-19',endDate:'-',
+      tasks:[
+        {id:301,title:'挂号模块后端接口开发',type:'development',tag:'开发',due:'08-22',pri:'high',done:true,art:{type:'doc',name:'挂号模块接口文档 v1'},deps:[{name:'医保接口规范 v3.2.pdf',size:'1.2 MB'},{name:'数据库设计文档.docx',size:'860 KB'}],outputs:[{name:'挂号模块接口文档 v1.docx',size:'420 KB'},{name:'接口测试报告.pdf',size:'310 KB'}]},
+        {id:302,title:'科室列表页面前端开发',type:'development',tag:'开发',due:'08-25',pri:'high',done:true,art:{type:'proto',name:'科室列表页面 v1'},deps:[{name:'科室列表页面原型.fig',size:'3.8 MB'}],outputs:[{name:'科室列表页面 v1.html',size:'28 KB'}]},
+        {id:303,title:'医生排班数据模型设计',type:'development',tag:'开发',due:'08-23',pri:'med',done:true},
+        {id:304,title:'挂号接口与医保 SDK 对接',type:'development',tag:'开发',due:'08-28',pri:'high',done:true},
+        {id:305,title:'单元测试 — 挂号模块',type:'testing',tag:'测试',due:'09-01',pri:'med',done:true},
+        {id:401,title:'线上报到全流程开发',type:'development',tag:'开发',due:'09-05',pri:'high',done:true,art:{type:'proto',name:'线上报到流程原型'}},
+        {id:402,title:'预约时段管理功能',type:'development',tag:'开发',due:'09-08',pri:'high',done:false},
+        {id:403,title:'首页快速入口开发',type:'development',tag:'开发',due:'09-10',pri:'med',done:false},
+        {id:404,title:'前后端联调 — 报到流程',type:'testing',tag:'联调',due:'09-12',pri:'high',done:false,mile:true},
+        {id:405,title:'集成测试',type:'testing',tag:'测试',due:'09-15',pri:'med',done:false},
+      ],
+      links:[],
+    },
+    {name:'测试交付',status:'upcoming',startDate:'09-29',endDate:'10-10',
+      tasks:[],links:[],
+    },
+    {name:'复盘归档',status:'upcoming',startDate:'10-11',endDate:'10-20',
+      tasks:[],links:[],
+    },
+  ],
+};
+
+function openProjectSpace(idx){
+  const p=projects[idx]||projects[0];
+  $('#projSpaceName').textContent=p.name;
+  $('#projSpaceSub').textContent=p.phase;
+  renderProjectSpace();
+  navigateTo('project-space');
+  $$('#psViewToggle button').forEach(b=>b.classList.toggle('on',b.dataset.view==='phase'));
+  $('#psPhaseView').style.display='';
+  $('#psCalView').style.display='none';
+  $('#psCalView').classList.remove('active');
+}
+
+$('#projBackBtn').addEventListener('click',()=>navigateTo('projects'));
+
+$('#psViewToggle').addEventListener('click',e=>{
+  const btn=e.target.closest('button');if(!btn)return;
+  $$('#psViewToggle button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  const v=btn.dataset.view;
+  if(v==='phase'){
+    $('#psPhaseView').style.display='';
+    $('#psCalView').style.display='none';
+    $('#psCalView').classList.remove('active');
+  } else {
+    $('#psPhaseView').style.display='none';
+    $('#psCalView').style.display='flex';
+    $('#psCalView').classList.add('active');
+    renderProjCal();
+  }
+});
+
+function fmtDateShort(s){
+  if(!s)return'';
+  return s.replace(/^20\d{2}-/,'');
+}
+
+function renderProjectSpace(){
+  const d=projSpaceData;
+  const container=$('#psPhases');
+  const chevSvg='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  const artCount=phase=>phase.tasks.filter(t=>t.art).length;
+  const mileCount=phase=>phase.tasks.filter(t=>t.mile).length;
+
+  container.innerHTML=d.phases.map((phase,i)=>{
+    const isCollapsed=(phase.status==='done'&&i<d.currentPhase-1)||phase.status==='upcoming';
+    const cls=phase.status+(isCollapsed?' collapsed':'');
+    const stats=`<span>${phase.tasks.length} 任务</span>`+(artCount(phase)?`<span>${artCount(phase)} 产物</span>`:'');
+
+    return`<div class="ps-phase-section ${cls}" data-phase="${i}">
+      <div class="ps-phase-hd" data-phase="${i}">
+        <div class="ps-phase-dot"></div>
+        <div class="ps-phase-name">${phase.name}</div>
+        <div class="ps-phase-stats">${stats}</div>
+        <div class="ps-phase-chevron">${chevSvg}</div>
+      </div>
+      <div class="ps-phase-body">
+        ${phase.tasks.length?phase.tasks.map(t=>renderPsTaskCard(t,phase.name)).join(''):'<div class="ps-empty">暂无任务</div>'}
+      </div>
+      ${phase.links&&phase.links.length?`<div class="ps-links-bar">${phase.links.map(l=>`<div class="ps-link-chip"><span class="label">${l.label}</span><span class="url">${l.url}</span></div>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.ps-phase-hd').forEach(hd=>{
+    hd.addEventListener('click',()=>{
+      hd.closest('.ps-phase-section').classList.toggle('collapsed');
+    });
+  });
+
+  container.querySelectorAll('.ps-task-card').forEach(card=>{
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.ps-task-check'))return;
+      const id=+card.dataset.id;
+      const allTasks=d.phases.flatMap(p=>p.tasks);
+      const t=allTasks.find(x=>x.id===id);
+      if(t)openDrawer('任务详情',taskDetailForm(t),'<button class="btn btn-p" onclick="closeDrawer();toast(\'已更新\')">保存</button><button class="btn btn-g" onclick="closeDrawer()">取消</button>');
+    });
+  });
+}
+
+const artBadgeSvg={
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+  proto:'<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+  flow:'<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>',
+  table:'<path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0H5a2 2 0 0 1-2-2v-4m6 6h10a2 2 0 0 0 2-2v-4M3 9h18M3 15h18"/>',
+  report:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+};
+const mileSvg='<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>';
+
+const attachSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+
+function renderPsTaskCard(t,phaseName){
+  const mileBadge=t.mile?`<div class="ps-task-badge mile" title="里程碑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${mileSvg}</svg></div>`:'';
+  const attachCount=(t.deps?t.deps.length:0)+(t.outputs?t.outputs.length:0);
+  const attachBadge=attachCount?`<div class="ps-task-badge" title="${attachCount} 个附件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${attachSvg}</svg></div>`:'';
+  const badges=(mileBadge||attachBadge)?`<div class="ps-task-badges">${mileBadge}${attachBadge}</div>`:'';
+  const statusLabel=t.done?'已完成':'进行中';
+  const statusCls=t.done?'done':'active';
+  const typeInfo=taskTypes[t.type]||taskTypes.requirement;
+  const typeBadge=`<span class="ps-task-type" style="--card-accent:${typeInfo.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${typeInfo.icon}</svg>${typeInfo.label}</span>`;
+  const artRow=t.art?`<div class="ps-task-card-art" onclick="event.stopPropagation();openArtDemo('${t.art.name}')" title="点击演示"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${artBadgeSvg[t.art.type]||artBadgeSvg.doc}</svg><span>${t.art.name}</span></div>`:'';
+  return`<div class="ps-task-card" data-id="${t.id}" style="--card-accent:${typeInfo.color}">
+    <div class="ps-task-card-top">
+      <div class="ps-task-check${t.done?' done':''}"></div>
+      <div class="ps-task-title">${t.title}</div>
+      ${badges}
+    </div>
+    <div class="ps-task-meta">
+      ${typeBadge}
+      <span class="ps-task-divider"></span>
+      <span class="ps-task-status ${statusCls}">${statusLabel}</span>
+      <span class="ps-task-due">${t.due}</span>
+    </div>
+    ${artRow}
+  </div>`;
+}
+
+function renderProjCal(){
+  const d=projSpaceData;
+  const calItems=[];
+  d.phases.forEach(phase=>{
+    phase.tasks.forEach(t=>{
+      calItems.push({label:t.title,dateStr:'2026-'+t.due.replace(/^(\d{2})-(\d{2})$/,'$1-$2'),type:'task',phase:phase.name,phaseStatus:phase.status});
+    });
+  });
+  const c=$('#psCalView');
+  c.innerHTML='<div id="psCalGrid"></div>';
+  renderCalendar($('#psCalGrid'),calItems.map(x=>({label:x.label,dateStr:x.dateStr})),'task');
+}
+
+$('#psCalView').addEventListener('click',e=>{
+  const ev=e.target.closest('.cal-ev');
+  if(!ev)return;
+  openTaskDrawer(ev.textContent.trim());
+});
+
+// Wire up project card clicks
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.proj-card');
+  if(card&&!card.closest('#drawer')&&!card.closest('.demo-card')){
+    const cards=[...document.querySelectorAll('#page-projects .proj-card')];
+    const idx=cards.indexOf(card);
+    if(idx>=0)openProjectSpace(idx);
+  }
+  const pcard=card&&card.closest('#page-workbench .pcards');
+  if(pcard){
+    const cards=[...document.querySelectorAll('#page-workbench .pcards .pcard')];
+    const idx=cards.indexOf(card);
+    if(idx>=0)openProjectSpace(idx);
+  }
+});
+
+// ── Render Projects ──
+function renderProjects(){
+  const grid=$('#projGrid');
+  grid.innerHTML=projects.map(p=>{
+    const avatarHtml=p.members.map(m=>`<div class="proj-card-avatar" title="${m}">${m[0]}</div>`).join('');
+    const stakeholderHtml=p.stakeholders.map(s=>`<span class="proj-card-stag">${s}</span>`).join('');
+    return`<div class="proj-card">
+      <div class="proj-card-hd"><div class="proj-card-av">${p.av}</div><div style="flex:1"><div class="proj-card-nm">${p.name}</div><div class="proj-card-type">${p.type}</div></div><div class="pcard-st">进行中</div></div>
+      <div class="proj-card-desc">${p.desc}</div>
+      <div class="proj-card-timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>${p.start} — ${p.end}</span><span style="margin-left:auto">负责人 · ${p.owner}</span></div>
+      <div class="proj-card-bar"><div class="pbar-bg"><div class="pbar-fill" style="width:${p.progress}%"></div></div></div>
+      <div class="proj-card-ft"><span>${p.phase} · ${p.progress}%</span><span>阶段 ${p.stage}</span></div>
+      <div class="proj-card-team"><div class="proj-card-avatars">${avatarHtml}</div><div class="proj-card-stakeholders">${stakeholderHtml}</div></div>
+    </div>`}).join('');
+  const wb=$('#wbProjects');
+  wb.innerHTML=projects.slice(0,2).map(p=>`<div class="pcard"><div class="pcard-hd"><div class="pcard-nm">${p.name}</div><div class="pcard-st">进行中</div></div><div class="pcard-desc">${p.desc}</div><div class="pcard-timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>${p.start} — ${p.end}</span><span style="margin-left:auto">负责人 · ${p.owner}</span></div><div class="pbar-bg"><div class="pbar-fill" style="width:${p.progress}%"></div></div><div class="pbar-lb"><span>${p.phase}</span><span>${p.progress}%</span></div></div>`).join('');
+}
+
+// ── Init ──
+renderTasks();renderKanban();renderArtifacts();renderDemoList();renderReportCal();renderProjects();renderTemplates();
+</script>
+</body>
+</html>

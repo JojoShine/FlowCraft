@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>智慧医院 - 线上接入</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*::-webkit-scrollbar{display:none}
+*{scrollbar-width:none}
+:root{--bg:#F5F5F5;--white:#FFFFFF;--ink:#1A1A1A;--ink-2:#4A4A4A;--ink-3:#8A8A8A;--ink-4:#BDBDBD;--border:#EAEAEA;--accent:#2563EB;--accent-light:#EFF6FF;--green:#16A34A;--orange:#EA580C;--red:#DC2626;--r:12px;--r-sm:8px}
+html,body{height:100%;font-family:'Noto Sans SC',system-ui,sans-serif;background:#000;color:var(--ink);overflow:hidden}
+.phone{width:100%;max-width:390px;height:100dvh;margin:0 auto;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.status-bar{height:44px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;background:var(--white);flex-shrink:0}
+.status-bar .time{font-size:14px}
+.status-bar .icons{display:flex;gap:4px;align-items:center}
+.status-bar .icons svg{width:16px;height:16px}
+
+/* Pages */
+.page{display:none;flex:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page.active{display:flex}
+
+/* Nav Bar */
+.nav-bar{height:44px;background:var(--white);display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.5px solid var(--border);flex-shrink:0}
+.nav-bar .title{font-size:16px;font-weight:600}
+.nav-bar .back{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.nav-bar .back svg{width:20px;height:20px;color:var(--ink)}
+
+/* Home Page */
+.home-header{background:linear-gradient(135deg,#1E40AF,#3B82F6);padding:20px;color:#fff;border-radius:0 0 24px 24px}
+.home-greeting{font-size:20px;font-weight:600;margin-bottom:4px}
+.home-sub{font-size:13px;opacity:.8}
+.home-search{margin-top:16px;background:rgba(255,255,255,.2);border-radius:20px;height:36px;display:flex;align-items:center;padding:0 12px;gap:8px;font-size:13px;color:rgba(255,255,255,.7)}
+.home-search svg{width:16px;height:16px;flex-shrink:0}
+
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:var(--white);margin:16px;border-radius:var(--r);padding:20px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.quick-item{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;padding:8px 0}
+.quick-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.quick-icon svg{width:22px;height:22px}
+.quick-item span{font-size:11px;color:var(--ink-2)}
+
+.section{padding:0 16px;margin-bottom:16px}
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-hd h3{font-size:16px;font-weight:600}
+.section-hd .more{font-size:12px;color:var(--ink-3);cursor:pointer}
+
+/* Cards */
+.card{background:var(--white);border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card-row{display:flex;align-items:center;gap:12px}
+.card-avatar{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;flex-shrink:0}
+.card-info{flex:1;min-width:0}
+.card-name{font-size:14px;font-weight:500}
+.card-desc{font-size:12px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+
+/* Notice List */
+.notice-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:0.5px solid var(--border)}
+.notice-item:last-child{border-bottom:none}
+.notice-dot{width:6px;height:6px;border-radius:50%;margin-top:6px;flex-shrink:0}
+.notice-text{font-size:13px;line-height:1.5;color:var(--ink-2)}
+.notice-text strong{color:var(--ink);font-weight:500}
+.notice-time{font-size:11px;color:var(--ink-4);margin-top:4px}
+
+/* Department List */
+.dept-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 16px}
+.dept-card{background:var(--white);border-radius:var(--r);padding:14px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:transform .15s}
+.dept-card:active{transform:scale(.97)}
+.dept-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.dept-desc{font-size:11px;color:var(--ink-3)}
+.dept-count{font-size:10px;color:var(--accent);margin-top:6px}
+
+/* Doctor Card */
+.doc-card{background:var(--white);border-radius:var(--r);padding:14px;margin:0 16px 10px;display:flex;gap:12px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.doc-card:active{background:#FAFAFA}
+.doc-avatar{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff;flex-shrink:0}
+.doc-info{flex:1}
+.doc-name{font-size:15px;font-weight:500}
+.doc-title{font-size:12px;color:var(--ink-3);margin-top:2px}
+.doc-tags{display:flex;gap:4px;margin-top:6px}
+.doc-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--accent-light);color:var(--accent)}
+.doc-stat{font-size:11px;color:var(--green);display:flex;align-items:center;gap:3px;margin-top:4px}
+.doc-stat .dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* Booking Page */
+.booking-date{display:flex;gap:8px;padding:12px 16px;overflow-x:auto}
+.booking-date::-webkit-scrollbar{display:none}
+.date-chip{flex-shrink:0;padding:8px 14px;border-radius:var(--r-sm);background:var(--white);text-align:center;cursor:pointer;border:1px solid var(--border);font-size:12px;min-width:56px}
+.date-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.date-chip .day{font-size:16px;font-weight:600;margin-top:2px}
+.date-chip.on .day{color:#fff}
+
+.time-slots{padding:0 16px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.time-slot{padding:10px;text-align:center;border-radius:var(--r-sm);background:var(--white);border:1px solid var(--border);font-size:13px;cursor:pointer;transition:all .15s}
+.time-slot:active{transform:scale(.96)}
+.time-slot.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent);font-weight:500}
+.time-slot.disabled{opacity:.3;pointer-events:none}
+.time-slot .status{font-size:10px;color:var(--ink-4);margin-top:2px}
+.time-slot.on .status{color:var(--accent)}
+
+/* Confirm */
+.confirm-card{background:var(--white);border-radius:var(--r);margin:16px;padding:20px}
+.confirm-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--border);font-size:14px}
+.confirm-row:last-child{border-bottom:none}
+.confirm-row .label{color:var(--ink-3)}
+.confirm-row .value{font-weight:500}
+
+.btn-primary{height:48px;border-radius:24px;background:var(--accent);color:#fff;border:none;font-size:16px;font-weight:500;cursor:pointer;margin:16px;display:flex;align-items:center;justify-content:center;width:calc(100% - 32px)}
+.btn-primary:active{opacity:.85}
+
+/* Success */
+.success-page{align-items:center;justify-content:center;padding:40px}
+.success-icon{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.success-icon svg{width:36px;height:36px;color:#fff}
+.success-title{font-size:20px;font-weight:600;margin-bottom:8px}
+.success-desc{font-size:14px;color:var(--ink-3);text-align:center;line-height:1.6}
+.success-detail{background:var(--white);border-radius:var(--r);padding:16px;margin-top:24px;width:100%}
+.success-detail .row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}
+.success-detail .row .label{color:var(--ink-3)}
+
+/* Tab Bar */
+.tab-bar{height:80px;background:var(--white);border-top:0.5px solid var(--border);display:flex;align-items:flex-start;padding-top:8px;flex-shrink:0}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:4px 0}
+.tab-item svg{width:22px;height:22px;color:var(--ink-4)}
+.tab-item span{font-size:10px;color:var(--ink-3)}
+.tab-item.on svg{color:var(--accent)}
+.tab-item.on span{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+
+  <!-- ═══ Home ═══ -->
+  <div class="page active" id="page-home">
+    <div class="home-header">
+      <div class="home-greeting">您好，张先生</div>
+      <div class="home-sub">南京市智慧医疗服务平台</div>
+      <div class="home-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        搜索医院、科室、症状
+      </div>
+    </div>
+
+    <div class="quick-grid">
+      <div class="quick-item" onclick="nav('page-dept')">
+        <div class="quick-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+        <span>预约挂号</span>
+      </div>
+      <div class="quick-item" onclick="nav('page-dept')">
+        <div class="quick-icon" style="background:#F0FDF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"><path d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+        <span>在线问诊</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#FFF7ED"><svg viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="1.5" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+        <span>报告查询</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#FDF2F8"><svg viewBox="0 0 24 24" fill="none" stroke="#DB2777" stroke-width="1.5" stroke-linecap="round"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5"/></svg></div>
+        <span>医院导航</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <span>排队叫号</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#F0FDF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0-6C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></div>
+        <span>医保查询</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#FFF7ED"><svg viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="1.5" stroke-linecap="round"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></div>
+        <span>药品配送</span>
+      </div>
+      <div class="quick-item">
+        <div class="quick-icon" style="background:#F5F3FF"><svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="1.5" stroke-linecap="round"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg></div>
+        <span>更多服务</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-hd"><h3>热门科室</h3><span class="more" onclick="nav('page-dept')">全部科室 ></span></div>
+      <div class="card">
+        <div class="card-row" style="cursor:pointer" onclick="nav('page-doc')">
+          <div class="card-avatar" style="background:#2563EB">内</div>
+          <div class="card-info"><div class="card-name">内科</div><div class="card-desc">心血管、呼吸、消化等</div></div>
+          <div class="card-tag" style="background:#F0FDF4;color:#16A34A">可预约</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-row" style="cursor:pointer" onclick="nav('page-doc')">
+          <div class="card-avatar" style="background:#7C3AED">外</div>
+          <div class="card-info"><div class="card-name">外科</div><div class="card-desc">普外、骨科、神经外科等</div></div>
+          <div class="card-tag" style="background:#F0FDF4;color:#16A34A">可预约</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-row" style="cursor:pointer" onclick="nav('page-doc')">
+          <div class="card-avatar" style="background:#EA580C">儿</div>
+          <div class="card-info"><div class="card-name">儿科</div><div class="card-desc">小儿内科、小儿外科等</div></div>
+          <div class="card-tag" style="background:#FFF7ED;color:#EA580C">号源紧张</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-bottom:24px">
+      <div class="section-hd"><h3>医保资讯</h3><span class="more">更多 ></span></div>
+      <div class="card">
+        <div class="notice-item">
+          <div class="notice-dot" style="background:var(--accent)"></div>
+          <div><div class="notice-text"><strong>异地就医备案</strong> — 江苏省内异地就医无需备案，跨省就医需提前申请</div><div class="notice-time">2026-08-12</div></div>
+        </div>
+        <div class="notice-item">
+          <div class="notice-dot" style="background:var(--green)"></div>
+          <div><div class="notice-text"><strong>医保报销比例调整</strong> — 三级医院门诊报销比例提高至 70%</div><div class="notice-time">2026-08-10</div></div>
+        </div>
+        <div class="notice-item">
+          <div class="notice-dot" style="background:var(--orange)"></div>
+          <div><div class="notice-text"><strong>慢性病用药目录更新</strong> — 新增 15 种慢性病用药纳入医保</div><div class="notice-time">2026-08-08</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Department List ═══ -->
+  <div class="page" id="page-dept">
+    <div class="nav-bar"><div class="back" onclick="nav('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div><div class="title">选择科室</div></div>
+    <div style="padding:16px 0">
+      <div class="dept-list">
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">心血管内科</div><div class="dept-desc">心脏疾病、高血压等</div><div class="dept-count">12 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">呼吸内科</div><div class="dept-desc">呼吸道感染、哮喘等</div><div class="dept-count">8 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">消化内科</div><div class="dept-desc">胃肠疾病、肝病等</div><div class="dept-count">6 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">骨科</div><div class="dept-desc">骨折、关节疾病等</div><div class="dept-count">9 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">神经内科</div><div class="dept-desc">头痛、癫痫、帕金森</div><div class="dept-count">7 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">儿科</div><div class="dept-desc">小儿常见病、多发病</div><div class="dept-count" style="color:var(--orange)">3 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">妇产科</div><div class="dept-desc">产前检查、妇科疾病</div><div class="dept-count">10 位医生可预约</div></div>
+        <div class="dept-card" onclick="nav('page-doc')"><div class="dept-name">眼科</div><div class="dept-desc">近视、白内障等</div><div class="dept-count">5 位医生可预约</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Doctor List ═══ -->
+  <div class="page" id="page-doc">
+    <div class="nav-bar"><div class="back" onclick="nav('page-dept')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div><div class="title">心血管内科</div></div>
+    <div style="padding:16px 0">
+      <div class="doc-card" onclick="nav('page-booking')">
+        <div class="doc-avatar" style="background:#2563EB">王</div>
+        <div class="doc-info"><div class="doc-name">王建国</div><div class="doc-title">主任医师 · 30年经验</div><div class="doc-tags"><span class="doc-tag">冠心病</span><span class="doc-tag">心衰</span><span class="doc-tag">高血压</span></div><div class="doc-stat"><span class="dot"></span>今日可约 余 5 号</div></div>
+      </div>
+      <div class="doc-card" onclick="nav('page-booking')">
+        <div class="doc-avatar" style="background:#7C3AED">李</div>
+        <div class="doc-info"><div class="doc-name">李明华</div><div class="doc-title">副主任医师 · 18年经验</div><div class="doc-tags"><span class="doc-tag">心律失常</span><span class="doc-tag">房颤</span></div><div class="doc-stat"><span class="dot"></span>今日可约 余 3 号</div></div>
+      </div>
+      <div class="doc-card" onclick="nav('page-booking')">
+        <div class="doc-avatar" style="background:#16A34A">陈</div>
+        <div class="doc-info"><div class="doc-name">陈雪梅</div><div class="doc-title">主治医师 · 10年经验</div><div class="doc-tags"><span class="doc-tag">心脏瓣膜</span><span class="doc-tag">先天性心脏病</span></div><div class="doc-stat"><span class="dot"></span>明日可约 余 8 号</div></div>
+      </div>
+      <div class="doc-card" onclick="nav('page-booking')">
+        <div class="doc-avatar" style="background:#EA580C">赵</div>
+        <div class="doc-info"><div class="doc-name">赵志强</div><div class="doc-title">主任医师 · 25年经验</div><div class="doc-tags"><span class="doc-tag">介入治疗</span><span class="doc-tag">冠脉支架</span></div><div class="doc-stat" style="color:var(--orange)"><span class="dot" style="background:var(--orange)"></span>本周已满 可约下周</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Booking ═══ -->
+  <div class="page" id="page-booking">
+    <div class="nav-bar"><div class="back" onclick="nav('page-doc')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div><div class="title">预约挂号</div></div>
+    <div style="padding:16px">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-row">
+          <div class="card-avatar" style="background:#2563EB">王</div>
+          <div class="card-info"><div class="card-name">王建国 主任医师</div><div class="card-desc">心血管内科 · 门诊三楼 312 室</div></div>
+        </div>
+      </div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:10px">选择日期</div>
+      <div class="booking-date" id="dateStrip"></div>
+      <div style="font-size:14px;font-weight:500;margin:16px 0 10px">选择时段</div>
+      <div class="time-slots" id="timeSlots">
+        <div class="time-slot" onclick="selTime(this)">08:00<div class="status">可约</div></div>
+        <div class="time-slot" onclick="selTime(this)">08:30<div class="status">可约</div></div>
+        <div class="time-slot" onclick="selTime(this)">09:00<div class="status">可约</div></div>
+        <div class="time-slot" onclick="selTime(this)">09:30<div class="status">可约</div></div>
+        <div class="time-slot disabled">10:00<div class="status">已满</div></div>
+        <div class="time-slot" onclick="selTime(this)">10:30<div class="status">可约</div></div>
+        <div class="time-slot disabled">11:00<div class="status">已满</div></div>
+        <div class="time-slot" onclick="selTime(this)">14:00<div class="status">可约</div></div>
+        <div class="time-slot" onclick="selTime(this)">14:30<div class="status">可约</div></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="nav('page-confirm')">确认预约</button>
+  </div>
+
+  <!-- ═══ Confirm ═══ -->
+  <div class="page" id="page-confirm">
+    <div class="nav-bar"><div class="back" onclick="nav('page-booking')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></div><div class="title">确认信息</div></div>
+    <div class="confirm-card">
+      <div class="confirm-row"><span class="label">医院</span><span class="value">南京市第一人民医院</span></div>
+      <div class="confirm-row"><span class="label">科室</span><span class="value">心血管内科</span></div>
+      <div class="confirm-row"><span class="label">医生</span><span class="value">王建国 主任医师</span></div>
+      <div class="confirm-row"><span class="label">日期</span><span class="value" id="cfmDate">2026-08-13</span></div>
+      <div class="confirm-row"><span class="label">时段</span><span class="value" id="cfmTime">08:30</span></div>
+      <div class="confirm-row"><span class="label">就诊人</span><span class="value">张先生（本人）</span></div>
+      <div class="confirm-row"><span class="label">医保类型</span><span class="value">南京市职工医保</span></div>
+    </div>
+    <button class="btn-primary" onclick="nav('page-success')">提交预约</button>
+  </div>
+
+  <!-- ═══ Success ═══ -->
+  <div class="page success-page" id="page-success">
+    <div class="success-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="success-title">预约成功</div>
+    <div class="success-desc">请于就诊当日携带身份证和医保卡<br>到门诊三楼 312 室签到就诊</div>
+    <div class="success-detail">
+      <div class="row"><span class="label">预约编号</span><span style="font-family:monospace;font-size:12px">GH20260813001</span></div>
+      <div class="row"><span class="label">医生</span><span>王建国 主任医师</span></div>
+      <div class="row"><span class="label">时间</span><span>08-13 08:30</span></div>
+      <div class="row"><span class="label">地点</span><span>门诊三楼 312 室</span></div>
+    </div>
+    <button class="btn-primary" onclick="nav('page-home')" style="margin-top:24px">返回首页</button>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item on" onclick="nav('page-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>首页</span></div>
+    <div class="tab-item" onclick="nav('page-dept')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span>预约</span></div>
+    <div class="tab-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><span>报告</span></div>
+    <div class="tab-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></div>
+  </div>
+</div>
+
+<script>
+function nav(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector('.page.active').scrollTop=0;
+  const tabs=document.querySelectorAll('.tab-item');
+  tabs.forEach(t=>t.classList.remove('on'));
+  if(id==='page-home')tabs[0].classList.add('on');
+  else if(id==='page-dept'||id==='page-doc'||id==='page-booking')tabs[1].classList.add('on');
+  else if(id==='page-success')tabs[0].classList.add('on');
+}
+
+// Date strip
+const strip=document.getElementById('dateStrip');
+const days=['日','一','二','三','四','五','六'];
+for(let i=0;i<7;i++){
+  const d=new Date(2026,7,13+i);
+  const cls=i===0?'date-chip on':'date-chip';
+  strip.innerHTML+=`<div class="${cls}" onclick="selDate(this)"><div style="font-size:10px">周${days[d.getDay()]}</div><div class="day">${d.getDate()}</div></div>`;
+}
+function selDate(el){document.querySelectorAll('.date-chip').forEach(c=>c.classList.remove('on'));el.classList.add('on')}
+function selTime(el){document.querySelectorAll('.time-slot').forEach(c=>c.classList.remove('on'));el.classList.add('on')}
+</script>
+</body>
+</html>

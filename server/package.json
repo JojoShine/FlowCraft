@@ -1,0 +1,36 @@
+{
+  "name": "flowcraft-server",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "minio": "^8.0.7",
+    "mongodb": "^6.21.0",
+    "multer": "^2.2.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.2.0",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
