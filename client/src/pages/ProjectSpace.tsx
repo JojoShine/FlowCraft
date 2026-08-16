@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useProject } from '../hooks/useProjects';
+import { useProjectSpace } from '../hooks/useProjectSpace';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { TaskDrawer } from '../components/ui/TaskDrawer';
+import { Pagination } from '../components/ui/Pagination';
 import { StatsGrid } from '../components/workbench/StatsGrid';
 import { tasksApi, projectsApi } from '../services/api';
 import { useToast } from '../components/ui/Toast';
@@ -19,24 +20,14 @@ const PROJECT_STATUSES = [
   { value: 'completed', label: '已完成' },
 ];
 
-const STANDARD_PHASES = [
-  { id: 'phase-1', name: '项目线索', status: 'done' },
-  { id: 'phase-2', name: '调研梳理', status: 'done' },
-  { id: 'phase-3', name: '方案设计', status: 'done' },
-  { id: 'phase-4', name: '原型设计', status: 'done' },
-  { id: 'phase-5', name: '开发实施', status: 'active' },
-  { id: 'phase-6', name: '测试交付', status: 'upcoming' },
-  { id: 'phase-7', name: '复盘归档', status: 'upcoming' },
-];
-
 const phaseSummaries: Record<string, string> = {
-  'phase-1': '项目线索阶段已完成。已明确项目目标与核心干系人，完成初步需求收集与可行性评估，为后续调研奠定基础。',
-  'phase-2': '调研梳理阶段已完成。业务流程、系统现状与痛点均已梳理归档，关键用户访谈记录齐全，输出调研报告 2 份。',
-  'phase-3': '方案设计阶段已完成。技术选型与系统架构方案已评审通过，实施方案 v2.1 已定稿，核心模块拆分完毕。',
-  'phase-4': '原型设计阶段已完成。所有核心页面原型已交付并通过评审，交互流程标注完整，已移交开发团队。',
-  'phase-5': '开发实施阶段进行中。核心模块开发进度约 65%，前后端联调已开始。当前有 2 项任务存在延期风险，建议关注接口对接进度。',
-  'phase-6': '测试交付阶段尚未开始。待开发实施完成后启动，预计需要 2 周完成集成测试与用户验收。',
-  'phase-7': '复盘归档阶段尚未开始。项目上线运行稳定后将启动复盘，整理经验教训与知识沉淀。',
+  '项目线索': '项目线索阶段已完成。已明确项目目标与核心干系人，完成初步需求收集与可行性评估，为后续调研奠定基础。',
+  '调研梳理': '调研梳理阶段已完成。业务流程、系统现状与痛点均已梳理归档，关键用户访谈记录齐全，输出调研报告 2 份。',
+  '方案设计': '方案设计阶段已完成。技术选型与系统架构方案已评审通过，实施方案 v2.1 已定稿，核心模块拆分完毕。',
+  '原型设计': '原型设计阶段已完成。所有核心页面原型已交付并通过评审，交互流程标注完整，已移交开发团队。',
+  '开发实施': '开发实施阶段进行中。核心模块开发进度约 65%，前后端联调已开始。当前有 2 项任务存在延期风险，建议关注接口对接进度。',
+  '测试交付': '测试交付阶段尚未开始。待开发实施完成后启动，预计需要 2 周完成集成测试与用户验收。',
+  '复盘归档': '复盘归档阶段尚未开始。项目上线运行稳定后将启动复盘，整理经验教训与知识沉淀。',
 };
 
 function fmtDate(s: string | null) {
@@ -61,10 +52,12 @@ function fmtDateFull(s: string | null) {
 
 export function ProjectSpace() {
   const { selectedProjectId } = useProjectContext();
-  const { project, loading, error, refetch } = useProject(selectedProjectId || '');
+  const {
+    project, tasks, phases, loading, loadingTasks, error,
+    activePhaseId, setActivePhaseId, refetch,
+  } = useProjectSpace(selectedProjectId || '');
   const [searchParams, setSearchParams] = useSearchParams();
   const filterTaskId = searchParams.get('task');
-  const [activePhaseId, setActivePhaseId] = useState<string>('phase-5');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
@@ -157,17 +150,15 @@ export function ProjectSpace() {
   };
 
   // Auto-switch to the phase containing the filtered task
-  const allTasks = project?.tasks || [];
   useEffect(() => {
-    if (!filterTaskId || allTasks.length === 0) return;
-    const targetTask = allTasks.find(t => t.id === filterTaskId);
-    if (targetTask?.phase?.name) {
-      const phase = STANDARD_PHASES.find(p => p.name === targetTask.phase!.name);
-      if (phase && phase.id !== activePhaseId) {
-        setActivePhaseId(phase.id);
+    if (!filterTaskId || phases.length === 0) return;
+    tasksApi.get(filterTaskId).then((res) => {
+      const task = res.data as Task;
+      if (task?.phaseId && task.phaseId !== activePhaseId) {
+        setActivePhaseId(task.phaseId);
       }
-    }
-  }, [filterTaskId, allTasks]);
+    }).catch(() => {});
+  }, [filterTaskId, phases.length]);
 
   if (loading) {
     return (
@@ -185,19 +176,12 @@ export function ProjectSpace() {
     );
   }
 
-  const tasks = project.tasks || [];
-
-  const activePhase = STANDARD_PHASES.find(p => p.id === activePhaseId);
-  const tasksInPhase = tasks.filter(t => t.phase?.name === activePhase?.name);
+  const activePhase = phases.find(p => p.id === activePhaseId);
+  const tasksInPhase = tasks;
   const doneTasks = tasksInPhase.filter(t => t.column === 'done').length;
   const inProgressTasks = tasksInPhase.filter(t => t.column === 'inprogress' || t.column === 'review').length;
   const phaseArtifacts = tasksInPhase.flatMap(t => t.artifacts || []);
   const completionRate = tasksInPhase.length > 0 ? Math.round((doneTasks / tasksInPhase.length) * 100) : 0;
-
-  const phasesWithStats = STANDARD_PHASES.map(phase => ({
-    ...phase,
-    taskCount: tasks.filter(t => t.phase?.name === phase.name).length,
-  }));
 
   const stats = [
     { label: '阶段任务', value: tasksInPhase.length, change: `${inProgressTasks} 项进行中` },
@@ -224,7 +208,7 @@ export function ProjectSpace() {
       description: t.description || undefined,
     }));
 
-  const filterMatchTask = filterTaskId ? tasks.find(t => t.id === filterTaskId) : undefined;
+  const filterMatchTask = filterTaskId ? tasksInPhase.find(t => t.id === filterTaskId) : undefined;
 
   const totalArtifactPages = Math.ceil(phaseArtifacts.length / ARTIFACTS_PER_PAGE);
   const paginatedArtifacts = phaseArtifacts.slice(
@@ -412,7 +396,7 @@ export function ProjectSpace() {
             </span>
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6 }}>
-            {phaseSummaries[activePhaseId]}
+            {activePhase ? phaseSummaries[activePhase.name] || '' : ''}
           </div>
         </div>
       </div>
@@ -424,10 +408,11 @@ export function ProjectSpace() {
         borderBottom: '1px solid var(--border-subtle)',
         marginBottom: 24,
       }}>
-        {phasesWithStats.map(phase => {
+        {phases.map(phase => {
           const isActive = phase.id === activePhaseId;
           const isDone = phase.status === 'done';
           const isUpcoming = phase.status === 'upcoming';
+          const taskCount = phase._count?.tasks ?? 0;
 
           return (
             <button
@@ -472,7 +457,7 @@ export function ProjectSpace() {
                   background: 'var(--surface-raised)',
                   borderRadius: 3,
                 }}>
-                  {phase.taskCount}
+                  {taskCount}
                 </span>
             </button>
           );
@@ -530,7 +515,18 @@ export function ProjectSpace() {
             {doneTasks}/{tasksInPhase.length} 已完成
           </span>
         </div>
-        {transformedTasks.length === 0 ? (
+        {loadingTasks ? (
+          <div style={{
+            fontSize: 13,
+            color: 'var(--ink-3)',
+            padding: '32px 0',
+            textAlign: 'center',
+            background: 'var(--canvas)',
+            borderRadius: 12,
+          }}>
+            加载中...
+          </div>
+        ) : transformedTasks.length === 0 ? (
           <div style={{
             fontSize: 13,
             color: 'var(--ink-3)',
@@ -772,73 +768,11 @@ export function ProjectSpace() {
             })}
           </div>
         )}
-        {totalTaskPages > 1 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            marginTop: 14,
-          }}>
-            <button
-              onClick={() => setTaskPage(p => Math.max(1, p - 1))}
-              disabled={taskPage === 1}
-              style={{
-                width: 28,
-                height: 28,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 6,
-                background: 'transparent',
-                cursor: taskPage === 1 ? 'default' : 'pointer',
-                opacity: taskPage === 1 ? 0.3 : 1,
-                transition: 'all 150ms',
-                color: 'var(--ink-2)',
-              }}
-              onMouseEnter={(e) => { if (taskPage > 1) e.currentTarget.style.background = 'var(--surface-raised)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-            </button>
-            <span style={{
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: 11,
-              color: 'var(--ink-3)',
-              minWidth: 60,
-              textAlign: 'center',
-            }}>
-              {taskPage} / {totalTaskPages}
-            </span>
-            <button
-              onClick={() => setTaskPage(p => Math.min(totalTaskPages, p + 1))}
-              disabled={taskPage === totalTaskPages}
-              style={{
-                width: 28,
-                height: 28,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 6,
-                background: 'transparent',
-                cursor: taskPage === totalTaskPages ? 'default' : 'pointer',
-                opacity: taskPage === totalTaskPages ? 0.3 : 1,
-                transition: 'all 150ms',
-                color: 'var(--ink-2)',
-              }}
-              onMouseEnter={(e) => { if (taskPage < totalTaskPages) e.currentTarget.style.background = 'var(--surface-raised)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
-        )}
+        <Pagination
+          page={taskPage}
+          totalPages={totalTaskPages}
+          onChange={setTaskPage}
+        />
       </div>
 
       {/* Recent artifacts for this phase */}
@@ -968,73 +902,11 @@ export function ProjectSpace() {
                 );
               })}
             </div>
-            {totalArtifactPages > 1 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 8,
-                marginTop: 14,
-              }}>
-                <button
-                  onClick={() => setArtifactPage(p => Math.max(1, p - 1))}
-                  disabled={artifactPage === 1}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 6,
-                    background: 'transparent',
-                    cursor: artifactPage === 1 ? 'default' : 'pointer',
-                    opacity: artifactPage === 1 ? 0.3 : 1,
-                    transition: 'all 150ms',
-                    color: 'var(--ink-2)',
-                  }}
-                  onMouseEnter={(e) => { if (artifactPage > 1) e.currentTarget.style.background = 'var(--surface-raised)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                    <polyline points="15 18 9 12 15 6"/>
-                  </svg>
-                </button>
-                <span style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 11,
-                  color: 'var(--ink-3)',
-                  minWidth: 60,
-                  textAlign: 'center',
-                }}>
-                  {artifactPage} / {totalArtifactPages}
-                </span>
-                <button
-                  onClick={() => setArtifactPage(p => Math.min(totalArtifactPages, p + 1))}
-                  disabled={artifactPage === totalArtifactPages}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 6,
-                    background: 'transparent',
-                    cursor: artifactPage === totalArtifactPages ? 'default' : 'pointer',
-                    opacity: artifactPage === totalArtifactPages ? 0.3 : 1,
-                    transition: 'all 150ms',
-                    color: 'var(--ink-2)',
-                  }}
-                  onMouseEnter={(e) => { if (artifactPage < totalArtifactPages) e.currentTarget.style.background = 'var(--surface-raised)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                    <polyline points="9 18 15 12 9 6"/>
-                  </svg>
-                </button>
-              </div>
-            )}
+            <Pagination
+              page={artifactPage}
+              totalPages={totalArtifactPages}
+              onChange={setArtifactPage}
+            />
           </>
         )}
       </div>
@@ -1042,6 +914,7 @@ export function ProjectSpace() {
       {/* Task Detail Drawer (read-only) */}
       {selectedTask && (
         <TaskDrawer
+          key={selectedTask.id}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           mode="detail"
@@ -1055,6 +928,7 @@ export function ProjectSpace() {
 
       {/* Task Edit Drawer */}
       <TaskDrawer
+        key={editingTask?.id || 'edit-drawer'}
         isOpen={!!editingTask}
         onClose={() => setEditingTask(null)}
         mode="edit"
@@ -1067,6 +941,7 @@ export function ProjectSpace() {
 
       {/* Task Complete Drawer */}
       <TaskDrawer
+        key={completingTask?.id || 'complete-drawer'}
         isOpen={!!completingTask}
         onClose={() => setCompletingTask(null)}
         mode="complete"

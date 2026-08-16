@@ -697,6 +697,54 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                   </div>
                 </div>
               )}
+
+              {/* Artifacts */}
+              {pendingArtifacts.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>产物与依赖</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {pendingArtifacts.map((a) => {
+                      const artifactTypeLabels: Record<string, string> = {
+                        prototype: '原型', diagram: '流程图', document: '文档',
+                        spreadsheet: '表格', report: '汇报', design: '设计稿',
+                      };
+                      return (
+                        <div key={a.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 14px', background: 'var(--canvas)', borderRadius: 8,
+                        }}>
+                          <div style={{
+                            width: 28, height: 28, borderRadius: 6,
+                            background: 'var(--surface-raised)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                          }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, color: 'var(--ink-3)' }}>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: 13, fontWeight: 500, color: 'var(--ink)',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {a.name}
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: 11, fontWeight: 500, padding: '2px 7px', borderRadius: 4,
+                            background: 'var(--surface-raised)', color: 'var(--ink-3)',
+                            flexShrink: 0,
+                          }}>
+                            {artifactTypeLabels[a.type] || a.type}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>

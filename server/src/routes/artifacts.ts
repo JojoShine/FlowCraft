@@ -10,12 +10,12 @@ import multer from 'multer';
 
 const folderUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024, files: 200 },
+  limits: { fileSize: 50 * 1024 * 1024, files: 2000 },
 });
 
 const router = Router();
 
-router.post('/upload-folder', folderUpload.array('files', 200), asyncHandler(async (req, res) => {
+router.post('/upload-folder', folderUpload.array('files', 2000), asyncHandler(async (req, res) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     throw new Error('No files uploaded');

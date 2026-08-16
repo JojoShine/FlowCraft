@@ -11,12 +11,14 @@ router.get('/', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {
-  const project = await projectService.getById(req.params.id);
+  const project = req.query.view === 'summary'
+    ? await projectService.getSummary(req.params.id)
+    : await projectService.getById(req.params.id);
   res.json(successResponse(project));
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-  const project = await projectService.create(req.body);
+  const project = await projectService.create({ ...req.body, ownerId: req.user!.id });
   res.status(201).json(successResponse(project));
 }));
 

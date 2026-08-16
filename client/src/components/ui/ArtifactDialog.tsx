@@ -139,6 +139,9 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
     try {
       if (needsUpload && uploadedFile) {
         if (!name) setName(uploadedFile.name);
+        if (task) {
+          await artifactsApi.update(uploadedFile.id, { taskId: task });
+        }
         toast({ title: '产物已创建', variant: 'success' });
       } else {
         await artifactsApi.create({
@@ -358,6 +361,8 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                       borderRadius: 8,
                       fontSize: 13,
                       fontFamily: "'Geist', sans-serif",
+                      background: 'var(--surface)',
+                      color: 'var(--ink)',
                       outline: 'none',
                       transition: 'border-color 150ms, box-shadow 150ms',
                     }}
@@ -414,7 +419,7 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                             type: 'prototype',
                             taskId: task || undefined,
                           });
-                          setUploadedFile({ id: res.data.id, name: res.data.name });
+                          setUploadedFile({ id: res.data.id, name: file.name });
                         }}
                       />
                     ) : (
@@ -440,12 +445,12 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                               try {
                                 const res = await artifactsApi.uploadFolder(files, {
                                   projectId: pid,
-                                  name: folderName,
+                                  name: name || folderName,
                                   type: 'prototype',
                                   taskId: task || undefined,
                                 });
-                                setUploadedFile({ id: res.data.id, name: res.data.name });
-                                setName(folderName);
+                                setUploadedFile({ id: res.data.id, name: folderName });
+                                if (!name) setName(folderName);
                                 toast({ title: `文件夹已上传 (${files.length} 个文件)`, variant: 'success' });
                               } catch {
                                 toast({ title: '上传失败', variant: 'error' });
@@ -537,7 +542,7 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                           type: selectedType === 'table' ? 'spreadsheet' : 'report',
                           taskId: task || undefined,
                         });
-                        setUploadedFile({ id: res.data.id, name: res.data.name });
+                        setUploadedFile({ id: res.data.id, name: file.name });
                       }}
                     />
                   </div>
@@ -551,6 +556,7 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                     value={task}
                     onValueChange={setTask}
                     options={tasks.map(t => ({ value: t.id, label: t.title }))}
+                    searchable
                   />
                 </div>
               </div>

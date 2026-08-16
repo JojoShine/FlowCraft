@@ -7,6 +7,7 @@ import { ArtifactGrid } from '../components/artifacts/ArtifactGrid';
 import { ArtifactsCalendar } from '../components/artifacts/ArtifactsCalendar';
 import { ArtifactDialog } from '../components/ui/ArtifactDialog';
 import { ArtifactViewer } from '../components/ui/ArtifactViewer';
+import { Pagination } from '../components/ui/Pagination';
 import { useToast } from '../components/ui/Toast';
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { artifactsApi, tasksApi } from '../services/api';
@@ -21,7 +22,7 @@ const filterTabs: { label: string; type: string | undefined }[] = [
   { label: '表格', type: 'spreadsheet' },
 ];
 
-const pageSize = 6;
+const pageSize = 12;
 
 export function Artifacts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,7 +43,7 @@ export function Artifacts() {
   const confirm = useConfirm();
   const { selectedProjectId } = useProjectContext();
   const isCalendar = viewMode === 'calendar';
-  const { artifacts, total, loading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, activeType, page, (isCalendar || filterId) ? 9999 : pageSize);
+  const { artifacts, total, loading, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, activeType, page, (isCalendar || filterId) ? 9999 : pageSize);
 
   const clearFilter = () => {
     setSearchParams({});
@@ -126,7 +127,7 @@ export function Artifacts() {
   );
   const selectedTaskTitle = bindTasks.find(t => t.id === bindSelected)?.title;
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
@@ -334,70 +335,21 @@ export function Artifacts() {
       )}
 
       {/* Pagination - grid view only */}
-      {viewMode === 'grid' && total > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: 20,
-          padding: '12px 0',
-        }}>
-          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-            共 {total} 个产物，第 {page}/{totalPages} 页
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              style={{
-                height: 30, padding: '0 10px', borderRadius: 6,
-                border: '1px solid var(--border-default)',
-                background: 'transparent',
-                fontSize: 12,
-                color: page <= 1 ? 'var(--ink-4)' : 'var(--ink-2)',
-                cursor: page <= 1 ? 'default' : 'pointer',
-              }}
-            >
-              上一页
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                style={{
-                  width: 30, height: 30, borderRadius: 6,
-                  border: p === page ? '1px solid var(--ink)' : '1px solid var(--border-default)',
-                  background: p === page ? 'var(--ink)' : 'transparent',
-                  color: p === page ? 'var(--canvas)' : 'var(--ink-2)',
-                  fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              style={{
-                height: 30, padding: '0 10px', borderRadius: 6,
-                border: '1px solid var(--border-default)',
-                background: 'transparent',
-                fontSize: 12,
-                color: page >= totalPages ? 'var(--ink-4)' : 'var(--ink-2)',
-                cursor: page >= totalPages ? 'default' : 'pointer',
-              }}
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+      {viewMode === 'grid' && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          totalLabel="个产物"
+          onChange={setPage}
+        />
       )}
 
       {/* Artifact Dialog */}
       <ArtifactDialog
         isOpen={showNewArtifactDialog}
         onClose={() => setShowNewArtifactDialog(false)}
+        projectId={selectedProjectId ?? undefined}
       />
 
       <ArtifactViewer

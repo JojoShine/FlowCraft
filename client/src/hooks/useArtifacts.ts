@@ -7,6 +7,7 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [trigger, setTrigger] = useState(0);
 
@@ -30,6 +31,7 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
         setError(msg);
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     };
     fetchArtifacts();
@@ -41,5 +43,5 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
     });
   }, [projectId, type, page, pageSize]);
 
-  return { artifacts, total, loading, error, refetch };
+  return { artifacts, total, loading, initialLoading, error, refetch };
 }

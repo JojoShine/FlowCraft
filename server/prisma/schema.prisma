@@ -3,21 +3,26 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  email         String?  @unique
+  username      String?  @unique
+  passwordHash  String?
+  name          String?
+  avatarUrl     String?
+  wechatOpenId  String?  @unique
+  wechatUnionId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  ownedProjects  Project[]    @relation("ProjectOwner")
-  assignedTasks  Task[]       @relation("TaskAssignee")
-  createdArtifacts Artifact[] @relation("ArtifactCreator")
+  ownedProjects  Project[]      @relation("ProjectOwner")
+  assignedTasks  Task[]         @relation("TaskAssignee")
+  createdArtifacts Artifact[]   @relation("ArtifactCreator")
+  conversations  Conversation[]
 }
 
 model Project {
@@ -133,4 +138,29 @@ model Report {
   @@index([projectId])
   @@index([date])
   @@index([type])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  title     String?
+  projectId String?
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  role           String
+  content        String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
 }

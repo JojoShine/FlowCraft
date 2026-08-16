@@ -1,25 +1,17 @@
 import { useState } from 'react';
-import { useProjects } from '../hooks/useProjects';
+import { useProjectContext } from '../contexts/ProjectContext';
 import { ProjectGrid } from '../components/projects/ProjectGrid';
 import { ProjectDrawer } from '../components/ui/ProjectDrawer';
 import { formatDate } from '../utils/date';
 
 export function Projects() {
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);
-  const { projects, loading, error } = useProjects();
+  const { projects, projectsLoading: loading } = useProjectContext();
 
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-        <div style={{ fontSize: 13, color: 'var(--red)' }}>加载失败: {error}</div>
       </div>
     );
   }

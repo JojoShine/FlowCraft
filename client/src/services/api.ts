@@ -4,6 +4,14 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => {
     if (response.data && response.data.success === true) {
@@ -16,6 +24,13 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
+    }
     if (error.response?.data?.error) {
       const { message, code } = error.response.data.error;
       console.error(`[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${code}: ${message}`);
@@ -27,6 +42,7 @@ api.interceptors.response.use(
 export const projectsApi = {
   list: () => api.get('/projects'),
   get: (id: string) => api.get(`/projects/${id}`),
+  getSummary: (id: string) => api.get(`/projects/${id}`, { params: { view: 'summary' } }),
   create: (data: unknown) => api.post('/projects', data),
   update: (id: string, data: unknown) => api.patch(`/projects/${id}`, data),
   delete: (id: string) => api.delete(`/projects/${id}`),
@@ -34,6 +50,8 @@ export const projectsApi = {
 
 export const tasksApi = {
   list: (params?: { projectId?: string; column?: string }) => api.get('/tasks', { params }),
+  count: (projectId: string) => api.get('/tasks/count', { params: { projectId } }),
+  listByPhase: (phaseId: string) => api.get('/tasks', { params: { phaseId } }),
   get: (id: string) => api.get(`/tasks/${id}`),
   create: (data: unknown) => api.post('/tasks', data),
   update: (id: string, data: unknown) => api.patch(`/tasks/${id}`, data),
@@ -113,6 +131,33 @@ export const usersApi = {
 
 export const searchApi = {
   search: (q: string, projectId?: string) => api.get('/search', { params: { q, projectId } }),
+};
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+export const authApi = {
+  login: (username: string, password: string) => api.post('/auth/login', { username, password }),
+  register: (username: string, password: string, name?: string) => api.post('/auth/register', { username, password, name }),
+  getMe: () => api.get('/auth/me'),
+};
+
+export const aiApi = {
+  chat(conversationId: string | null, message: string, projectId?: string) {
+    const token = localStorage.getItem('token');
+    return fetch(`${baseURL}/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ conversationId, message, projectId }),
+    });
+  },
+  listConversations: (projectId?: string) =>
+    api.get('/ai/conversations', { params: projectId ? { projectId } : {} }),
+  getConversation: (id: string) => api.get(`/ai/conversations/${id}`),
+  createConversation: (projectId?: string) => api.post('/ai/conversations', { projectId }),
+  deleteConversation: (id: string) => api.delete(`/ai/conversations/${id}`),
 };
 
 export default api;

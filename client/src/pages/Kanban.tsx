@@ -252,6 +252,7 @@ export function Kanban() {
       {/* Task Detail Drawer (read-only) */}
       {selectedTask && (
         <TaskDrawer
+          key={selectedTask.id}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           mode="detail"
@@ -265,6 +266,7 @@ export function Kanban() {
 
       {/* Task Edit Drawer */}
       <TaskDrawer
+        key={editingTask?.id || 'new'}
         isOpen={!!editingTask}
         onClose={() => setEditingTask(null)}
         mode="edit"

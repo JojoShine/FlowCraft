@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SearchDialog } from '../ui/SearchDialog';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TopbarProps {
   title: string;
@@ -8,8 +9,10 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
+  const { user, logout } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -195,6 +198,94 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
             <path d="M2 12l10 5 10-5"/>
           </svg>
         </button>
+
+        {/* User menu */}
+        {user && (
+          <div style={{ position: 'relative', marginLeft: 8 }}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 8px',
+                border: 'none',
+                borderRadius: 8,
+                background: showUserMenu ? 'var(--surface-raised)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={(e) => {
+                if (!showUserMenu) e.currentTarget.style.background = 'var(--surface-raised)';
+              }}
+              onMouseLeave={(e) => {
+                if (!showUserMenu) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.name || ''} style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                }} />
+              ) : (
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: 'var(--ink-3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--surface)',
+                }}>
+                  {(user.name || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <span style={{ fontSize: 13, color: 'var(--ink)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.name || '用户'}
+              </span>
+            </button>
+
+            {showUserMenu && (
+              <div style={{
+                position: 'absolute',
+                top: 40,
+                right: 0,
+                width: 160,
+                background: 'var(--surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 12,
+                boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)',
+                zIndex: 100,
+                padding: '4px',
+              }}>
+                <button
+                  onClick={logout}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    borderRadius: 8,
+                    background: 'transparent',
+                    fontSize: 13,
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 150ms',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--canvas)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <SearchDialog isOpen={showSearch} onClose={() => setShowSearch(false)} />

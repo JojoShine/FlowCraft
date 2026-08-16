@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 
 interface SelectOption {
@@ -13,9 +14,16 @@ interface SelectProps {
   options: SelectOption[];
   error?: string;
   disabled?: boolean;
+  searchable?: boolean;
 }
 
-export function Select({ label, placeholder = '请选择', value, onValueChange, options, error, disabled }: SelectProps) {
+export function Select({ label, placeholder = '请选择', value, onValueChange, options, error, disabled, searchable = false }: SelectProps) {
+  const [search, setSearch] = useState('');
+
+  const filteredOptions = searchable && search
+    ? options.filter(opt => opt.label.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
       {label && (
@@ -28,7 +36,7 @@ export function Select({ label, placeholder = '请选择', value, onValueChange,
           {label}
         </label>
       )}
-      <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
+      <SelectPrimitive.Root value={value} onValueChange={(v) => { onValueChange?.(v); setSearch(''); }} disabled={disabled} onOpenChange={(open) => { if (!open) setSearch(''); }}>
         <SelectPrimitive.Trigger
           style={{
             width: '100%',
@@ -68,15 +76,42 @@ export function Select({ label, placeholder = '请选择', value, onValueChange,
               border: '1px solid var(--border-default)',
               borderRadius: 12,
               boxShadow: '0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-              padding: 4,
+              padding: searchable ? '4px' : 4,
               zIndex: 1000,
-              maxHeight: 240,
+              maxHeight: 280,
               overflow: 'hidden',
               width: 'var(--radix-select-trigger-width)',
             }}
           >
+            {searchable && (
+              <div style={{ padding: '4px 4px 6px' }}>
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="搜索..."
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontFamily: "'Geist', sans-serif",
+                    color: 'var(--ink)',
+                    background: 'var(--surface-raised)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            )}
             <SelectPrimitive.Viewport>
-              {options.map((opt) => (
+              {filteredOptions.length === 0 && searchable ? (
+                <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-3)', textAlign: 'center' }}>
+                  无匹配选项
+                </div>
+              ) : filteredOptions.map((opt) => (
                 <SelectPrimitive.Item
                   key={opt.value}
                   value={opt.value}

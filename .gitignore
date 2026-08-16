@@ -7,3 +7,4 @@ dist/
 .qoder/
 server/prisma/dev.db
 server/prisma/dev.db-journal
+server/logs/

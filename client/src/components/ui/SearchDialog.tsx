@@ -39,7 +39,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { selectProject } = useProjectContext();
+  const { selectProject, selectedProjectId } = useProjectContext();
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
     setLoading(true);
     timerRef.current = setTimeout(async () => {
       try {
-        const res = await searchApi.search(query.trim());
+        const res = await searchApi.search(query.trim(), selectedProjectId ?? undefined);
         setResults(res.data);
       } catch {
         setResults(null);

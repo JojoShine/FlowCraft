@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useProjects } from '../../hooks/useProjects';
-import { useTasks } from '../../hooks/useTasks';
 import { useArtifacts } from '../../hooks/useArtifacts';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { tasksApi } from '../../services/api';
+import { onDataChange } from '../../utils/dataEvents';
 import { ProjectDrawer } from '../ui/ProjectDrawer';
 import logoSvg from '../../assets/logo.svg';
 
@@ -69,9 +69,8 @@ const toolItems = [
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedProjectId, selectProject } = useProjectContext();
-  const { projects } = useProjects();
-  const { tasks } = useTasks(selectedProjectId ?? undefined);
+  const { selectedProjectId, selectProject, projects } = useProjectContext();
+  const [taskCount, setTaskCount] = useState(0);
   const { total: artifactsTotal } = useArtifacts(selectedProjectId ?? undefined, undefined, 1, 1);
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -81,6 +80,18 @@ export function Sidebar() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  useEffect(() => {
+    if (!selectedProjectId) { setTaskCount(0); return; }
+    tasksApi.count(selectedProjectId).then(res => {
+      setTaskCount(res.data.total);
+    }).catch(() => setTaskCount(0));
+    return onDataChange((type) => {
+      if (type === 'tasks') {
+        tasksApi.count(selectedProjectId).then(res => setTaskCount(res.data.total)).catch(() => {});
+      }
+    });
+  }, [selectedProjectId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -228,7 +239,7 @@ export function Sidebar() {
                   {item.icon}
                 </span>
                 {item.label}
-                {item.path === '/kanban' && tasks.length > 0 && (
+                {item.path === '/kanban' && taskCount > 0 && (
                   <span style={{
                     marginLeft: 'auto',
                     fontFamily: "'Geist Mono', monospace",
@@ -236,7 +247,7 @@ export function Sidebar() {
                     color: 'var(--ink-3)',
                     fontWeight: 500,
                   }}>
-                    {tasks.length}
+                    {taskCount}
                   </span>
                 )}
                 {item.path === '/artifacts' && artifactsTotal > 0 && (

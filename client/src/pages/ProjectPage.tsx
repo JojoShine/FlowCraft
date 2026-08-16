@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
 import { useProjectContext } from '../contexts/ProjectContext';
-import { useProjects } from '../hooks/useProjects';
 import { ProjectSpace } from './ProjectSpace';
 
 export function ProjectPage() {
-  const { selectedProjectId, selectProject } = useProjectContext();
-  const { projects, loading } = useProjects();
+  const { selectedProjectId, selectProject, projects, projectsLoading: loading } = useProjectContext();
 
   useEffect(() => {
     if (loading) return;

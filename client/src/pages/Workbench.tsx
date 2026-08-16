@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useProjects } from '../hooks/useProjects';
 import { useTasks } from '../hooks/useTasks';
 import { useArtifacts } from '../hooks/useArtifacts';
 import { useProjectContext } from '../contexts/ProjectContext';
@@ -8,6 +7,7 @@ import { TaskList } from '../components/workbench/TaskList';
 import { CalendarView } from '../components/workbench/CalendarView';
 import { TaskDrawer } from '../components/ui/TaskDrawer';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Pagination } from '../components/ui/Pagination';
 import { tasksApi } from '../services/api';
 import { notifyDataChange } from '../utils/dataEvents';
 import { useToast } from '../components/ui/Toast';
@@ -21,8 +21,7 @@ export function Workbench() {
   const [taskPage, setTaskPage] = useState(1);
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { selectedProjectId } = useProjectContext();
-  const { projects, loading: projectsLoading, refetch: refetchProjects } = useProjects();
+  const { selectedProjectId, projects, projectsLoading, refetchProjects } = useProjectContext();
   const { tasks, loading: tasksLoading, refetch: refetchTasks } = useTasks(selectedProjectId ?? undefined);
   const { artifacts, loading: artifactsLoading } = useArtifacts(selectedProjectId ?? undefined);
 
@@ -184,64 +183,18 @@ export function Workbench() {
           }}
         />
         )}
-        {weekTasks.length > taskPageSize && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)',
-          }}>
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              共 {weekTasks.length} 条，第 {taskPage}/{totalTaskPages} 页
-            </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => setTaskPage(p => Math.max(1, p - 1))}
-                disabled={taskPage <= 1}
-                style={{
-                  height: 28, padding: '0 10px', borderRadius: 6,
-                  border: '1px solid var(--border-default)',
-                  background: 'transparent', fontSize: 12,
-                  color: taskPage <= 1 ? 'var(--ink-4)' : 'var(--ink-2)',
-                  cursor: taskPage <= 1 ? 'default' : 'pointer',
-                }}
-              >
-                上一页
-              </button>
-              {Array.from({ length: totalTaskPages }, (_, i) => i + 1).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setTaskPage(p)}
-                  style={{
-                    width: 28, height: 28, borderRadius: 6,
-                    border: p === taskPage ? '1px solid var(--ink)' : '1px solid var(--border-default)',
-                    background: p === taskPage ? 'var(--ink)' : 'transparent',
-                    color: p === taskPage ? 'var(--canvas)' : 'var(--ink-2)',
-                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setTaskPage(p => Math.min(totalTaskPages, p + 1))}
-                disabled={taskPage >= totalTaskPages}
-                style={{
-                  height: 28, padding: '0 10px', borderRadius: 6,
-                  border: '1px solid var(--border-default)',
-                  background: 'transparent', fontSize: 12,
-                  color: taskPage >= totalTaskPages ? 'var(--ink-4)' : 'var(--ink-2)',
-                  cursor: taskPage >= totalTaskPages ? 'default' : 'pointer',
-                }}
-              >
-                下一页
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={taskPage}
+          totalPages={totalTaskPages}
+          total={weekTasks.length}
+          onChange={setTaskPage}
+        />
       </div>
 
       {/* Task Detail Drawer (read-only) */}
       {selectedTask && (
         <TaskDrawer
+          key={selectedTask.id}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           mode="detail"
@@ -255,6 +208,7 @@ export function Workbench() {
 
       {/* Task Edit Drawer */}
       <TaskDrawer
+        key={editingTask?.id || 'new'}
         isOpen={!!editingTask}
         onClose={() => setEditingTask(null)}
         mode="edit"
@@ -280,9 +234,9 @@ export function Workbench() {
       />
 
       {/* Two column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {/* Calendar section */}
-        <div>
+        <div style={{ gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>进行中项目</h2>
             <span style={{ fontSize: 12, color: 'var(--ink-3)', cursor: 'pointer', transition: 'color 150ms' }}

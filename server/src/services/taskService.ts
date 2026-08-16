@@ -2,6 +2,16 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/errorHandler';
 
 export const taskService = {
+  async countByProject(projectId: string) {
+    const grouped = await prisma.task.groupBy({
+      by: ['column'],
+      where: { projectId },
+      _count: { id: true },
+    });
+    const total = grouped.reduce((sum, t) => sum + t._count.id, 0);
+    return { total, byColumn: Object.fromEntries(grouped.map(t => [t.column, t._count.id])) };
+  },
+
   async list(filters?: { projectId?: string; column?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;
@@ -14,6 +24,36 @@ export const taskService = {
         phase: { select: { id: true, name: true, order: true, status: true } },
         assignee: { select: { id: true, name: true } },
       },
+    });
+  },
+
+  async listForPhase(phaseId: string) {
+    const tasks = await prisma.task.findMany({
+      where: { phaseId },
+      include: {
+        phase: { select: { id: true, name: true, order: true, status: true } },
+        assignee: { select: { id: true, name: true } },
+        artifacts: {
+          select: {
+            id: true, name: true, type: true, status: true,
+            filePath: true, taskId: true, projectId: true,
+            creatorId: true, createdAt: true, updatedAt: true,
+          },
+        },
+      },
+    });
+
+    return tasks.sort((a, b) => {
+      const aCompleted = a.status === 'completed';
+      const bCompleted = b.status === 'completed';
+
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+
+      const aDue = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+      const bDue = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+      return bDue - aDue;
     });
   },
 
@@ -78,7 +118,8 @@ export const taskService = {
     const existing = await prisma.task.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Task not found');
 
-    const isCompleting = data.status === 'completed' || data.column === 'done';
+    const isCompleting = (data.status === 'completed' || data.column === 'done') &&
+                         existing.status !== 'completed' && existing.column !== 'done';
     const isUncompleting = (data.status && data.status !== 'completed' && existing.status === 'completed') ||
                            (data.column && data.column !== 'done' && existing.column === 'done');
 
