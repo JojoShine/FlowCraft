@@ -20,8 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
-    setUser(null);
-    window.location.href = `${import.meta.env.BASE_URL}login`;
+    window.dispatchEvent(new Event('auth:logout'));
   }, []);
 
   useEffect(() => {
@@ -36,6 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('token');
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setUser(null);
+      setLoading(false);
+    };
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => window.removeEventListener('auth:logout', handleAuthLogout);
   }, []);
 
   const login = async (username: string, password: string) => {

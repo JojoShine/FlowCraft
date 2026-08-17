@@ -22,10 +22,10 @@ export function Workbench() {
   const [taskPage, setTaskPage] = useState(1);
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { selectedProjectId, projects, projectsLoading, refetchProjects } = useProjectContext();
+  const { selectedProjectId, projects, projectsLoading } = useProjectContext();
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
-  const { tasks, loading: tasksLoading, refetch: refetchTasks } = useTasks(selectedProjectId ?? undefined);
+  const { tasks, loading: tasksLoading } = useTasks(selectedProjectId ?? undefined);
   const { artifacts, loading: artifactsLoading } = useArtifacts(selectedProjectId ?? undefined);
 
   const handleDeleteTask = async (task: any) => {
@@ -38,11 +38,9 @@ export function Workbench() {
     try {
       await tasksApi.delete(task.id);
       toast({ title: '任务已删除', variant: 'success' });
-      refetchTasks();
-      refetchProjects();
       notifyDataChange('tasks');
-    } catch {
-      toast({ title: '删除失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '删除失败', description: err?.message, variant: 'error' });
     }
   };
 
@@ -220,7 +218,6 @@ export function Workbench() {
         task={editingTask || undefined}
         onComplete={() => {
           setEditingTask(null);
-          refetchTasks();
           notifyDataChange('tasks');
         }}
       />
@@ -233,7 +230,6 @@ export function Workbench() {
         defaultProjectId={selectedProjectId ?? undefined}
         onComplete={() => {
           setShowNewTaskDrawer(false);
-          refetchTasks();
           notifyDataChange('tasks');
         }}
       />

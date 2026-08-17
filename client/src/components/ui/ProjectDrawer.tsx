@@ -192,8 +192,8 @@ export function ProjectDrawer({ isOpen, onClose }: ProjectDrawerProps) {
       notifyDataChange('projects');
       toast({ title: '项目已创建', variant: 'success' });
       onClose();
-    } catch {
-      toast({ title: '创建失败', description: '请检查网络连接', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '创建失败', description: err?.message, variant: 'error' });
     } finally {
       setSubmitting(false);
     }

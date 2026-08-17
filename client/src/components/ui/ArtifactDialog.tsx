@@ -65,8 +65,8 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
       toast({ title: '产物已创建', variant: 'success' });
       notifyDataChange('artifacts');
       handleClose();
-    } catch {
-      toast({ title: '创建失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '创建失败', description: err?.message, variant: 'error' });
     } finally {
       setCreating(false);
     }
@@ -250,8 +250,8 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                           setUploadedFile({ id: res.data.id, name: folderName });
                           if (!name) setName(folderName);
                           toast({ title: `文件夹已上传 (${files.length} 个文件)`, variant: 'success' });
-                        } catch {
-                          toast({ title: '上传失败', variant: 'error' });
+                        } catch (err: any) {
+                          toast({ title: '上传失败', description: err?.message, variant: 'error' });
                         } finally {
                           setFolderUploading(false);
                         }

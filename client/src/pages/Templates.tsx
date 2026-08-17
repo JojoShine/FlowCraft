@@ -35,8 +35,8 @@ export function Templates() {
     try {
       const res = await templatesApi.list();
       setTemplates(res.data);
-    } catch {
-      addToast('加载模板失败', 'error');
+    } catch (err: any) {
+      addToast(err?.message || '加载模板失败', 'error');
     } finally {
       setLoading(false);
     }
@@ -52,8 +52,8 @@ export function Templates() {
       await templatesApi.delete(deletingId);
       setTemplates(prev => prev.filter(t => t.id !== deletingId));
       addToast('模板已删除', 'success');
-    } catch {
-      addToast('删除失败', 'error');
+    } catch (err: any) {
+      addToast(err?.message || '删除失败', 'error');
     } finally {
       setDeletingId(null);
     }
@@ -72,8 +72,8 @@ export function Templates() {
       }
       setShowDialog(false);
       setEditingTemplate(null);
-    } catch {
-      addToast(editingTemplate ? '更新失败' : '创建失败', 'error');
+    } catch (err: any) {
+      addToast(err?.message || (editingTemplate ? '更新失败' : '创建失败'), 'error');
     }
   };
 

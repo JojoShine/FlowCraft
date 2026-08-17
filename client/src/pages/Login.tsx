@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,10 +16,11 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) {
-    navigate('/workbench', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/workbench', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +40,9 @@ export function Login() {
       }
       navigate('/workbench', { replace: true });
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || '操作失败');
+      const apiError = err.response?.data?.error;
+      const msg = typeof apiError === 'string' ? apiError : apiError?.message || err.message || '操作失败';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -281,7 +284,17 @@ export function Login() {
           )}
 
           {error && (
-            <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              fontSize: 13,
+              color: '#ef4444',
+              lineHeight: 1.5,
+            }}>
+              {error}
+            </div>
           )}
 
           <button

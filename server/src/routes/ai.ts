@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { chatService } from '../services/chatService';
 import { chatStream, type ChatMessage } from '../ai/llm';
@@ -10,7 +10,7 @@ router.post('/chat', asyncHandler(async (req, res) => {
   const { conversationId, message, projectId } = req.body;
 
   if (!message?.trim()) {
-    throw new Error('message is required');
+    throw AppError.badRequest('message is required');
   }
 
   let convId = conversationId;

@@ -45,10 +45,14 @@ async function queryTasksForPeriod(projectId: string, start: Date, end: Date) {
     prisma.task.findMany({
       where: {
         projectId,
-        completedAt: { gte: start, lte: end },
+        column: 'done',
+        OR: [
+          { completedAt: { gte: start, lte: end } },
+          { completedAt: null, updatedAt: { gte: start, lte: end } },
+        ],
       },
-      orderBy: { completedAt: 'asc' },
-      select: { title: true, completedAt: true },
+      orderBy: { updatedAt: 'asc' },
+      select: { title: true, completedAt: true, updatedAt: true },
     }),
     prisma.task.findMany({
       where: {
@@ -219,32 +223,31 @@ export const reportService = {
       nextSteps: tasks.nextSteps,
     });
 
-    const { start: dayStart, end: dayEnd } = utc8DayRange(
-      getCSTComponents(reportDate).year,
-      getCSTComponents(reportDate).month,
-      getCSTComponents(reportDate).day,
-    );
+    const cstComp = getCSTComponents(reportDate);
+    const { start: dayStart, end: dayEnd } = utc8DayRange(cstComp.year, cstComp.month, cstComp.day);
 
-    const existing = await prisma.report.findFirst({
-      where: {
-        type,
-        projectId,
-        date: { gte: dayStart, lte: dayEnd },
-      },
-    });
+    return prisma.$transaction(async (tx) => {
+      const existing = await tx.report.findFirst({
+        where: {
+          type,
+          projectId,
+          date: { gte: dayStart, lte: dayEnd },
+        },
+      });
 
-    if (existing) {
-      await prisma.report.delete({ where: { id: existing.id } });
-    }
+      if (existing) {
+        await tx.report.delete({ where: { id: existing.id } });
+      }
 
-    return prisma.report.create({
-      data: {
-        type,
-        label,
-        content,
-        date: reportDate,
-        projectId,
-      },
+      return tx.report.create({
+        data: {
+          type,
+          label,
+          content,
+          date: dayStart,
+          projectId,
+        },
+      });
     });
   },
 };

@@ -36,18 +36,22 @@ export function useProjectSpace(id: string) {
   const [error, setError] = useState<string | null>(null);
   const [activePhaseId, setActivePhaseId] = useState<string>('');
   const fetchIdRef = useRef(0);
+  const initialLoad = useRef(true);
 
   useEffect(() => {
     setProject(null);
     setTasks([]);
     setActivePhaseId('');
     setError(null);
+    initialLoad.current = true;
   }, [id]);
 
-  const fetchSummary = useCallback(async () => {
+  const fetchSummary = useCallback(async (silent = false) => {
     if (!id) return;
-    setLoading(true);
-    setActivePhaseId('');
+    if (!silent) {
+      setLoading(true);
+      setActivePhaseId('');
+    }
     try {
       const res = await projectsApi.getSummary(id);
       const data = res.data as ProjectSummary;
@@ -69,14 +73,14 @@ export function useProjectSpace(id: string) {
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [id]);
 
-  const fetchPhaseTasks = useCallback(async (phaseId: string) => {
+  const fetchPhaseTasks = useCallback(async (phaseId: string, silent = false) => {
     if (!phaseId) return;
     const fetchId = ++fetchIdRef.current;
-    setLoadingTasks(true);
+    if (!silent) setLoadingTasks(true);
     try {
       const res = await tasksApi.listByPhase(phaseId);
       if (fetchId === fetchIdRef.current) {
@@ -85,11 +89,15 @@ export function useProjectSpace(id: string) {
     } catch {
       if (fetchId === fetchIdRef.current) setTasks([]);
     } finally {
-      if (fetchId === fetchIdRef.current) setLoadingTasks(false);
+      if (fetchId === fetchIdRef.current && !silent) setLoadingTasks(false);
     }
   }, []);
 
-  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+  useEffect(() => {
+    const isFirst = initialLoad.current;
+    initialLoad.current = false;
+    fetchSummary(!isFirst);
+  }, [fetchSummary]);
 
   useEffect(() => {
     if (activePhaseId) fetchPhaseTasks(activePhaseId);
@@ -97,14 +105,14 @@ export function useProjectSpace(id: string) {
 
   useEffect(() => {
     return onDataChange((type) => {
-      if (type === 'projects') fetchSummary();
-      if (type === 'tasks' && activePhaseId) fetchPhaseTasks(activePhaseId);
+      if (type === 'projects') fetchSummary(true);
+      if (type === 'tasks' && activePhaseId) fetchPhaseTasks(activePhaseId, true);
     });
   }, [fetchSummary, fetchPhaseTasks, activePhaseId]);
 
   const refetch = useCallback(() => {
-    fetchSummary();
-    if (activePhaseId) fetchPhaseTasks(activePhaseId);
+    fetchSummary(true);
+    if (activePhaseId) fetchPhaseTasks(activePhaseId, true);
   }, [fetchSummary, fetchPhaseTasks, activePhaseId]);
 
   return {

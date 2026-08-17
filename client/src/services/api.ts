@@ -24,18 +24,21 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    const serverError = error.response?.data?.error;
+    const serverMessage = typeof serverError === 'string'
+      ? serverError
+      : serverError?.message;
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      const loginPath = `${import.meta.env.BASE_URL}login`;
-      if (window.location.pathname !== loginPath) {
-        window.location.href = loginPath;
-      }
+      window.dispatchEvent(new Event('auth:logout'));
       return Promise.reject(error);
     }
-    if (error.response?.data?.error) {
-      const { message, code } = error.response.data.error;
-      console.error(`[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${code}: ${message}`);
+
+    if (serverMessage) {
+      error.message = serverMessage;
     }
+    console.error(`[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${error.response?.status}: ${serverMessage || error.message}`);
     return Promise.reject(error);
   }
 );

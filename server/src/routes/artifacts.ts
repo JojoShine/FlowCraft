@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { artifactService } from '../services/artifactService';
 import { upload } from '../middleware/upload';
@@ -20,11 +20,11 @@ const router = Router();
 router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 2000), asyncHandler(async (req, res) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
-    throw new Error('No files uploaded');
+    throw AppError.badRequest('No files uploaded');
   }
 
   const { projectId, taskId, name, type } = req.body;
-  if (!projectId) throw new Error('projectId is required');
+  if (!projectId) throw AppError.badRequest('projectId is required');
 
   const folderName = name || path.basename(files[0].originalname) || 'uploaded-folder';
   const timestamp = Date.now();
@@ -78,7 +78,7 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
-    throw new Error('No file uploaded');
+    throw AppError.badRequest('No file uploaded');
   }
 
   const { projectId, taskId, type, name } = req.body;

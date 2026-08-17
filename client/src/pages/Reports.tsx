@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useReports } from '../hooks/useReports';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ui/Toast';
 import { reportsApi } from '../services/api';
 import { formatDate, getYearInTZ, getMonthInTZ, getDayInTZ } from '../utils/date';
 
@@ -113,6 +114,7 @@ function formatReportAsTxt(report: Report, projectName: string): string {
 export function Reports() {
   const { selectedProjectId, projects } = useProjectContext();
   const { user } = useAuth();
+  const { addToast } = useToast();
   const isViewer = user?.role === 'viewer';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filter, setFilter] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('all');
@@ -187,8 +189,8 @@ export function Reports() {
         }
         setViewingReport(parsed);
       }
-    } catch (err) {
-      console.error('Generate report failed:', err);
+    } catch (err: any) {
+      addToast(err?.message || '生成日报失败', 'error');
     } finally {
       setGenerating(false);
     }
@@ -211,8 +213,8 @@ export function Reports() {
       setCurrentDate(new Date(weekEnd.getFullYear(), weekEnd.getMonth(), 1));
       await refetch();
       if (parsed) setViewingReport(parsed);
-    } catch (err) {
-      console.error('Generate weekly report failed:', err);
+    } catch (err: any) {
+      addToast(err?.message || '生成周报失败', 'error');
     } finally {
       setGenerating(false);
     }
@@ -235,8 +237,8 @@ export function Reports() {
       setCurrentDate(new Date(targetYear, targetMonth - 1, 1));
       await refetch();
       if (parsed) setViewingReport(parsed);
-    } catch (err) {
-      console.error('Generate monthly report failed:', err);
+    } catch (err: any) {
+      addToast(err?.message || '生成月报失败', 'error');
     } finally {
       setGenerating(false);
     }
@@ -411,7 +413,7 @@ export function Reports() {
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.2 }}>汇报</div>
-          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>AI 自动生成日报、周报、月报、年报</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>自动生成日报、周报、月报、年报</div>
         </div>
         {!isViewer && (
         <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -448,7 +450,7 @@ export function Reports() {
                 <path d="M2 12l10 5 10-5"/>
               </svg>
             )}
-            {generating ? '生成中...' : 'AI 生成汇报'}
+            {generating ? '生成中...' : '生成汇报'}
           </button>
           {showDropdown && (
             <div style={{
@@ -756,7 +758,7 @@ export function Reports() {
           </div>
         ))}
         <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--ink-3)' }}>
-          所有汇报均由 AI 自动生成
+          所有汇报均由自动生成
         </span>
       </div>
 

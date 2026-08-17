@@ -2,6 +2,7 @@ import axios from 'axios';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
+import { AppError } from '../middleware/errorHandler';
 
 const WECHAT_APP_ID = process.env.WECHAT_APP_ID || '';
 const WECHAT_APP_SECRET = process.env.WECHAT_APP_SECRET || '';
@@ -12,12 +13,12 @@ export const authService = {
   async login(username: string, password: string) {
     const user = await prisma.user.findUnique({ where: { username } });
     if (!user || !user.passwordHash) {
-      throw new Error('用户名或密码错误');
+      throw AppError.badRequest('用户名或密码错误');
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      throw new Error('用户名或密码错误');
+      throw AppError.badRequest('用户名或密码错误');
     }
 
     return user;
@@ -26,7 +27,7 @@ export const authService = {
   async register(username: string, password: string, name?: string) {
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) {
-      throw new Error('用户名已存在');
+      throw AppError.conflict('用户名已存在');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -52,7 +53,7 @@ export const authService = {
     });
 
     if (tokenRes.data.errcode) {
-      throw new Error(tokenRes.data.errmsg || '微信授权失败');
+      throw new AppError(tokenRes.data.errmsg || '微信授权失败', 502);
     }
 
     const { access_token, openid, unionid } = tokenRes.data;
@@ -62,7 +63,7 @@ export const authService = {
     });
 
     if (infoRes.data.errcode) {
-      throw new Error(infoRes.data.errmsg || '获取用户信息失败');
+      throw new AppError(infoRes.data.errmsg || '获取用户信息失败', 502);
     }
 
     const { nickname, headimgurl } = infoRes.data;

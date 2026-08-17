@@ -61,7 +61,7 @@ export function ProjectSpace() {
   const isViewer = user?.role === 'viewer';
   const {
     project, tasks, phases, loading, loadingTasks, error,
-    activePhaseId, setActivePhaseId, refetch,
+    activePhaseId, setActivePhaseId,
   } = useProjectSpace(selectedProjectId || '');
   const [searchParams, setSearchParams] = useSearchParams();
   const filterTaskId = searchParams.get('task');
@@ -105,9 +105,8 @@ export function ProjectSpace() {
       toast({ title: '状态已更新', variant: 'success' });
       setStatusDropdownOpen(false);
       notifyDataChange('projects');
-      refetch();
-    } catch {
-      toast({ title: '更新失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '更新失败', description: err?.message, variant: 'error' });
     }
   };
 
@@ -135,9 +134,8 @@ export function ProjectSpace() {
       await projectsApi.update(project.id, { name: trimmed });
       toast({ title: '名称已更新', variant: 'success' });
       notifyDataChange('projects');
-      refetch();
-    } catch {
-      toast({ title: '更新失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '更新失败', description: err?.message, variant: 'error' });
     }
     setEditingName(false);
   };
@@ -152,9 +150,9 @@ export function ProjectSpace() {
     try {
       await tasksApi.delete(task.id);
       toast({ title: '任务已删除', variant: 'success' });
-      refetch();
-    } catch {
-      toast({ title: '删除失败', variant: 'error' });
+      notifyDataChange('tasks');
+    } catch (err: any) {
+      toast({ title: '删除失败', description: err?.message, variant: 'error' });
     }
   };
 
@@ -961,7 +959,7 @@ export function ProjectSpace() {
         task={editingTask || undefined}
         onComplete={() => {
           setEditingTask(null);
-          refetch();
+          notifyDataChange('tasks');
         }}
       />
 
@@ -974,7 +972,7 @@ export function ProjectSpace() {
         task={completingTask || undefined}
         onComplete={() => {
           setCompletingTask(null);
-          refetch();
+          notifyDataChange('tasks');
         }}
       />
 

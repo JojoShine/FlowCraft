@@ -257,8 +257,8 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
 
       onComplete?.();
       onClose();
-    } catch {
-      toast({ title: mode === 'edit' ? '更新失败' : '创建失败', description: '请检查网络连接', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: mode === 'edit' ? '更新失败' : '创建失败', description: err?.message, variant: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -279,8 +279,8 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
       toast({ title: '任务已完成', variant: 'success' });
       onComplete?.();
       onClose();
-    } catch {
-      toast({ title: '操作失败', description: '请检查网络连接', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '操作失败', description: err?.message, variant: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -996,8 +996,8 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                             setPendingArtifacts(prev => [...prev, { id: artifactId, name: folderName, type: artifactType, isNew: true }]);
                             toast({ title: `文件夹已上传 (${fileList.length} 个文件)`, variant: 'success' });
                           }
-                        } catch {
-                          toast({ title: '上传失败', variant: 'error' });
+                        } catch (err: any) {
+                          toast({ title: '上传失败', description: err?.message, variant: 'error' });
                         } finally {
                           if (e.target) e.target.value = '';
                         }
@@ -1055,8 +1055,8 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                                 }
                                 setPendingArtifacts(prev => prev.filter((_, j) => j !== i));
                                 toast({ title: '已移除', variant: 'success' });
-                              } catch {
-                                toast({ title: '移除失败', variant: 'error' });
+                              } catch (err: any) {
+                                toast({ title: '移除失败', description: err?.message, variant: 'error' });
                               }
                             }}
                             style={{

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authService } from '../services/authService';
 import { authenticate } from '../middleware/auth';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 
 const router = Router();
@@ -11,7 +11,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 router.post('/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
-    throw new Error('用户名和密码不能为空');
+    throw AppError.badRequest('用户名和密码不能为空');
   }
 
   const user = await authService.login(username, password);
@@ -34,7 +34,7 @@ router.post('/login', asyncHandler(async (req, res) => {
 router.post('/register', asyncHandler(async (req, res) => {
   const { username, password, name } = req.body;
   if (!username || !password) {
-    throw new Error('用户名和密码不能为空');
+    throw AppError.badRequest('用户名和密码不能为空');
   }
 
   const user = await authService.register(username, password, name);

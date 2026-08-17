@@ -46,7 +46,7 @@ export function Kanban() {
   const { selectedProjectId } = useProjectContext();
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
-  const { tasks, loading, error, refetch } = useTasks(selectedProjectId ?? undefined);
+  const { tasks, loading, error } = useTasks(selectedProjectId ?? undefined);
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -60,10 +60,9 @@ export function Kanban() {
     try {
       await tasksApi.delete(task.id);
       toast({ title: '任务已删除', variant: 'success' });
-      refetch();
       notifyDataChange('tasks');
-    } catch {
-      toast({ title: '删除失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '删除失败', description: err?.message, variant: 'error' });
     }
   };
 
@@ -218,10 +217,9 @@ export function Kanban() {
                     column: toColumn,
                     status: toColumn === 'done' ? 'completed' : 'todo',
                   });
-                  refetch();
                   notifyDataChange('tasks');
-                } catch {
-                  toast({ title: '移动失败', variant: 'error' });
+                } catch (err: any) {
+                  toast({ title: '移动失败', description: err?.message, variant: 'error' });
                 }
               }}
               onTaskClick={handleTaskClick}
@@ -280,7 +278,6 @@ export function Kanban() {
         task={editingTask || undefined}
         onComplete={() => {
           setEditingTask(null);
-          refetch();
           notifyDataChange('tasks');
         }}
       />
@@ -294,7 +291,6 @@ export function Kanban() {
         defaultProjectId={selectedProjectId ?? undefined}
         onComplete={() => {
           setShowNewTaskDrawer(false);
-          refetch();
           notifyDataChange('tasks');
         }}
       />

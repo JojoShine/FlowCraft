@@ -63,8 +63,8 @@ export function Artifacts() {
       toast({ title: '产物已删除', variant: 'success' });
       refetch();
       notifyDataChange('artifacts');
-    } catch {
-      toast({ title: '删除失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '删除失败', description: err?.message, variant: 'error' });
     }
   };
 
@@ -90,8 +90,8 @@ export function Artifacts() {
       setBindTarget(null);
       refetch();
       notifyDataChange('artifacts');
-    } catch {
-      toast({ title: '操作失败', variant: 'error' });
+    } catch (err: any) {
+      toast({ title: '操作失败', description: err?.message, variant: 'error' });
     }
   };
 

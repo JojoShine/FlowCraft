@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { inviteApi } from '../../services/api';
+import { useToast } from './Toast';
 
 interface Viewer {
   id: string;
@@ -18,6 +19,7 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
   const [newCredential, setNewCredential] = useState<{ username: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     inviteApi.list(projectId).then(res => setViewers(res.data));
@@ -30,8 +32,8 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
       setNewCredential(res.data);
       const updated = await inviteApi.list(projectId);
       setViewers(updated.data);
-    } catch (err) {
-      console.error('Invite failed:', err);
+    } catch (err: any) {
+      addToast(err?.message || '创建邀请失败', 'error');
     } finally {
       setLoading(false);
     }
@@ -41,8 +43,8 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
     try {
       await inviteApi.revoke(projectId, userId);
       setViewers(v => v.filter(x => x.id !== userId));
-    } catch (err) {
-      console.error('Revoke failed:', err);
+    } catch (err: any) {
+      addToast(err?.message || '撤销失败', 'error');
     }
   };
 

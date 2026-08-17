@@ -86,6 +86,7 @@ export const taskService = {
     if (!data.title || !data.type || !data.projectId) {
       throw AppError.badRequest('title, type, and projectId are required');
     }
+    const isCompleted = data.column === 'done' || data.status === 'completed';
     return prisma.task.create({
       data: {
         title: data.title,
@@ -99,6 +100,7 @@ export const taskService = {
         phaseId: data.phaseId,
         assigneeId: data.assigneeId,
         column: data.column || 'todo',
+        completedAt: isCompleted ? new Date() : undefined,
       },
     });
   },
