@@ -47,7 +47,7 @@ export function AuthCallback() {
       }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 14, color: '#ef4444', marginBottom: 16 }}>{error}</p>
-          <a href="/login" style={{ fontSize: 13, color: 'var(--ink-2)' }}>返回登录</a>
+          <a href={`${import.meta.env.BASE_URL}login`} style={{ fontSize: 13, color: 'var(--ink-2)' }}>返回登录</a>
         </div>
       </div>
     );

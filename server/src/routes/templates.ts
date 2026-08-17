@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { templateService } from '../services/templateService';
+import { requireRole } from '../middleware/auth';
 
 const router = Router();
 
@@ -11,22 +12,22 @@ router.get('/', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {
-  const template = await templateService.getById(req.params.id);
+  const template = await templateService.getById(req.params.id as string);
   res.json(successResponse(template));
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const template = await templateService.create(req.body);
   res.status(201).json(successResponse(template));
 }));
 
-router.patch('/:id', asyncHandler(async (req, res) => {
-  const template = await templateService.update(req.params.id, req.body);
+router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  const template = await templateService.update(req.params.id as string, req.body);
   res.json(successResponse(template));
 }));
 
-router.delete('/:id', asyncHandler(async (req, res) => {
-  await templateService.delete(req.params.id);
+router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  await templateService.delete(req.params.id as string);
   res.json(successResponse({ deleted: true }));
 }));
 

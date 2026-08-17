@@ -95,7 +95,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         <div style={{
           fontSize: 11,
           color: 'var(--ink-2)',
-          fontFamily: "'Geist Mono', monospace",
+          fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           padding: '1px 3px',
         }}>
           {prevLast - startDow + 1 + i}
@@ -133,7 +133,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
       >
         <div style={{
           fontSize: 11,
-          fontFamily: "'Geist Mono', monospace",
+          fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           padding: '1px 3px',
           background: cls ? 'var(--ink)' : 'transparent',
           color: cls ? 'var(--canvas)' : 'var(--ink-2)',
@@ -208,7 +208,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           <div style={{
             fontSize: 11,
             color: 'var(--ink-2)',
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             padding: '1px 3px',
           }}>
             {i}

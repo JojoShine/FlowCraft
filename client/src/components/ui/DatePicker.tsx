@@ -75,7 +75,7 @@ export function DatePicker({ label, value, onChange, placeholder = '选择日期
             height: 36,
             padding: '0 12px',
             fontSize: 13,
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             color: displayValue ? 'var(--ink)' : 'var(--ink-3)',
             background: 'var(--surface)',
             border: `1px solid ${error ? 'var(--red)' : 'var(--border-default)'}`,
@@ -142,7 +142,7 @@ export function DatePicker({ label, value, onChange, placeholder = '选择日期
                 fontSize: 13,
                 fontWeight: 600,
                 color: 'var(--ink)',
-                fontFamily: "'Geist', sans-serif",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
               }}>
                 {year}年{month + 1}月
               </span>
@@ -217,7 +217,7 @@ export function DatePicker({ label, value, onChange, placeholder = '选择日期
                       background: isSelected ? 'var(--ink)' : 'transparent',
                       color: isSelected ? 'var(--canvas)' : 'var(--ink)',
                       fontSize: 12,
-                      fontFamily: "'Geist Mono', monospace",
+                      fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',

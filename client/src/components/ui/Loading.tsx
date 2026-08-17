@@ -40,7 +40,7 @@ export function Loading({ size = 'md', text, fullPage }: LoadingProps) {
         <span style={{
           fontSize: 13,
           color: 'var(--ink-3)',
-          fontFamily: "'Geist', sans-serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         }}>
           {text}
         </span>

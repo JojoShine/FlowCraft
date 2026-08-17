@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import { useArtifacts } from '../hooks/useArtifacts';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StatsGrid } from '../components/workbench/StatsGrid';
 import { TaskList } from '../components/workbench/TaskList';
 import { CalendarView } from '../components/workbench/CalendarView';
@@ -22,6 +23,8 @@ export function Workbench() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { selectedProjectId, projects, projectsLoading, refetchProjects } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const { tasks, loading: tasksLoading, refetch: refetchTasks } = useTasks(selectedProjectId ?? undefined);
   const { artifacts, loading: artifactsLoading } = useArtifacts(selectedProjectId ?? undefined);
 
@@ -116,7 +119,7 @@ export function Workbench() {
             当前有 {totalTasks - completedTasks} 项待处理任务，{inProgressProjects} 个项目进行中
           </div>
         </div>
-        <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 12, color: 'var(--ink-3)' }}>
+        <div style={{ fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontSize: 12, color: 'var(--ink-3)' }}>
           {formatDateFull(new Date().toISOString())}
         </div>
       </div>
@@ -128,6 +131,7 @@ export function Workbench() {
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>本周任务</h2>
+          {!isViewer && (
           <button
             onClick={() => setShowNewTaskDrawer(true)}
             style={{
@@ -159,6 +163,7 @@ export function Workbench() {
             </svg>
             新建任务
           </button>
+          )}
         </div>
         {weekTasks.length === 0 ? (
           <EmptyState
@@ -167,17 +172,17 @@ export function Workbench() {
           />
         ) : (
           <TaskList
-          tasks={transformedTasks} 
+          tasks={transformedTasks}
           onToggle={(id) => console.log('Toggle task:', id)}
           onClick={(task) => {
             const full = tasks.find(t => t.id === task.id);
             setSelectedTask(full || task);
           }}
-          onEdit={(task) => {
+          onEdit={isViewer ? undefined : (task) => {
             const full = tasks.find(t => t.id === task.id);
             setEditingTask(full || task);
           }}
-          onDelete={(task) => {
+          onDelete={isViewer ? undefined : (task) => {
             const full = tasks.find(t => t.id === task.id);
             if (full) handleDeleteTask(full);
           }}
@@ -199,7 +204,7 @@ export function Workbench() {
           onClose={() => setSelectedTask(null)}
           mode="detail"
           task={selectedTask}
-          onEdit={() => {
+          onEdit={isViewer ? undefined : () => {
             setEditingTask(selectedTask);
             setSelectedTask(null);
           }}

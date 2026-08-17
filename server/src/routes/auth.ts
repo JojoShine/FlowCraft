@@ -25,6 +25,8 @@ router.post('/login', asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       avatarUrl: user.avatarUrl,
+      role: user.role,
+      projectId: user.projectId,
     },
   }));
 }));
@@ -46,6 +48,8 @@ router.post('/register', asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       avatarUrl: user.avatarUrl,
+      role: user.role,
+      projectId: user.projectId,
     },
   }));
 }));

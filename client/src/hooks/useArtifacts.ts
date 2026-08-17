@@ -14,6 +14,12 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
   const refetch = () => setTrigger(t => t + 1);
 
   useEffect(() => {
+    setArtifacts([]);
+    setTotal(0);
+    setError(null);
+  }, [projectId, type]);
+
+  useEffect(() => {
     const fetchArtifacts = async () => {
       setLoading(true);
       try {

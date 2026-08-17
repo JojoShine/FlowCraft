@@ -37,21 +37,34 @@ export function useProjectSpace(id: string) {
   const [activePhaseId, setActivePhaseId] = useState<string>('');
   const fetchIdRef = useRef(0);
 
+  useEffect(() => {
+    setProject(null);
+    setTasks([]);
+    setActivePhaseId('');
+    setError(null);
+  }, [id]);
+
   const fetchSummary = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setActivePhaseId('');
     try {
       const res = await projectsApi.getSummary(id);
       const data = res.data as ProjectSummary;
       setProject(data);
-      if (data.phases?.length && !activePhaseId) {
+      if (data.phases?.length) {
         const statusToPhaseName: Record<string, string> = {
-          planning: '方案设计', design: '原型设计',
-          development: '开发实施', testing: '测试交付', completed: '复盘归档',
+          discovery: '项目线索',
+          research: '调研梳理',
+          design: '方案设计',
+          prototype: '原型设计',
+          development: '开发实施',
+          testing: '测试交付',
+          completed: '复盘归档',
         };
         const targetName = statusToPhaseName[data.status];
-        const match = data.phases.find(p => p.name === targetName);
-        setActivePhaseId(match?.id || data.phases[0]?.id || '');
+        const match = targetName ? data.phases.find(p => p.name === targetName) : null;
+        setActivePhaseId(match?.id || data.phases[0].id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');

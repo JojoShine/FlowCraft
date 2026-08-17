@@ -46,7 +46,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
             {stat.label}
           </div>
           <div style={{
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             fontSize: 28,
             fontWeight: 600,
             letterSpacing: '-0.03em',
@@ -60,7 +60,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
               fontSize: 11,
               color: 'var(--ink-3)',
               marginTop: 8,
-              fontFamily: "'Geist Mono', monospace",
+              fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             }}>
               {stat.change}
             </div>

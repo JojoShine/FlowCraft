@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useProjectSpace } from '../hooks/useProjectSpace';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { TaskDrawer } from '../components/ui/TaskDrawer';
+import { InviteDialog } from '../components/ui/InviteDialog';
+import { ArtifactViewer } from '../components/ui/ArtifactViewer';
 import { Pagination } from '../components/ui/Pagination';
 import { StatsGrid } from '../components/workbench/StatsGrid';
 import { tasksApi, projectsApi } from '../services/api';
@@ -13,21 +16,23 @@ import { notifyDataChange } from '../utils/dataEvents';
 import type { Task } from '../types';
 
 const PROJECT_STATUSES = [
-  { value: 'planning', label: '方案设计' },
-  { value: 'design', label: '原型设计' },
+  { value: 'discovery', label: '项目线索' },
+  { value: 'research', label: '调研梳理' },
+  { value: 'design', label: '方案设计' },
+  { value: 'prototype', label: '原型设计' },
   { value: 'development', label: '开发实施' },
-  { value: 'testing', label: '测试验收' },
-  { value: 'completed', label: '已完成' },
+  { value: 'testing', label: '测试交付' },
+  { value: 'completed', label: '复盘归档' },
 ];
 
 const phaseSummaries: Record<string, string> = {
-  '项目线索': '项目线索阶段已完成。已明确项目目标与核心干系人，完成初步需求收集与可行性评估，为后续调研奠定基础。',
-  '调研梳理': '调研梳理阶段已完成。业务流程、系统现状与痛点均已梳理归档，关键用户访谈记录齐全，输出调研报告 2 份。',
-  '方案设计': '方案设计阶段已完成。技术选型与系统架构方案已评审通过，实施方案 v2.1 已定稿，核心模块拆分完毕。',
-  '原型设计': '原型设计阶段已完成。所有核心页面原型已交付并通过评审，交互流程标注完整，已移交开发团队。',
-  '开发实施': '开发实施阶段进行中。核心模块开发进度约 65%，前后端联调已开始。当前有 2 项任务存在延期风险，建议关注接口对接进度。',
-  '测试交付': '测试交付阶段尚未开始。待开发实施完成后启动，预计需要 2 周完成集成测试与用户验收。',
-  '复盘归档': '复盘归档阶段尚未开始。项目上线运行稳定后将启动复盘，整理经验教训与知识沉淀。',
+  '项目线索': '明确项目目标与核心干系人，完成初步需求收集与可行性评估。',
+  '调研梳理': '梳理业务流程与系统现状，完成关键用户访谈，输出调研报告。',
+  '方案设计': '完成技术选型与系统架构设计，定稿实施方案，拆分核心模块。',
+  '原型设计': '交付核心页面原型，标注交互流程，移交开发团队。',
+  '开发实施': '核心模块开发与前后端联调，推进功能实现与接口对接。',
+  '测试交付': '执行集成测试与用户验收，修复缺陷，准备上线。',
+  '复盘归档': '项目上线后复盘总结经验教训，整理文档并归档。',
 };
 
 function fmtDate(s: string | null) {
@@ -52,6 +57,8 @@ function fmtDateFull(s: string | null) {
 
 export function ProjectSpace() {
   const { selectedProjectId } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const {
     project, tasks, phases, loading, loadingTasks, error,
     activePhaseId, setActivePhaseId, refetch,
@@ -61,8 +68,10 @@ export function ProjectSpace() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
   const [taskPage, setTaskPage] = useState(1);
   const [artifactPage, setArtifactPage] = useState(1);
+  const [viewingArtifact, setViewingArtifact] = useState<any>(null);
   const TASKS_PER_PAGE = 9;
   const ARTIFACTS_PER_PAGE = 9;
 
@@ -241,26 +250,61 @@ export function ProjectSpace() {
                 outline: 'none',
                 background: 'transparent',
                 color: 'var(--ink)',
-                fontFamily: "'Geist', sans-serif",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 padding: '0 0 2px',
                 minWidth: 200,
               }}
             />
           ) : (
             <div
-              style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-              onClick={startEditingName}
-              title="点击编辑项目名称"
+              style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 8, cursor: isViewer ? 'default' : 'pointer' }}
+              onClick={() => { if (!isViewer) startEditingName(); }}
+              title={isViewer ? undefined : '点击编辑项目名称'}
             >
               {project.name}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, color: 'var(--ink-3)', opacity: 0.5 }}>
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
+              {!isViewer && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, color: 'var(--ink-3)', opacity: 0.5 }}>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              )}
+              {!isViewer && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowInvite(true); }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--ink-3)',
+                    opacity: 0.5,
+                    transition: 'all 150ms',
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.color = 'var(--ink)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.5';
+                    e.currentTarget.style.color = 'var(--ink-3)';
+                  }}
+                  title="邀请协作者"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <line x1="19" y1="8" x2="19" y2="14"/>
+                    <line x1="22" y1="11" x2="16" y2="11"/>
+                  </svg>
+                </button>
+              )}
             </div>
           )}
           <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div ref={statusDropdownRef} style={{ position: 'relative' }}>
+            {!isViewer && <div ref={statusDropdownRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
                 style={{
@@ -337,11 +381,11 @@ export function ProjectSpace() {
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
             <span>{activePhase?.name}阶段 · {tasksInPhase.length} 项任务</span>
           </div>
         </div>
-        <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 12, color: 'var(--ink-3)' }}>
+        <div style={{ fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontSize: 12, color: 'var(--ink-3)' }}>
           {project.startDate && project.endDate
             ? `${fmtDateFull(project.startDate)} — ${fmtDateFull(project.endDate)}`
             : ''}
@@ -384,16 +428,6 @@ export function ProjectSpace() {
             <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em' }}>
               {activePhase?.name} — 阶段概览
             </span>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 500,
-              padding: '2px 8px',
-              borderRadius: 4,
-              background: activePhase?.status === 'done' ? 'var(--surface-raised)' : activePhase?.status === 'active' ? 'var(--ink)' : 'var(--surface-raised)',
-              color: activePhase?.status === 'done' ? 'var(--ink-3)' : activePhase?.status === 'active' ? 'var(--canvas)' : 'var(--ink-3)',
-            }}>
-              {activePhase?.status === 'done' ? '已完成' : activePhase?.status === 'active' ? '进行中' : '未开始'}
-            </span>
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6 }}>
             {activePhase ? phaseSummaries[activePhase.name] || '' : ''}
@@ -410,8 +444,6 @@ export function ProjectSpace() {
       }}>
         {phases.map(phase => {
           const isActive = phase.id === activePhaseId;
-          const isDone = phase.status === 'done';
-          const isUpcoming = phase.status === 'upcoming';
           const taskCount = phase._count?.tasks ?? 0;
 
           return (
@@ -435,13 +467,6 @@ export function ProjectSpace() {
                 marginBottom: -1,
               }}
             >
-              <div style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: isDone ? 'var(--ink-3)' : phase.status === 'active' ? 'var(--ink)' : 'transparent',
-                border: isUpcoming ? '1.5px solid var(--ink-3)' : 'none',
-              }} />
               <span style={{
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 400,
@@ -450,7 +475,7 @@ export function ProjectSpace() {
                 {phase.name}
               </span>
               <span style={{
-                  fontFamily: "'Geist Mono', monospace",
+                  fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                   fontSize: 10,
                   color: 'var(--ink-3)',
                   padding: '1px 5px',
@@ -511,7 +536,7 @@ export function ProjectSpace() {
           <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>
             {activePhase?.name}任务
           </h2>
-          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: "'Geist Mono', monospace" }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
             {doneTasks}/{tasksInPhase.length} 已完成
           </span>
         </div>
@@ -592,7 +617,7 @@ export function ProjectSpace() {
                   }} />
 
                   {/* Edit/Delete buttons */}
-                  <div
+                  {!isViewer && <div
                     style={{
                       position: 'absolute',
                       top: 8,
@@ -672,12 +697,12 @@ export function ProjectSpace() {
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         </svg>
                       </button>
-                    </div>
+                    </div>}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!task.done && fullTask) setCompletingTask(fullTask);
+                        if (!isViewer && !task.done && fullTask) setCompletingTask(fullTask);
                       }}
                       style={{
                       width: 15,
@@ -690,7 +715,7 @@ export function ProjectSpace() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       background: task.done ? 'var(--ink)' : 'transparent',
-                      cursor: task.done ? 'default' : 'pointer',
+                      cursor: task.done || isViewer ? 'default' : 'pointer',
                       transition: 'all 150ms',
                     }}
                       onMouseEnter={(e) => { if (!task.done) e.currentTarget.style.borderColor = 'var(--ink)'; }}
@@ -754,7 +779,7 @@ export function ProjectSpace() {
                     </span>
                     {task.dueDate && (
                       <span style={{
-                        fontFamily: "'Geist Mono', monospace",
+                        fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                         fontSize: 10,
                         color: 'var(--ink-3)',
                         marginLeft: 'auto',
@@ -779,7 +804,7 @@ export function ProjectSpace() {
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>阶段产物</h2>
-          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: "'Geist Mono', monospace" }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
             {phaseArtifacts.length} 份
           </span>
         </div>
@@ -820,6 +845,7 @@ export function ProjectSpace() {
                 return (
                   <div
                     key={art.id}
+                    onClick={() => setViewingArtifact({ id: art.id, name: art.name, type: art.type, filePath: art.filePath, content: art.content, shareToken: art.shareToken })}
                     style={{
                       position: 'relative',
                       background: 'var(--surface)',
@@ -890,7 +916,7 @@ export function ProjectSpace() {
                             <span style={{
                               fontSize: 10,
                               color: 'var(--ink-4)',
-                              fontFamily: "'Geist Mono', monospace",
+                              fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                             }}>
                               {dateStr}
                             </span>
@@ -919,7 +945,7 @@ export function ProjectSpace() {
           onClose={() => setSelectedTask(null)}
           mode="detail"
           task={selectedTask}
-          onEdit={() => {
+          onEdit={isViewer ? undefined : () => {
             setEditingTask(selectedTask);
             setSelectedTask(null);
           }}
@@ -950,6 +976,18 @@ export function ProjectSpace() {
           setCompletingTask(null);
           refetch();
         }}
+      />
+
+      {/* Invite Dialog */}
+      {showInvite && selectedProjectId && (
+        <InviteDialog projectId={selectedProjectId} onClose={() => setShowInvite(false)} />
+      )}
+
+      {/* Artifact Viewer */}
+      <ArtifactViewer
+        isOpen={!!viewingArtifact}
+        artifact={viewingArtifact}
+        onClose={() => setViewingArtifact(null)}
       />
     </div>
   );

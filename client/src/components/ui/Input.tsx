@@ -28,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             height: 36,
             padding: '0 12px',
             fontSize: 13,
-            fontFamily: "'Geist', sans-serif",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             color: 'var(--ink)',
             background: 'var(--surface)',
             border: `1px solid ${error ? 'var(--red)' : 'var(--border-default)'}`,

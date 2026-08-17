@@ -11,7 +11,7 @@ router.get('/', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {
-  const user = await userService.getById(req.params.id);
+  const user = await userService.getById(req.params.id as string);
   res.json(successResponse(user));
 }));
 

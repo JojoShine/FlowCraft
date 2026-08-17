@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
+import { scopeViewer } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', scopeViewer(), asyncHandler(async (req, res) => {
   const q = (req.query.q as string || '').trim();
   const projectId = req.query.projectId as string | undefined;
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useArtifacts } from '../hooks/useArtifacts';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ArtifactGrid } from '../components/artifacts/ArtifactGrid';
 import { ArtifactsCalendar } from '../components/artifacts/ArtifactsCalendar';
 import { ArtifactDialog } from '../components/ui/ArtifactDialog';
@@ -14,14 +15,6 @@ import { artifactsApi, tasksApi } from '../services/api';
 import { notifyDataChange } from '../utils/dataEvents';
 import { formatDate } from '../utils/date';
 
-const filterTabs: { label: string; type: string | undefined }[] = [
-  { label: '全部', type: undefined },
-  { label: '文档', type: 'document' },
-  { label: '原型', type: 'prototype' },
-  { label: '流程图', type: 'diagram' },
-  { label: '表格', type: 'spreadsheet' },
-];
-
 const pageSize = 12;
 
 export function Artifacts() {
@@ -29,7 +22,6 @@ export function Artifacts() {
   const filterId = searchParams.get('artifact');
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [showNewArtifactDialog, setShowNewArtifactDialog] = useState(false);
-  const [activeType, setActiveType] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [viewingArtifact, setViewingArtifact] = useState<any>(null);
   const [bindTarget, setBindTarget] = useState<any>(null);
@@ -42,8 +34,10 @@ export function Artifacts() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { selectedProjectId } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const isCalendar = viewMode === 'calendar';
-  const { artifacts, total, loading, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, activeType, page, (isCalendar || filterId) ? 9999 : pageSize);
+  const { artifacts, total, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, undefined, page, (isCalendar || filterId) ? 9999 : pageSize);
 
   const clearFilter = () => {
     setSearchParams({});
@@ -56,11 +50,6 @@ export function Artifacts() {
   }, [filterId]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const handleTypeChange = (type: string | undefined) => {
-    setActiveType(type);
-    setPage(1);
-  };
 
   const handleDeleteArtifact = async (artifact: any) => {
     const ok = await confirm({
@@ -216,6 +205,7 @@ export function Artifacts() {
             </button>
           </div>
         </div>
+        {!isViewer && (
         <button
           onClick={() => setShowNewArtifactDialog(true)}
           style={{
@@ -242,46 +232,8 @@ export function Artifacts() {
           </svg>
           新建产物
         </button>
+        )}
       </div>
-
-      {/* Filter tabs - only show in grid view when not filtering */}
-      {viewMode === 'grid' && !filterId && (
-        <div style={{
-          display: 'flex',
-          gap: 6,
-          marginBottom: 16,
-        }}>
-          {filterTabs.map((tab) => {
-            const isActive = activeType === tab.type;
-            return (
-              <button
-                key={tab.label}
-                onClick={() => handleTypeChange(tab.type)}
-                style={{
-                  height: 30,
-                  padding: '0 12px',
-                  borderRadius: 20,
-                  border: '1px solid var(--border-default)',
-                  background: isActive ? 'var(--ink)' : 'transparent',
-                  fontFamily: "'Geist', sans-serif",
-                  fontSize: 12,
-                  color: isActive ? 'var(--canvas)' : 'var(--ink-2)',
-                  cursor: 'pointer',
-                  transition: 'all 150ms',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.borderColor = 'var(--border-strong)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.borderColor = 'var(--border-default)';
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Search filter banner */}
       {filterId && (
@@ -327,9 +279,9 @@ export function Artifacts() {
       {viewMode === 'grid' ? (
         <ArtifactGrid artifacts={transformedArtifacts} onArtifactClick={(a) => {
           const full = artifacts.find(ar => ar.id === a.id);
-          if (full) setViewingArtifact({ id: full.id, name: full.name, type: full.type, filePath: full.filePath, content: full.content });
+          if (full) setViewingArtifact({ id: full.id, name: full.name, type: full.type, filePath: full.filePath, content: full.content, shareToken: full.shareToken });
           else setViewingArtifact({ id: a.id, name: a.name, type: a.type });
-        }} onDelete={handleDeleteArtifact} onBindTask={handleOpenBindTask} />
+        }} onDelete={isViewer ? undefined : handleDeleteArtifact} onBindTask={isViewer ? undefined : handleOpenBindTask} />
       ) : (
         <ArtifactsCalendar artifacts={transformedArtifacts} />
       )}
@@ -392,7 +344,7 @@ export function Artifacts() {
                   style={{
                     width: '100%', boxSizing: 'border-box',
                     padding: '8px 12px', border: '1px solid var(--border-default)',
-                    borderRadius: 8, fontSize: 13, fontFamily: "'Geist', sans-serif",
+                    borderRadius: 8, fontSize: 13, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     color: bindOpen ? 'var(--ink)' : (selectedTaskTitle ? 'var(--ink)' : 'var(--ink-3)'),
                     background: 'var(--surface)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -423,7 +375,7 @@ export function Artifacts() {
                         style={{
                           width: '100%', boxSizing: 'border-box',
                           padding: '6px 10px', border: '1px solid var(--border-subtle)',
-                          borderRadius: 6, fontSize: 12, fontFamily: "'Geist', sans-serif",
+                          borderRadius: 6, fontSize: 12, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                           color: 'var(--ink)', background: 'var(--surface-raised)',
                           outline: 'none',
                         }}
@@ -434,7 +386,7 @@ export function Artifacts() {
                         onClick={() => { setBindSelected(''); setBindOpen(false); setBindSearch(''); }}
                         style={{
                           padding: '7px 10px', borderRadius: 6, fontSize: 13,
-                          fontFamily: "'Geist', sans-serif", cursor: 'pointer',
+                          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", cursor: 'pointer',
                           color: !bindSelected ? 'var(--ink)' : 'var(--ink-2)',
                           background: !bindSelected ? 'var(--surface-raised)' : 'transparent',
                           fontWeight: !bindSelected ? 500 : 400,
@@ -456,7 +408,7 @@ export function Artifacts() {
                             onClick={() => { setBindSelected(t.id); setBindOpen(false); setBindSearch(''); }}
                             style={{
                               padding: '7px 10px', borderRadius: 6, fontSize: 13,
-                              fontFamily: "'Geist', sans-serif", cursor: 'pointer',
+                              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", cursor: 'pointer',
                               color: t.id === bindSelected ? 'var(--ink)' : 'var(--ink-2)',
                               background: t.id === bindSelected ? 'var(--surface-raised)' : 'transparent',
                               fontWeight: t.id === bindSelected ? 500 : 400,
@@ -485,7 +437,7 @@ export function Artifacts() {
                 style={{
                   height: 30, padding: '0 14px', borderRadius: 6, border: '1px solid var(--border-default)',
                   background: 'transparent', fontSize: 12, fontWeight: 500, color: 'var(--ink-2)',
-                  cursor: 'pointer', fontFamily: "'Geist', sans-serif",
+                  cursor: 'pointer', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 }}
               >
                 取消
@@ -496,7 +448,7 @@ export function Artifacts() {
                   height: 30, padding: '0 14px', borderRadius: 6, border: 'none',
                   background: 'var(--ink)', color: 'var(--canvas)',
                   fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                  fontFamily: "'Geist', sans-serif",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 }}
               >
                 确认

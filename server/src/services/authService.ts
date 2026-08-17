@@ -93,6 +93,6 @@ export const authService = {
   },
 
   generateJwt(userId: string) {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
   },
 };

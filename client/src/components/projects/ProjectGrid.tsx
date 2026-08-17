@@ -5,7 +5,7 @@ interface Project {
   name: string;
   type: string;
   description: string;
-  status: 'planning' | 'design' | 'development' | 'testing' | 'completed';
+  status: 'discovery' | 'research' | 'design' | 'prototype' | 'development' | 'testing' | 'completed';
   progress: number;
   startDate: string;
   endDate: string;
@@ -17,11 +17,13 @@ interface ProjectGridProps {
 }
 
 const statusLabels: Record<string, string> = {
-  planning: '方案设计',
-  design: '原型设计',
+  discovery: '项目线索',
+  research: '调研梳理',
+  design: '方案设计',
+  prototype: '原型设计',
   development: '开发实施',
-  testing: '测试验收',
-  completed: '已完成',
+  testing: '测试交付',
+  completed: '复盘归档',
 };
 
 export function ProjectGrid({ projects }: ProjectGridProps) {
@@ -110,7 +112,7 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
             alignItems: 'center',
             fontSize: 11,
             color: 'var(--ink-3)',
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           }}>
             <span>{statusLabels[project.status]}</span>
           </div>

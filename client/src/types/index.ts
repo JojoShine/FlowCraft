@@ -3,6 +3,8 @@ export interface User {
   email: string | null;
   name: string | null;
   avatarUrl: string | null;
+  role: string;
+  projectId: string | null;
 }
 
 export interface Phase {
@@ -45,6 +47,7 @@ export interface Artifact {
   status: string;
   filePath: string | null;
   content: string | null;
+  shareToken?: string | null;
   taskId: string | null;
   projectId: string;
   creatorId: string | null;

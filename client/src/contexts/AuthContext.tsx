@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = `${import.meta.env.BASE_URL}login`;
   }, []);
 
   useEffect(() => {

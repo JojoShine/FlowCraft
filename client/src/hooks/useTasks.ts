@@ -26,6 +26,11 @@ export function useTasks(projectId?: string, column?: string) {
   }, [projectId, column]);
 
   useEffect(() => {
+    setTasks([]);
+    setError(null);
+  }, [projectId, column]);
+
+  useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 

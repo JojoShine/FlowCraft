@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { projectsApi } from '../services/api';
 import { onDataChange } from '../utils/dataEvents';
+import { useAuth } from './AuthContext';
 import type { Project } from '../types';
 
 interface ProjectContextType {
@@ -17,6 +18,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 const STORAGE_KEY = 'flowcraft_selected_project';
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
     return localStorage.getItem(STORAGE_KEY);
   });
@@ -43,12 +45,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { fetchProjects(); }, [fetchProjects]);
-
-  // Auto-select first project if none is selected
   useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0].id);
+    if (isAuthenticated) {
+      fetchProjects();
+    } else {
+      setProjects([]);
+      setProjectsLoading(false);
+    }
+  }, [isAuthenticated, fetchProjects]);
+
+  // Auto-select first project if none is selected, or reset if selected project is not in list
+  useEffect(() => {
+    if (projects.length > 0) {
+      if (!selectedProjectId || !projects.some(p => p.id === selectedProjectId)) {
+        setSelectedProjectId(projects[0].id);
+      }
     }
   }, [projects, selectedProjectId]);
 

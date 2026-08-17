@@ -45,7 +45,7 @@ export async function uploadFile(
   mimeType: string
 ): Promise<string> {
   await ensureBucket();
-  await getClient().putObject(getBucketName(), objectName, buffer, {
+  await getClient().putObject(getBucketName(), objectName, buffer, buffer.length, {
     'Content-Type': mimeType,
   });
   return objectName;

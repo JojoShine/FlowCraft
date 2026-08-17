@@ -10,6 +10,17 @@ export const projectService = {
     });
   },
 
+  async listForViewer(projectId: string | null) {
+    if (!projectId) return [];
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        phases: { orderBy: { order: 'asc' } },
+      },
+    });
+    return project ? [project] : [];
+  },
+
   async getById(id: string) {
     const project = await prisma.project.findUnique({
       where: { id },
@@ -48,17 +59,39 @@ export const projectService = {
     return project;
   },
 
-  async create(data: { name: string; type: string; description?: string; ownerId?: string }) {
+  async create(data: { name: string; type: string; description?: string; ownerId: string }) {
     if (!data.name || !data.type) {
       throw AppError.badRequest('name and type are required');
     }
-    return prisma.project.create({
-      data: {
-        name: data.name,
-        type: data.type,
-        description: data.description,
-        ownerId: data.ownerId,
-      },
+
+    const DEFAULT_PHASES = [
+      '项目线索', '调研梳理', '方案设计', '原型设计',
+      '开发实施', '测试交付', '复盘归档',
+    ];
+
+    return prisma.$transaction(async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          name: data.name,
+          type: data.type,
+          description: data.description,
+          ownerId: data.ownerId,
+        },
+      });
+
+      await tx.phase.createMany({
+        data: DEFAULT_PHASES.map((name, i) => ({
+          name,
+          order: i,
+          projectId: project.id,
+          status: i === 0 ? 'active' : 'upcoming',
+        })),
+      });
+
+      return tx.project.findUnique({
+        where: { id: project.id },
+        include: { phases: { orderBy: { order: 'asc' } } },
+      }) as Promise<typeof project & { phases: any[] }>;
     });
   },
 

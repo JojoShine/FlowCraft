@@ -110,7 +110,6 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
   const [pendingArtifacts, setPendingArtifacts] = useState<{ id: string; name: string; type: string; isNew?: boolean }[]>([]);
   const [artifactType, setArtifactType] = useState('proto');
   const [artifactUploadMode, setArtifactUploadMode] = useState<'file' | 'folder'>('file');
-  const [artifactUploading, setArtifactUploading] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -137,7 +136,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
       setDueDate(dateStr);
       // Use artifacts from the passed task if available
       if (task.artifacts && task.artifacts.length > 0) {
-        setPendingArtifacts(task.artifacts.map(a => ({
+        setPendingArtifacts(task.artifacts.map((a: any) => ({
           id: a.id, name: a.name, type: a.type, isNew: false,
         })));
       } else {
@@ -400,13 +399,13 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 4 }}>起始时间</div>
-                    <div style={{ fontSize: 13, color: 'var(--ink-2)', fontFamily: "'Geist Mono', monospace" }}>
+                    <div style={{ fontSize: 13, color: 'var(--ink-2)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
                       {task?.startDate ? formatDate(task.startDate) : '-'}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 4 }}>截止时间</div>
-                    <div style={{ fontSize: 13, color: 'var(--ink-2)', fontFamily: "'Geist Mono', monospace" }}>
+                    <div style={{ fontSize: 13, color: 'var(--ink-2)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
                       {task?.dueDate ? formatDate(task.dueDate) : '-'}
                     </div>
                   </div>
@@ -469,7 +468,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                     border: '1px solid var(--border-default)',
                     borderRadius: 8,
                     fontSize: 13,
-                    fontFamily: "'Geist', sans-serif",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     color: 'var(--ink)',
                     outline: 'none',
                     resize: 'vertical',
@@ -616,7 +615,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 4, letterSpacing: '0.02em' }}>开始</div>
-                  <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "'Geist Mono', monospace", fontWeight: 500 }}>
+                  <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontWeight: 500 }}>
                     {task?.startDate ? formatDate(task.startDate) : '-'}
                   </div>
                 </div>
@@ -626,7 +625,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                 </svg>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 4, letterSpacing: '0.02em' }}>截止</div>
-                  <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "'Geist Mono', monospace", fontWeight: 500 }}>
+                  <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontWeight: 500 }}>
                     {task?.dueDate ? formatDate(task.dueDate) : '-'}
                   </div>
                 </div>
@@ -637,7 +636,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                     </svg>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--green)', marginBottom: 4, letterSpacing: '0.02em' }}>完成</div>
-                      <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "'Geist Mono', monospace", fontWeight: 500 }}>
+                      <div style={{ fontSize: 13, color: 'var(--ink-1)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontWeight: 500 }}>
                         {formatDate(task.completedAt)}
                       </div>
                     </div>
@@ -824,7 +823,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                     border: '1px solid var(--border-default)',
                     borderRadius: 8,
                     fontSize: 13,
-                    fontFamily: "'Geist', sans-serif",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     color: 'var(--ink)',
                     outline: 'none',
                     resize: 'vertical',
@@ -987,7 +986,6 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                           return;
                         }
                         const folderName = (fileList[0] as any).webkitRelativePath?.split('/')[0] || '文件夹';
-                        setArtifactUploading(true);
                         try {
                           const res = await artifactsApi.uploadFolder(Array.from(fileList), {
                             projectId: project,
@@ -1001,7 +999,6 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                         } catch {
                           toast({ title: '上传失败', variant: 'error' });
                         } finally {
-                          setArtifactUploading(false);
                           if (e.target) e.target.value = '';
                         }
                       }}

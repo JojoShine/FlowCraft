@@ -12,6 +12,29 @@ export function utc8DayRange(year: number, month: number, day: number): { start:
   return { start, end };
 }
 
+export function utc8WeekRange(year: number, weekStart: Date): { start: Date; end: Date } {
+  const end = new Date(weekStart);
+  end.setDate(end.getDate() + 6);
+  const start = utc8DayRange(weekStart.getFullYear(), weekStart.getMonth() + 1, weekStart.getDate()).start;
+  const endRange = utc8DayRange(end.getFullYear(), end.getMonth() + 1, end.getDate()).end;
+  return { start, end: endRange };
+}
+
+export function utc8YearRange(year: number): { start: Date; end: Date } {
+  const start = new Date(Date.UTC(year, 0, 1) - CST_OFFSET_MS);
+  const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999) - CST_OFFSET_MS);
+  return { start, end };
+}
+
+export function toCSTDate(date: Date): Date {
+  return new Date(date.getTime() + CST_OFFSET_MS);
+}
+
+export function getCSTComponents(date: Date): { year: number; month: number; day: number } {
+  const cst = toCSTDate(date);
+  return { year: cst.getUTCFullYear(), month: cst.getUTCMonth() + 1, day: cst.getUTCDate() };
+}
+
 function toCSTISOString(date: Date): string {
   const cst = new Date(date.getTime() + CST_OFFSET_MS);
   const y = cst.getUTCFullYear();

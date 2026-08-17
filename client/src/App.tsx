@@ -13,6 +13,7 @@ import { Kanban } from './pages/Kanban';
 import { Templates } from './pages/Templates';
 import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
+import { SharedArtifact } from './pages/SharedArtifact';
 
 function App() {
   return (
@@ -21,9 +22,10 @@ function App() {
         <ProjectProvider>
           <ConfirmProvider>
             <ToastProvider>
-              <BrowserRouter>
+              <BrowserRouter basename="/flowcraft">
                 <Routes>
                   <Route path="/login" element={<Login />} />
+                  <Route path="/share/:token" element={<SharedArtifact />} />
                   <Route path="/*" element={
                     <ProtectedRoute>
                       <Layout />

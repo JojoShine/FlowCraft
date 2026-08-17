@@ -18,8 +18,8 @@ export const tokens = {
     lg: 12,
   },
   fonts: {
-    sans: "'Geist', sans-serif",
-    mono: "'Geist Mono', monospace",
+    sans: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    mono: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
   },
   shadows: {
     sm: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',

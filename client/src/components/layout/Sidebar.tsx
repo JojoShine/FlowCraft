@@ -1,19 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useArtifacts } from '../../hooks/useArtifacts';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { tasksApi } from '../../services/api';
 import { onDataChange } from '../../utils/dataEvents';
 import { ProjectDrawer } from '../ui/ProjectDrawer';
 import logoSvg from '../../assets/logo.svg';
 
 const statusLabels: Record<string, string> = {
-  planning: '方案设计',
-  design: '原型设计',
+  discovery: '项目线索',
+  research: '调研梳理',
+  design: '方案设计',
+  prototype: '原型设计',
   development: '开发实施',
-  testing: '测试验收',
-  completed: '已完成',
+  testing: '测试交付',
+  completed: '复盘归档',
 };
 
 const navItems = [
@@ -68,8 +71,9 @@ const toolItems = [
 
 export function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { selectedProjectId, selectProject, projects } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const [taskCount, setTaskCount] = useState(0);
   const { total: artifactsTotal } = useArtifacts(selectedProjectId ?? undefined, undefined, 1, 1);
   const { theme, toggleTheme } = useTheme();
@@ -122,7 +126,6 @@ export function Sidebar() {
   const handleSelectProject = (id: string) => {
     selectProject(id);
     setDropdownOpen(false);
-    navigate('/projects');
   };
 
 
@@ -152,7 +155,7 @@ export function Sidebar() {
         <img src={logoSvg} alt="FlowCraft" style={{ width: 30, height: 30, borderRadius: 7, flexShrink: 0 }} />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, flex: 1 }}>
           <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--ink)' }}>FlowCraft</span>
-          <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: "'Geist Mono', monospace", letterSpacing: '0.02em', marginTop: 2 }}>Project Workbench</span>
+          <span style={{ fontSize: 10, color: 'var(--ink-4)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", letterSpacing: '0.02em', marginTop: 2 }}>Project Workbench</span>
         </div>
         <button
           onClick={toggleTheme}
@@ -242,7 +245,7 @@ export function Sidebar() {
                 {item.path === '/kanban' && taskCount > 0 && (
                   <span style={{
                     marginLeft: 'auto',
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     fontSize: 11,
                     color: 'var(--ink-3)',
                     fontWeight: 500,
@@ -253,7 +256,7 @@ export function Sidebar() {
                 {item.path === '/artifacts' && artifactsTotal > 0 && (
                   <span style={{
                     marginLeft: 'auto',
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     fontSize: 11,
                     color: 'var(--ink-3)',
                     fontWeight: 500,
@@ -366,7 +369,7 @@ export function Sidebar() {
                     background: 'transparent',
                     fontSize: 12,
                     color: 'var(--ink)',
-                    fontFamily: "'Geist', sans-serif",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                   }}
                 />
                 {searchQuery && (
@@ -454,6 +457,7 @@ export function Sidebar() {
                 </div>
               )}
             </div>
+            {!isViewer && (
             <div style={{
               padding: '6px',
               borderTop: '1px solid var(--border-subtle)',
@@ -487,6 +491,7 @@ export function Sidebar() {
                 新建项目
               </button>
             </div>
+            )}
           </div>
         )}
 

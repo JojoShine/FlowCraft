@@ -29,6 +29,8 @@ const phaseOptions = [
   { value: 'design', label: '方案设计' },
   { value: 'prototype', label: '原型设计' },
   { value: 'development', label: '开发实施' },
+  { value: 'testing', label: '测试交付' },
+  { value: 'review', label: '复盘归档' },
 ];
 
 function TagInput({
@@ -73,7 +75,7 @@ function TagInput({
           height: 36,
           padding: '0 12px',
           fontSize: 13,
-          fontFamily: "'Geist', sans-serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           color: 'var(--ink)',
           background: 'var(--surface)',
           border: '1px solid var(--border-default)',
@@ -304,7 +306,7 @@ export function ProjectDrawer({ isOpen, onClose }: ProjectDrawerProps) {
                 border: '1px solid var(--border-default)',
                 borderRadius: 8,
                 fontSize: 13,
-                fontFamily: "'Geist', sans-serif",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 color: 'var(--ink)',
                 background: 'var(--surface)',
                 outline: 'none',
@@ -338,7 +340,7 @@ export function ProjectDrawer({ isOpen, onClose }: ProjectDrawerProps) {
             value={owner}
             onValueChange={setOwner}
             placeholder="选择负责人"
-            options={users.map((u) => ({ value: u.id, label: u.name || u.email }))}
+            options={users.map((u) => ({ value: u.id, label: u.name || u.email || '' }))}
           />
 
           <TagInput

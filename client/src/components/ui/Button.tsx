@@ -23,7 +23,7 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    fontFamily: "'Geist', sans-serif",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontWeight: 500,
     borderRadius: 6,
     cursor: isDisabled ? 'not-allowed' : 'pointer',

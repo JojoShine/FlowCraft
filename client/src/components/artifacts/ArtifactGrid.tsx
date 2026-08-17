@@ -212,7 +212,7 @@ export function ArtifactGrid({ artifacts, onArtifactClick, onDelete, onBindTask 
               <span style={{
                 fontSize: 10,
                 color: 'var(--ink-4)',
-                fontFamily: "'Geist Mono', monospace",
+                fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
               }}>
                 {artifact.updatedAt}
               </span>
@@ -263,7 +263,7 @@ export function ArtifactGrid({ artifacts, onArtifactClick, onDelete, onBindTask 
               padding: '6px 0',
               fontSize: 12,
               fontWeight: 500,
-              fontFamily: "'Geist', sans-serif",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
               color: 'var(--ink)',
               background: 'var(--surface-raised)',
               border: '1px solid var(--border-subtle)',

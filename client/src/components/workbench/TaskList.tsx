@@ -269,7 +269,7 @@ export function TaskList({ tasks, onToggle, onClick, onEdit, onDelete }: TaskLis
                 {task.done ? '已完成' : '进行中'}
               </span>
               <span style={{
-                fontFamily: "'Geist Mono', monospace",
+                fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                 fontSize: 10,
                 color: 'var(--ink-3)',
                 marginLeft: 'auto',

@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SearchDialog } from '../ui/SearchDialog';
 import { useAuth } from '../../contexts/AuthContext';
+import { tasksApi } from '../../services/api';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import type { Task } from '../../types';
 
 interface TopbarProps {
   title: string;
@@ -13,6 +16,48 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
   const [showNotif, setShowNotif] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const { selectedProjectId } = useProjectContext();
+
+  useEffect(() => {
+    const fetchOverdue = async () => {
+      try {
+        const params: { projectId?: string } = {};
+        if (selectedProjectId) params.projectId = selectedProjectId;
+        const res = await tasksApi.list(params);
+        const allTasks = (res.data as any[]) || [];
+        const now = new Date();
+        const overdue = allTasks.filter((t: any) => {
+          if (t.column === 'done') return false;
+          if (!t.dueDate) return false;
+          const dueEnd = new Date(t.dueDate);
+          dueEnd.setHours(23, 59, 59, 999);
+          return dueEnd < now;
+        });
+        overdue.sort((a: any, b: any) => {
+          const aEnd = new Date(a.dueDate); aEnd.setHours(23, 59, 59, 999);
+          const bEnd = new Date(b.dueDate); bEnd.setHours(23, 59, 59, 999);
+          return aEnd.getTime() - bEnd.getTime();
+        });
+        setOverdueTasks(overdue);
+      } catch {
+        setOverdueTasks([]);
+      }
+    };
+    fetchOverdue();
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!showNotif) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotif(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showNotif]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -74,7 +119,7 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
             marginLeft: 4,
             padding: '2px 4px',
             fontSize: 10,
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             background: 'var(--surface)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 4,
@@ -82,7 +127,7 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
         </button>
 
         {/* Notifications */}
-        <div style={{ position: 'relative' }}>
+        <div ref={notifRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowNotif(!showNotif)}
             style={{
@@ -105,21 +150,31 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
               if (!showNotif) e.currentTarget.style.background = 'transparent';
             }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, color: 'var(--ink-2)' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18, color: overdueTasks.length > 0 ? 'var(--ink)' : 'var(--ink-2)' }}>
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 01-3.46 0"/>
             </svg>
-            {/* Notification dot */}
-            <span style={{
-              position: 'absolute',
-              top: 6,
-              right: 6,
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: 'var(--ink)',
-              border: '1.5px solid var(--surface)',
-            }} />
+            {overdueTasks.length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 5,
+                right: 4,
+                minWidth: 14,
+                height: 14,
+                borderRadius: 7,
+                background: 'var(--red, #e53e3e)',
+                border: '1.5px solid var(--surface)',
+                fontSize: 9,
+                fontWeight: 600,
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 3px',
+              }}>
+                {overdueTasks.length > 99 ? '99+' : overdueTasks.length}
+              </span>
+            )}
           </button>
 
           {/* Notification panel */}
@@ -128,7 +183,7 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
               position: 'absolute',
               top: 40,
               right: 0,
-              width: 320,
+              width: 340,
               background: 'var(--surface)',
               border: '1px solid var(--border-subtle)',
               borderRadius: 12,
@@ -138,33 +193,84 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
               <div style={{
                 padding: '12px 16px',
                 borderBottom: '1px solid var(--border-subtle)',
-                fontSize: 13,
-                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}>
-                通知
+                <span style={{ fontSize: 13, fontWeight: 600 }}>通知</span>
+                {overdueTasks.length > 0 && (
+                  <span style={{
+                    fontSize: 10,
+                    color: 'var(--red, #e53e3e)',
+                    fontWeight: 500,
+                  }}>
+                    {overdueTasks.length} 项任务已延期
+                  </span>
+                )}
               </div>
-              <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--canvas)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ fontSize: 12, marginBottom: 4 }}>「异地就医申请流程图」待确认事项已更新</div>
-                  <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>10 分钟前</div>
-                </div>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--canvas)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ fontSize: 12, marginBottom: 4 }}>实施方案 v2.1 已被确认</div>
-                  <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>2 小时前</div>
-                </div>
-                <div style={{ padding: '12px 16px', cursor: 'pointer' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--canvas)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ fontSize: 12, marginBottom: 4 }}>任务「完成原型设计」即将到期</div>
-                  <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>今日 09:00</div>
-                </div>
+              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                {overdueTasks.length === 0 ? (
+                  <div style={{
+                    padding: '40px 16px 36px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'var(--surface-raised)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 14px',
+                    }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22, color: 'var(--ink-3)', opacity: 0.5 }}>
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', marginBottom: 4 }}>
+                      一切正常
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
+                      当前没有延期的任务
+                    </div>
+                  </div>
+                ) : (
+                  overdueTasks.map((task, idx) => (
+                    <div
+                      key={task.id}
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: idx < overdueTasks.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background 100ms',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--canvas)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: 'var(--red, #e53e3e)',
+                          flexShrink: 0,
+                          marginTop: 5,
+                        }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, lineHeight: 1.4 }}>
+                            任务「{task.title}」已延期
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>截止: {formatDate(task.dueDate)}</span>
+                            {task.phase && <span>{task.phase.name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -291,4 +397,14 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
       <SearchDialog isOpen={showSearch} onClose={() => setShowSearch(false)} />
     </header>
   );
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const mins = d.getMinutes().toString().padStart(2, '0');
+  return `${month}月${day}日 ${hours}:${mins}`;
 }

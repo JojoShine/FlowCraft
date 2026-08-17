@@ -222,7 +222,7 @@ function ZoomControls({ scale, onZoomIn, onZoomOut, onZoomReset }: {
         onClick={onZoomReset}
         style={{
           ...btnStyle, width: 'auto', padding: '0 8px', fontSize: 11,
-          fontFamily: "'Geist Mono', monospace", minWidth: 42,
+          fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", minWidth: 42,
         }}
         title="重置缩放"
       >
@@ -325,7 +325,7 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
       <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--canvas)', display: 'flex', justifyContent: 'center' }}>
         <pre style={{
           margin: 0, padding: 20,
-          fontSize: 13 * scale, lineHeight: 1.6, fontFamily: "'Geist Mono', 'Fira Code', monospace",
+          fontSize: 13 * scale, lineHeight: 1.6, fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           color: 'var(--ink)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
           maxWidth: 900, width: '100%',
         }}>
@@ -358,7 +358,7 @@ const markdownCSS = `
   .md-preview p { margin: 0.5em 0; }
   .md-preview a { color: var(--blue); text-decoration: none; }
   .md-preview a:hover { text-decoration: underline; }
-  .md-preview code { font-family: "'Geist Mono', monospace"; font-size: 0.88em; background: var(--surface-raised); padding: 0.15em 0.4em; border-radius: 4px; }
+  .md-preview code { font-family: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace"; font-size: 0.88em; background: var(--surface-raised); padding: 0.15em 0.4em; border-radius: 4px; }
   .md-preview pre { background: var(--ink); color: var(--ink-4); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0.8em 0; }
   .md-preview pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
   .md-preview blockquote { border-left: 3px solid var(--border-default); margin: 0.6em 0; padding: 0.3em 0 0.3em 16px; color: var(--ink-2); }
@@ -518,7 +518,11 @@ const hideScrollbarCSS = `
 
 export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewerProps) {
   const tree = useMemo(() => buildTree(fileTree), [fileTree]);
-  const [selectedPath, setSelectedPath] = useState<string | null>(fileTree[0]?.path || null);
+  const defaultPath = useMemo(() => {
+    const indexFile = fileTree.find(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+    return indexFile?.path || fileTree[0]?.path || null;
+  }, [fileTree]);
+  const [selectedPath, setSelectedPath] = useState<string | null>(defaultPath);
   const [scale, setScale] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -606,7 +610,7 @@ export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewe
               )}
               <FileIcon name={selectedFile.path} />
               <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{selectedFile.path.split('/').pop()}</span>
-              <span style={{ marginLeft: 'auto', fontFamily: "'Geist Mono', monospace", fontSize: 11 }}>
+              <span style={{ marginLeft: 'auto', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", fontSize: 11 }}>
                 {selectedFile.size < 1024 ? `${selectedFile.size} B` : selectedFile.size < 1024 * 1024 ? `${(selectedFile.size / 1024).toFixed(1)} KB` : `${(selectedFile.size / 1024 / 1024).toFixed(1)} MB`}
               </span>
               <ZoomControls scale={scale} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onZoomReset={handleZoomReset} />

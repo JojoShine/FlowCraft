@@ -106,7 +106,7 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
         <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
           {column.title}
           <span style={{
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             fontSize: 11,
             color: 'var(--ink-3)',
             fontWeight: 500,
@@ -114,6 +114,7 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
             {column.tasks.length}
           </span>
         </div>
+        {onAddClick && (
         <button
           onClick={onAddClick}
           style={{
@@ -143,6 +144,7 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
+        )}
       </div>
 
       {/* Tasks */}
@@ -162,7 +164,7 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
         {column.tasks.map((task) => (
           <div
             key={task.id}
-            draggable
+            draggable={!!onTaskMove}
             onDragStart={(e) => handleDragStart(e, task.id)}
             onDragEnd={handleDragEnd}
             onClick={() => onTaskClick?.(task)}
@@ -340,7 +342,7 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
                 <>
                   <span style={{ width: 1, height: 9, background: 'var(--border-subtle)' }} />
                   <span style={{
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     fontSize: 10,
                     color: 'var(--ink-3)',
                     marginLeft: 'auto',

@@ -165,7 +165,7 @@ function ConfirmDialog({
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'background 150ms',
-              fontFamily: "'Geist', sans-serif",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-raised)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -185,7 +185,7 @@ function ConfirmDialog({
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'opacity 150ms',
-              fontFamily: "'Geist', sans-serif",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}

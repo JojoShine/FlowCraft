@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import { renderAsync } from 'docx-preview';
 import DOMPurify from 'dompurify';
 import { artifactsApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { FolderViewer } from './FolderViewer';
 
 interface ArtifactViewerProps {
@@ -15,6 +16,7 @@ interface ArtifactViewerProps {
     type: string;
     filePath?: string | null;
     content?: string | null;
+    shareToken?: string | null;
   } | null;
 }
 
@@ -70,7 +72,7 @@ const mdPreviewCSS = `
   .md-preview p { margin: 0.5em 0; }
   .md-preview a { color: var(--blue); text-decoration: none; }
   .md-preview a:hover { text-decoration: underline; }
-  .md-preview code { font-family: "'Geist Mono', monospace"; font-size: 0.88em; background: var(--surface-raised); padding: 0.15em 0.4em; border-radius: 4px; }
+  .md-preview code { font-family: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace"; font-size: 0.88em; background: var(--surface-raised); padding: 0.15em 0.4em; border-radius: 4px; }
   .md-preview pre { background: var(--ink); color: var(--ink-4); padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0.8em 0; }
   .md-preview pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
   .md-preview blockquote { border-left: 3px solid var(--border-default); margin: 0.6em 0; padding: 0.3em 0 0.3em 16px; color: var(--ink-2); }
@@ -91,6 +93,11 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   const [docxError, setDocxError] = useState(false);
   const [sheetData, setSheetData] = useState<{ headers: string[]; rows: string[][]; sheetNames: string[]; activeSheet: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role !== 'viewer';
+  const [showShare, setShowShare] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(artifact?.shareToken || null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const mode = useMemo(() => {
     if (!artifact) return 'unknown';
@@ -108,6 +115,10 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
       setDocxLoading(false);
       setDocxError(false);
       setSheetData(null);
+      setLoading(false);
+      setShowShare(false);
+      setShareToken(null);
+      setShareCopied(false);
       return;
     }
 
@@ -397,7 +408,7 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
                 {sheetData.headers.length > 0 ? (
                   <table style={{
                     width: '100%', borderCollapse: 'collapse',
-                    fontSize: 12, fontFamily: "'Geist Mono', monospace",
+                    fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                   }}>
                     <thead>
                       <tr>
@@ -566,6 +577,87 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {isAdmin && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => {
+                    if (showShare) { setShowShare(false); return; }
+                    setShowShare(true);
+                    if (!shareToken) {
+                      artifactsApi.share(artifact.id).then(res => setShareToken(res.data.shareToken));
+                    }
+                  }}
+                  style={{
+                    height: 30, padding: '0 12px', borderRadius: 6,
+                    border: '1px solid var(--border-default)', background: showShare ? 'var(--surface-raised)' : 'transparent',
+                    fontSize: 12, color: 'var(--ink-2)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                    <circle cx="18" cy="5" r="3"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                  分享
+                </button>
+                {showShare && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 1000,
+                    background: 'var(--surface)', border: '1px solid var(--border-default)',
+                    borderRadius: 8, padding: 12, minWidth: 320,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  }}>
+                    {shareToken ? (
+                      <>
+                        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 6 }}>公开链接（任何人可通过此链接查看）</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <input
+                            readOnly
+                            value={`${window.location.origin}/flowcraft/share/${shareToken}`}
+                            style={{
+                              flex: 1, height: 30, padding: '0 8px', borderRadius: 6, fontSize: 12,
+                              border: '1px solid var(--border-subtle)', background: 'var(--canvas)',
+                              color: 'var(--ink)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
+                            }}
+                            onClick={e => (e.target as HTMLInputElement).select()}
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/flowcraft/share/${shareToken}`);
+                              setShareCopied(true);
+                              setTimeout(() => setShareCopied(false), 1500);
+                            }}
+                            style={{
+                              height: 30, padding: '0 10px', borderRadius: 6, border: 'none',
+                              background: 'var(--ink)', color: 'var(--canvas)',
+                              fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {shareCopied ? '已复制' : '复制'}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            artifactsApi.unshare(artifact.id).then(() => { setShareToken(null); setShowShare(false); });
+                          }}
+                          style={{
+                            marginTop: 8, background: 'none', border: 'none', padding: 0,
+                            fontSize: 11, color: 'var(--ink-3)', cursor: 'pointer', textDecoration: 'underline',
+                          }}
+                        >
+                          取消分享
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>生成链接中...</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               onClick={handleDownload}
               style={{

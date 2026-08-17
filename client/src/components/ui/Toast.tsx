@@ -85,7 +85,7 @@ function ToastItem({ message, onRemove }: { message: ToastMessage; onRemove: () 
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        fontFamily: "'Geist', sans-serif",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         pointerEvents: 'auto',
         animation: 'toastSlideUp 200ms ease-out',
         border: '1px solid var(--border-default)',

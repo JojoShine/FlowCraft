@@ -242,7 +242,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                     fontSize: 12, padding: '5px 12px',
                     border: '1px solid var(--border-subtle)', borderRadius: 20,
                     cursor: 'pointer', color: 'var(--ink-2)', background: 'transparent',
-                    transition: 'all 150ms', fontFamily: "'Geist', sans-serif",
+                    transition: 'all 150ms', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'var(--ink)';
@@ -296,7 +296,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                             <pre style={{
                               background: 'var(--canvas)', borderRadius: 6, padding: '10px 12px',
                               margin: '8px 0', overflow: 'auto', fontSize: 12, lineHeight: 1.5,
-                              fontFamily: "'Geist Mono', monospace",
+                              fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                             }}>
                               <code>{children}</code>
                             </pre>
@@ -305,7 +305,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                         return (
                           <code style={{
                             background: 'var(--canvas)', padding: '1px 5px', borderRadius: 4,
-                            fontSize: 12, fontFamily: "'Geist Mono', monospace",
+                            fontSize: 12, fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                           }}>{children}</code>
                         );
                       },
@@ -375,7 +375,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
             disabled={loading}
             style={{
               flex: 1, border: 'none', outline: 'none',
-              fontFamily: "'Geist', sans-serif", fontSize: 13,
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 13,
               color: 'var(--ink)', background: 'transparent',
             }}
           />

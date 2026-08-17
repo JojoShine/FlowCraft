@@ -93,7 +93,7 @@ export function ProjectCards({ projects }: ProjectCardsProps) {
             justifyContent: 'space-between',
             fontSize: 10,
             color: 'var(--ink-3)',
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           }}>
             <span>{project.owner}</span>
             <span>{project.progress}%</span>

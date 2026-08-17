@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ProjectGrid } from '../components/projects/ProjectGrid';
 import { ProjectDrawer } from '../components/ui/ProjectDrawer';
 import { formatDate } from '../utils/date';
@@ -7,6 +8,8 @@ import { formatDate } from '../utils/date';
 export function Projects() {
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);
   const { projects, projectsLoading: loading } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
 
   if (loading) {
     return (
@@ -22,7 +25,7 @@ export function Projects() {
     name: p.name,
     type: p.type,
     description: p.description || '',
-    status: (p.status || 'planning') as any,
+    status: (p.status || 'discovery') as any,
     progress: p.progress || 0,
     startDate: p.startDate ? formatDate(p.startDate) : '',
     endDate: p.endDate ? formatDate(p.endDate) : '',
@@ -37,6 +40,7 @@ export function Projects() {
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.2 }}>项目</div>
           <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>管理所有项目，跟踪进度与阶段</div>
         </div>
+        {!isViewer && (
         <button
           onClick={() => setShowNewProjectDrawer(true)}
           style={{
@@ -63,6 +67,7 @@ export function Projects() {
           </svg>
           新建项目
         </button>
+        )}
       </div>
 
       {/* Project grid */}

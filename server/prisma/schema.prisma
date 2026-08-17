@@ -16,6 +16,8 @@ model User {
   avatarUrl     String?
   wechatOpenId  String?  @unique
   wechatUnionId String?  @unique
+  role          String   @default("admin")
+  projectId     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -30,7 +32,7 @@ model Project {
   name        String
   type        String
   description String?
-  status      String   @default("active")
+  status      String   @default("discovery")
   progress    Int      @default(0)
   startDate   DateTime?
   endDate     DateTime?
@@ -93,20 +95,21 @@ model Task {
 }
 
 model Artifact {
-  id        String   @id @default(uuid())
-  name      String
-  type      String
-  status    String   @default("draft")
-  filePath  String?
-  content   String?
-  taskId    String?
-  task      Task?    @relation(fields: [taskId], references: [id])
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  creatorId String?
-  creator   User?    @relation("ArtifactCreator", fields: [creatorId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  type       String
+  status     String   @default("draft")
+  filePath   String?
+  content    String?
+  shareToken String?  @unique
+  taskId     String?
+  task       Task?    @relation(fields: [taskId], references: [id])
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creatorId  String?
+  creator    User?    @relation("ArtifactCreator", fields: [creatorId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([projectId])
   @@index([type])

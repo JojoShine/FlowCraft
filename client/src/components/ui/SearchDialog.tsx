@@ -161,7 +161,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                 border: 'none',
                 outline: 'none',
                 padding: '0 20px 0 10px',
-                fontFamily: "'Geist', sans-serif",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 fontSize: 15,
                 color: 'var(--ink)',
                 background: 'transparent',
@@ -234,7 +234,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.name}</div>
                           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{tpl.category}{tpl.description ? ` · ${tpl.description}` : ''}</div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'Geist Mono', monospace", color: 'var(--ink-2)', padding: '1px 6px', background: 'var(--surface-raised)', borderRadius: 3 }}>{tpl.fileType.toUpperCase()}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace", color: 'var(--ink-2)', padding: '1px 6px', background: 'var(--surface-raised)', borderRadius: 3 }}>{tpl.fileType.toUpperCase()}</span>
                       </ResultItem>
                     ))}
                   </>

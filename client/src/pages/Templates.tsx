@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { templatesApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -17,6 +18,8 @@ const categoryOptions = ['需求', '技术', '测试', '文档', '设计', '运�
 
 export function Templates() {
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -108,6 +111,7 @@ export function Templates() {
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.2 }}>文档模板</div>
           <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 4 }}>管理可复用的文档模板，支持 HTML / Word / Markdown</div>
         </div>
+        {!isViewer && (
         <button
           onClick={openCreate}
           style={{
@@ -134,6 +138,7 @@ export function Templates() {
           </svg>
           新建模板
         </button>
+        )}
       </div>
 
       {/* Template cards */}
@@ -205,6 +210,7 @@ export function Templates() {
                       {tpl.description || '暂无描述'}
                     </div>
                   </div>
+                  {!isViewer && (
                   <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); openEdit(tpl); }}
@@ -235,6 +241,7 @@ export function Templates() {
                       </svg>
                     </button>
                   </div>
+                  )}
                 </div>
 
                 {/* Bottom: badges */}
@@ -251,7 +258,7 @@ export function Templates() {
                   <span style={{
                     fontSize: 10,
                     fontWeight: 600,
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     color: ft.color,
                     padding: '1px 6px',
                     background: `color-mix(in srgb, ${ft.color} 8%, var(--surface-raised))`,
@@ -263,7 +270,7 @@ export function Templates() {
                     marginLeft: 'auto',
                     fontSize: 10,
                     color: 'var(--ink-4)',
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                   }}>
                     {tpl.updatedAt ? formatDate(tpl.updatedAt) : ''}
                   </span>
@@ -317,24 +324,27 @@ export function Templates() {
         onSave={handleSave}
         onClose={() => { setShowDialog(false); setEditingTemplate(null); }}
         onSwitchToEdit={() => setDrawerMode('edit')}
+        isViewer={isViewer}
       />
     </div>
   );
 }
 
-function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdit }: {
+function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdit, isViewer }: {
   isOpen: boolean;
   mode: 'view' | 'edit' | 'create';
   template: Template | null;
   onSave: (data: { name: string; category: string; description: string; content: string; fileType: string }) => void;
   onClose: () => void;
   onSwitchToEdit: () => void;
+  isViewer?: boolean;
 }) {
   const [name, setName] = useState(template?.name || '');
   const [category, setCategory] = useState(template?.category || categoryOptions[0]);
   const [fileType, setFileType] = useState(template?.fileType || 'html');
   const [description, setDescription] = useState(template?.description || '');
   const [content, setContent] = useState(template?.content || '');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -343,6 +353,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
       setFileType(template?.fileType || 'html');
       setDescription(template?.description || '');
       setContent(template?.content || '');
+      setCopied(false);
     }
   }, [isOpen, template]);
 
@@ -404,7 +415,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
             {isView ? '模板详情' : mode === 'edit' ? '编辑模板' : '新建模板'}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isView && (
+            {isView && !isViewer && (
               <button
                 onClick={onSwitchToEdit}
                 style={{
@@ -498,7 +509,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
                   <span style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     color: ft.color,
                     padding: '2px 8px',
                     background: `color-mix(in srgb, ${ft.color} 8%, var(--surface-raised))`,
@@ -517,11 +528,62 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', letterSpacing: '0.02em' }}>
-                  模板内容
-                  <span style={{ fontWeight: 400, marginLeft: 6 }}>
-                    {template?.fileType === 'html' ? 'HTML' : template?.fileType === 'markdown' ? 'Markdown' : 'Word'}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', letterSpacing: '0.02em' }}>
+                    模板内容
+                    <span style={{ fontWeight: 400, marginLeft: 6 }}>
+                      {template?.fileType === 'html' ? 'HTML' : template?.fileType === 'markdown' ? 'Markdown' : 'Word'}
+                    </span>
+                  </div>
+                  {(template?.fileType === 'html' || template?.fileType === 'markdown') && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(template?.content || '');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                      style={{
+                        height: 24,
+                        padding: '0 8px',
+                        borderRadius: 5,
+                        border: '1px solid var(--border-default)',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: copied ? 'var(--ink)' : 'var(--ink-3)',
+                        transition: 'all 150ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--surface-raised)';
+                        e.currentTarget.style.color = 'var(--ink)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = copied ? 'var(--ink)' : 'var(--ink-3)';
+                      }}
+                    >
+                      {copied ? (
+                        <>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                          </svg>
+                          复制
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div style={{
                   width: '100%',
@@ -532,7 +594,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
                   borderRadius: 8,
                   fontSize: 12,
                   lineHeight: 1.6,
-                  fontFamily: template?.fileType === 'html' || template?.fileType === 'markdown' ? "'Geist Mono', monospace" : "'Geist', sans-serif",
+                  fontFamily: template?.fileType === 'html' || template?.fileType === 'markdown' ? "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                   color: 'var(--ink-2)',
                   background: 'var(--canvas)',
                   whiteSpace: 'pre-wrap',
@@ -577,7 +639,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
                     borderRadius: 8,
                     fontSize: 12,
                     lineHeight: 1.6,
-                    fontFamily: fileType === 'html' || fileType === 'markdown' ? "'Geist Mono', monospace" : "'Geist', sans-serif",
+                    fontFamily: fileType === 'html' || fileType === 'markdown' ? "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     color: 'var(--ink)',
                     background: 'var(--surface)',
                     outline: 'none',

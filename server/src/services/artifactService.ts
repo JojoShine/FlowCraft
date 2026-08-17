@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { uploadFile, getFileStream as getMinIOStream, deleteFile } from '../lib/minio';
+import { compressImage } from '../lib/imageCompress';
 import { Readable } from 'stream';
 
 export const artifactService = {
@@ -118,7 +119,8 @@ export const artifactService = {
     const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     const objectName = `${metadata.projectId}/${timestamp}-${safeFileName}`;
 
-    const filePath = await uploadFile(file.buffer, objectName, file.mimetype);
+    const compressed = await compressImage(file.buffer, file.mimetype);
+    const filePath = await uploadFile(compressed, objectName, file.mimetype);
 
     const artifactType = metadata.type || this.inferType(file.mimetype);
     const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8');

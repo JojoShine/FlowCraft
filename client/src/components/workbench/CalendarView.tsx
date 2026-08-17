@@ -181,7 +181,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                     fontSize: 11,
                     fontWeight: isToday ? 700 : 500,
                     color: isToday ? 'var(--ink)' : 'var(--ink-3)',
-                    fontFamily: "'Geist Mono', monospace",
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
                     width: 20,
                     height: 20,
                     display: 'flex',
@@ -203,7 +203,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                         fontSize: 10,
                         lineHeight: 1.4,
                         cursor: 'pointer',
-                        background: item.kind === 'artifact' ? 'rgba(59,130,246,0.08)' : `${item.color}0A`,
+                        background: `${item.color}0A`,
                         color: 'var(--ink-2)',
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
@@ -213,10 +213,10 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                         borderLeft: `2px solid ${item.color}`,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = item.kind === 'artifact' ? 'rgba(59,130,246,0.16)' : `${item.color}1A`;
+                        e.currentTarget.style.background = `${item.color}1A`;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = item.kind === 'artifact' ? 'rgba(59,130,246,0.08)' : `${item.color}0A`;
+                        e.currentTarget.style.background = `${item.color}0A`;
                       }}
                     >
                       {item.title}

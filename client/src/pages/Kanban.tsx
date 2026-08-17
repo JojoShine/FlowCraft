@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
 import { CalendarView } from '../components/kanban/CalendarView';
 import { TaskDrawer } from '../components/ui/TaskDrawer';
@@ -43,6 +44,8 @@ export function Kanban() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const { selectedProjectId } = useProjectContext();
+  const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const { tasks, loading, error, refetch } = useTasks(selectedProjectId ?? undefined);
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -132,14 +135,15 @@ export function Kanban() {
             <button
               onClick={() => setViewMode('kanban')}
               style={{
-                padding: '3px 8px',
-                fontSize: 10,
+                height: 28,
+                padding: '0 12px',
                 border: 'none',
                 background: viewMode === 'kanban' ? 'var(--ink)' : 'transparent',
                 color: viewMode === 'kanban' ? 'var(--canvas)' : 'var(--ink-3)',
+                fontSize: 12,
+                fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 150ms',
-                fontFamily: "'Geist', sans-serif",
               }}
             >
               看板
@@ -147,20 +151,22 @@ export function Kanban() {
             <button
               onClick={() => setViewMode('calendar')}
               style={{
-                padding: '3px 8px',
-                fontSize: 10,
+                height: 28,
+                padding: '0 12px',
                 border: 'none',
                 background: viewMode === 'calendar' ? 'var(--ink)' : 'transparent',
                 color: viewMode === 'calendar' ? 'var(--canvas)' : 'var(--ink-3)',
+                fontSize: 12,
+                fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 150ms',
-                fontFamily: "'Geist', sans-serif",
               }}
             >
               日历
             </button>
           </div>
         </div>
+        {!isViewer && (
         <button
           onClick={() => setShowNewTaskDrawer(true)}
           style={{
@@ -187,6 +193,7 @@ export function Kanban() {
           </svg>
           新建任务
         </button>
+        )}
       </div>
 
       {/* Kanban board or Calendar view */}
@@ -205,7 +212,7 @@ export function Kanban() {
             <KanbanColumn
               key={column.id}
               column={column}
-              onTaskMove={async (taskId, toColumn) => {
+              onTaskMove={isViewer ? undefined : async (taskId, toColumn) => {
                 try {
                   await tasksApi.update(taskId, {
                     column: toColumn,
@@ -218,15 +225,15 @@ export function Kanban() {
                 }
               }}
               onTaskClick={handleTaskClick}
-              onAddClick={() => {
+              onAddClick={isViewer ? undefined : () => {
                 setDefaultColumn(column.id);
                 setShowNewTaskDrawer(true);
               }}
-              onEditTask={(task) => {
+              onEditTask={isViewer ? undefined : (task) => {
                 const full = tasks.find(t => t.id === task.id);
                 if (full) setEditingTask(full);
               }}
-              onDeleteTask={(task) => {
+              onDeleteTask={isViewer ? undefined : (task) => {
                 const full = tasks.find(t => t.id === task.id);
                 if (full) handleDeleteTask(full);
               }}
@@ -257,7 +264,7 @@ export function Kanban() {
           onClose={() => setSelectedTask(null)}
           mode="detail"
           task={selectedTask}
-          onEdit={() => {
+          onEdit={isViewer ? undefined : () => {
             setEditingTask(selectedTask);
             setSelectedTask(null);
           }}

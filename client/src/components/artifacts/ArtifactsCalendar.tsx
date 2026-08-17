@@ -94,7 +94,7 @@ export function ArtifactsCalendar({ artifacts }: ArtifactsCalendarProps) {
         <div style={{
           fontSize: 11,
           color: 'var(--ink-2)',
-          fontFamily: "'Geist Mono', monospace",
+          fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           padding: '1px 3px',
         }}>
           {prevLast - startDow + 1 + i}
@@ -127,7 +127,7 @@ export function ArtifactsCalendar({ artifacts }: ArtifactsCalendarProps) {
       >
         <div style={{
           fontSize: 11,
-          fontFamily: "'Geist Mono', monospace",
+          fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           padding: '1px 3px',
           background: cls ? 'var(--ink)' : 'transparent',
           color: cls ? 'var(--canvas)' : 'var(--ink-2)',
@@ -203,7 +203,7 @@ export function ArtifactsCalendar({ artifacts }: ArtifactsCalendarProps) {
           <div style={{
             fontSize: 11,
             color: 'var(--ink-2)',
-            fontFamily: "'Geist Mono', monospace",
+            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
             padding: '1px 3px',
           }}>
             {i}

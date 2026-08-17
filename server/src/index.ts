@@ -6,13 +6,23 @@ import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { minioClient, BUCKET_NAME } from './lib/minio';
 import { aiConfig } from './ai/config';
+import { startScheduler } from './services/reportScheduler';
 import axios from 'axios';
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3800;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
 
 async function checkDatabase(): Promise<boolean> {
   try {
-    await prisma.$connect();
+    await withTimeout(prisma.$connect(), 5000, 'Database');
     logger.info('✓ Database connection successful');
     return true;
   } catch (error) {
@@ -25,12 +35,8 @@ async function checkMinIO(): Promise<boolean> {
   try {
     const client = minioClient();
     const bucket = BUCKET_NAME();
-    const exists = await client.bucketExists(bucket);
-    if (exists) {
-      logger.info('✓ MinIO connection successful, bucket accessible');
-    } else {
-      logger.warn('⚠ MinIO connection successful, but bucket does not exist (will be created on first use)');
-    }
+    await withTimeout(client.bucketExists(bucket), 5000, 'MinIO');
+    logger.info('✓ MinIO connection successful');
     return true;
   } catch (error) {
     logger.error('✗ MinIO connection failed', { error: String(error) });
@@ -81,6 +87,7 @@ async function startServer() {
       minio: minioOk ? '✓' : '✗',
       llm: llmOk ? '✓' : '✗',
     });
+    startScheduler();
   });
 
   process.on('SIGTERM', () => {

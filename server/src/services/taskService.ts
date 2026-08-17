@@ -36,7 +36,7 @@ export const taskService = {
         artifacts: {
           select: {
             id: true, name: true, type: true, status: true,
-            filePath: true, taskId: true, projectId: true,
+            filePath: true, content: true, shareToken: true, taskId: true, projectId: true,
             creatorId: true, createdAt: true, updatedAt: true,
           },
         },

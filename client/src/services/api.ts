@@ -26,8 +26,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const loginPath = `${import.meta.env.BASE_URL}login`;
+      if (window.location.pathname !== loginPath) {
+        window.location.href = loginPath;
       }
       return Promise.reject(error);
     }
@@ -98,8 +99,23 @@ export const artifactsApi = {
   },
   getFileUrl: (id: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    return `${baseURL}/artifacts/${id}/file`;
+    const token = localStorage.getItem('token') || '';
+    return `${baseURL}/artifacts/${id}/file?token=${encodeURIComponent(token)}`;
   },
+  share: (id: string) => api.post(`/artifacts/${id}/share`),
+  unshare: (id: string) => api.delete(`/artifacts/${id}/share`),
+  getPublicFileUrl: (token: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/file`;
+  },
+  getPublicFolderFileUrl: (token: string, filePath: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/files/${filePath}`;
+  },
+};
+
+export const publicApi = {
+  getArtifact: (token: string) => api.get(`/public/artifacts/${token}`),
 };
 
 export const phasesApi = {
@@ -122,6 +138,14 @@ export const reportsApi = {
   get: (id: string) => api.get(`/reports/${id}`),
   create: (data: unknown) => api.post('/reports', data),
   delete: (id: string) => api.delete(`/reports/${id}`),
+  generate: (data: { type: string; projectId: string; date?: string; weekStart?: string }) =>
+    api.post('/reports/generate', data),
+};
+
+export const inviteApi = {
+  create: (projectId: string) => api.post(`/projects/${projectId}/invite`),
+  list: (projectId: string) => api.get(`/projects/${projectId}/viewers`),
+  revoke: (projectId: string, userId: string) => api.delete(`/projects/${projectId}/invite/${userId}`),
 };
 
 export const usersApi = {
