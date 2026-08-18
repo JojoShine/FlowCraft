@@ -12,6 +12,22 @@ export const taskService = {
     return { total, byColumn: Object.fromEntries(grouped.map(t => [t.column, t._count.id])) };
   },
 
+  async countOverdueByProject() {
+    const now = new Date();
+    const tasks = await prisma.task.findMany({
+      where: {
+        column: { not: 'done' },
+        dueDate: { not: null, lt: now },
+      },
+      select: { projectId: true },
+    });
+    const map: Record<string, number> = {};
+    for (const t of tasks) {
+      map[t.projectId] = (map[t.projectId] || 0) + 1;
+    }
+    return map;
+  },
+
   async list(filters?: { projectId?: string; column?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;

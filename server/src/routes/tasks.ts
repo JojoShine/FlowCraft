@@ -16,6 +16,11 @@ router.get('/count', scopeViewer(), asyncHandler(async (req, res) => {
   res.json(successResponse(count));
 }));
 
+router.get('/overdue-count', scopeViewer(), asyncHandler(async (req, res) => {
+  const map = await taskService.countOverdueByProject();
+  res.json(successResponse(map));
+}));
+
 router.get('/', scopeViewer(), asyncHandler(async (req, res) => {
   const { projectId, column, phaseId } = req.query;
   const tasks = phaseId

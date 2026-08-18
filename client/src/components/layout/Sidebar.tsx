@@ -80,6 +80,7 @@ export function Sidebar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [overdueMap, setOverdueMap] = useState<Record<string, number>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +97,18 @@ export function Sidebar() {
       }
     });
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    const fetchOverdue = () => {
+      tasksApi.overdueCount().then(res => {
+        setOverdueMap((res.data as Record<string, number>) || {});
+      }).catch(() => {});
+    };
+    if (dropdownOpen) fetchOverdue();
+    return onDataChange((type) => {
+      if (type === 'tasks' && dropdownOpen) fetchOverdue();
+    });
+  }, [dropdownOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -119,9 +132,10 @@ export function Sidebar() {
     }
   }, [dropdownOpen]);
 
-  const filteredProjects = searchQuery.trim()
+  const filteredProjects = (searchQuery.trim()
     ? projects.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : projects;
+    : projects
+  ).sort((a, b) => (overdueMap[b.id] || 0) - (overdueMap[a.id] || 0));
 
   const handleSelectProject = (id: string) => {
     selectProject(id);
@@ -396,6 +410,7 @@ export function Sidebar() {
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 6px', scrollbarWidth: 'none' }} className="hide-scrollbar">
               {filteredProjects.map((p) => {
                 const isSelected = p.id === selectedProjectId;
+                const overdueCount = overdueMap[p.id] || 0;
                 return (
                   <div
                     key={p.id}
@@ -413,20 +428,33 @@ export function Sidebar() {
                     onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--canvas)'; }}
                     onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                   >
-                    <div style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 6,
-                      background: isSelected ? 'var(--ink)' : 'var(--surface-sunken)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: isSelected ? 'var(--canvas)' : 'var(--ink-2)',
-                      flexShrink: 0,
-                    }}>
-                      {p.name.slice(0, 2)}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 6,
+                        background: isSelected ? 'var(--ink)' : 'var(--surface-sunken)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: isSelected ? 'var(--canvas)' : 'var(--ink-2)',
+                      }}>
+                        {p.name.slice(0, 2)}
+                      </div>
+                      {overdueCount > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -3,
+                          right: -3,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: '#e5484d',
+                          border: '1.5px solid var(--surface)',
+                        }} />
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
@@ -439,8 +467,18 @@ export function Sidebar() {
                       }}>
                         {p.name}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                        {statusLabels[p.status || ''] || p.status || '未开始'}
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>{statusLabels[p.status || ''] || p.status || '未开始'}</span>
+                        {overdueCount > 0 && (
+                          <span style={{
+                            fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
+                            fontSize: 10,
+                            color: '#e5484d',
+                            fontWeight: 500,
+                          }}>
+                            {overdueCount} 项延期
+                          </span>
+                        )}
                       </div>
                     </div>
                     {isSelected && (
