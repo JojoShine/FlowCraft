@@ -8,6 +8,7 @@ import { FileUpload } from './FileUpload';
 import { useToast } from './Toast';
 import { tasksApi, projectsApi, phasesApi, artifactsApi } from '../../services/api';
 import { formatDate } from '../../utils/date';
+import { sortByCanonicalOrder } from '../../utils/phaseOrder';
 import type { Project, Phase } from '../../types';
 
 interface TaskDrawerProps {
@@ -181,7 +182,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
   useEffect(() => {
     if (!project) return;
     phasesApi.list(project).then((res) => {
-      setPhases(res.data as Phase[]);
+      setPhases(sortByCanonicalOrder(res.data as Phase[]));
     }).catch(() => {});
   }, [project]);
 

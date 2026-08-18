@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { projectsApi, tasksApi } from '../services/api';
 import { onDataChange } from '../utils/dataEvents';
+import { sortByCanonicalOrder } from '../utils/phaseOrder';
 import type { Task } from '../types';
 
 interface PhaseWithCount {
@@ -55,6 +56,9 @@ export function useProjectSpace(id: string) {
     try {
       const res = await projectsApi.getSummary(id);
       const data = res.data as ProjectSummary;
+      if (data.phases) {
+        data.phases = sortByCanonicalOrder(data.phases);
+      }
       setProject(data);
       if (data.phases?.length) {
         const statusToPhaseName: Record<string, string> = {
