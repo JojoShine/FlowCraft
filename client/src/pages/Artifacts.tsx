@@ -73,7 +73,7 @@ export function Artifacts() {
     setBindSelected(artifact.taskId || '');
     if (selectedProjectId) {
       try {
-        const res = await tasksApi.list({ projectId: selectedProjectId });
+        const res = await tasksApi.listOptions(selectedProjectId);
         const list = (res.data as any[]) || [];
         setBindTasks(list.map((t: any) => ({ id: t.id, title: t.title })));
       } catch {
