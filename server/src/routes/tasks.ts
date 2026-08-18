@@ -27,6 +27,16 @@ router.get('/', scopeViewer(), asyncHandler(async (req, res) => {
   res.json(successResponse(tasks));
 }));
 
+router.get('/options', scopeViewer(), asyncHandler(async (req, res) => {
+  const projectId = req.query.projectId as string;
+  if (!projectId) {
+    res.status(400).json({ error: 'projectId required' });
+    return;
+  }
+  const options = await taskService.listOptions(projectId);
+  res.json(successResponse(options));
+}));
+
 router.get('/:id', asyncHandler(async (req, res) => {
   const task = await taskService.getById(req.params.id as string);
   res.json(successResponse(task));

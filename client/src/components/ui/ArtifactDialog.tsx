@@ -18,6 +18,7 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
   const [projectId, setProjectId] = useState('');
   const [uploadedFile, setUploadedFile] = useState<{ id: string; name: string } | null>(null);
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploadMode, setUploadMode] = useState<'file' | 'folder'>('file');
   const [folderUploading, setFolderUploading] = useState(false);
@@ -29,19 +30,23 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
     }
   }, [isOpen, defaultProjectId]);
 
-  useEffect(() => {
-    if (!projectId) return;
-    tasksApi.list({ projectId }).then((res) => {
+  const loadTasks = () => {
+    if (tasksLoaded) return;
+    const pid = projectId || defaultProjectId;
+    if (!pid) return;
+    setTasksLoaded(true);
+    tasksApi.listOptions(pid).then((res) => {
       const list = (res.data as any[]) || [];
       setTasks(list.map((t: any) => ({ id: t.id, title: t.title })));
     }).catch(() => setTasks([]));
-  }, [projectId]);
+  };
 
   const handleClose = () => {
     setName('');
     setTask('');
     setUploadedFile(null);
     setCreating(false);
+    setTasksLoaded(false);
     onClose();
   };
 
@@ -285,6 +290,7 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                 onValueChange={setTask}
                 options={tasks.map(t => ({ value: t.id, label: t.title }))}
                 searchable
+                onFocus={loadTasks}
               />
             </div>
           </div>

@@ -117,7 +117,8 @@ export const artifactService = {
 
     const timestamp = Date.now();
     const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const objectName = `${metadata.projectId}/${timestamp}-${safeFileName}`;
+    const taskDir = metadata.taskId || 'default';
+    const objectName = `${metadata.projectId}/${taskDir}/${timestamp}-${safeFileName}`;
 
     const compressed = await compressImage(file.buffer, file.mimetype);
     const filePath = await uploadFile(compressed, objectName, file.mimetype);

@@ -15,9 +15,10 @@ interface SelectProps {
   error?: string;
   disabled?: boolean;
   searchable?: boolean;
+  onFocus?: () => void;
 }
 
-export function Select({ label, placeholder = '请选择', value, onValueChange, options, error, disabled, searchable = false }: SelectProps) {
+export function Select({ label, placeholder = '请选择', value, onValueChange, options, error, disabled, searchable = false, onFocus }: SelectProps) {
   const [search, setSearch] = useState('');
 
   const filteredOptions = searchable && search
@@ -36,7 +37,7 @@ export function Select({ label, placeholder = '请选择', value, onValueChange,
           {label}
         </label>
       )}
-      <SelectPrimitive.Root value={value} onValueChange={(v) => { onValueChange?.(v); setSearch(''); }} disabled={disabled} onOpenChange={(open) => { if (!open) setSearch(''); }}>
+      <SelectPrimitive.Root value={value} onValueChange={(v) => { onValueChange?.(v); setSearch(''); }} disabled={disabled} onOpenChange={(open) => { if (open) onFocus?.(); if (!open) setSearch(''); }}>
         <SelectPrimitive.Trigger
           style={{
             width: '100%',

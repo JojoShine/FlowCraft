@@ -20,7 +20,7 @@ function getExtension(filename: string): string {
   return parts.length > 1 ? parts.pop()!.toLowerCase() : '';
 }
 
-function detectMode(name: string, type: string, filePath?: string | null): ViewerMode {
+function detectMode(name: string, type: string, filePath?: string | null, content?: string | null): ViewerMode {
   const ext = getExtension(name);
   const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif'];
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', '3gp'];
@@ -28,7 +28,7 @@ function detectMode(name: string, type: string, filePath?: string | null): Viewe
   const spreadsheetExts = ['xls', 'xlsx', 'csv', 'ods'];
   const officeExts = ['ppt', 'pptx', 'odt', 'odp'];
 
-  if (filePath && filePath.startsWith('folders/')) return 'folder';
+  if (content) return 'folder';
   if (imageExts.includes(ext) || type === 'image') return 'image';
   if (videoExts.includes(ext)) return 'video';
   if (audioExts.includes(ext)) return 'audio';
@@ -69,7 +69,7 @@ export function SharedArtifact() {
 
   const mode = useMemo(() => {
     if (!artifact) return 'unknown';
-    return detectMode(artifact.name, artifact.type, artifact.filePath);
+    return detectMode(artifact.name, artifact.type, artifact.filePath, artifact.content);
   }, [artifact]);
 
   const fileUrl = useMemo(() => {

@@ -550,6 +550,50 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Technical support */}
+      <div style={{
+        padding: '6px 8px',
+        borderTop: '1px solid var(--border-subtle)',
+      }}>
+        <a
+          href="https://tbtparent.me"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontSize: 11,
+            color: 'var(--ink-3)',
+            textDecoration: 'none',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--surface-raised)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-3)';
+          }}
+          title="技术支持 by 甜宝塔家长"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>技术支持</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 10, height: 10, marginLeft: 'auto', opacity: 0.5 }}>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      </div>
+
       {/* Project Drawer */}
       <ProjectDrawer
         isOpen={showNewProjectDrawer}

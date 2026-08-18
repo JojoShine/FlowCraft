@@ -31,6 +31,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
   const folderName = name || path.basename(files[0].originalname) || 'uploaded-folder';
   const timestamp = Date.now();
   const artifactId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const taskDir = taskId || 'default';
 
   const fileTree: { path: string; size: number; mimeType: string }[] = [];
 
@@ -40,7 +41,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
     const cleanPath = relativePath.replace(/\\/g, '/');
     const parts = cleanPath.split('/');
     const innerPath = parts.length > 1 ? parts.slice(1).join('/') : cleanPath;
-    const objectName = `folders/${artifactId}/${innerPath}`;
+    const objectName = `${projectId}/${taskDir}/${artifactId}/${innerPath}`;
 
     const compressed = await compressImage(file.buffer, file.mimetype);
     await uploadFile(compressed, objectName, file.mimetype);
@@ -58,7 +59,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
       name: folderName,
       type: type || 'prototype',
       status: 'approved',
-      filePath: `folders/${artifactId}`,
+      filePath: `${projectId}/${taskDir}/${artifactId}`,
       content: JSON.stringify(fileTree),
       projectId,
       taskId: taskId || null,

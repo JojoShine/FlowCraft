@@ -54,6 +54,7 @@ export const projectsApi = {
 
 export const tasksApi = {
   list: (params?: { projectId?: string; column?: string }) => api.get('/tasks', { params }),
+  listOptions: (projectId: string) => api.get('/tasks/options', { params: { projectId } }),
   count: (projectId: string) => api.get('/tasks/count', { params: { projectId } }),
   listByPhase: (phaseId: string) => api.get('/tasks', { params: { phaseId } }),
   get: (id: string) => api.get(`/tasks/${id}`),

@@ -116,6 +116,13 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
     setArtifactType('proto');
     setArtifactUploadMode('file');
     if (mode === 'create') {
+      setTitle('');
+      setTaskType('development');
+      setPriority('med');
+      setDescription('');
+      setDueDate('');
+      setPhase('development');
+      setStartDate(new Date().toISOString().slice(0, 10));
       setColumn(defaultColumn || 'todo');
       setProject(defaultProjectId || '');
       setPendingArtifacts([]);

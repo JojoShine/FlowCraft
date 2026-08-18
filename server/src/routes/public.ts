@@ -38,7 +38,7 @@ router.get('/artifacts/:token/file', asyncHandler(async (req, res) => {
 
 router.get('/artifacts/:token/files/{*filePath}', asyncHandler(async (req, res) => {
   const artifact = await getArtifactByToken(req.params.token as string);
-  if (!artifact.filePath?.startsWith('folders/')) throw AppError.badRequest('Not a folder artifact');
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
 
   const rawPath = req.params.filePath;
   const filePath = Array.isArray(rawPath) ? rawPath.join('/') : (rawPath as string);
@@ -80,7 +80,7 @@ router.get('/artifacts/:token/preview', asyncHandler(async (req, res) => {
 
 router.get('/artifacts/:token/preview/{*filePath}', asyncHandler(async (req, res) => {
   const artifact = await getArtifactByToken(req.params.token as string);
-  if (!artifact.filePath?.startsWith('folders/')) throw AppError.badRequest('Not a folder artifact');
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
 
   const rawPath = req.params.filePath;
   const filePath = Array.isArray(rawPath) ? rawPath.join('/') : (rawPath as string);

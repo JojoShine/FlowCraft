@@ -27,6 +27,14 @@ export const taskService = {
     });
   },
 
+  async listOptions(projectId: string) {
+    return prisma.task.findMany({
+      where: { projectId },
+      select: { id: true, title: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
   async listForPhase(phaseId: string) {
     const tasks = await prisma.task.findMany({
       where: { phaseId },

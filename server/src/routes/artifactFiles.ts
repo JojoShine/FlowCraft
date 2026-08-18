@@ -10,7 +10,7 @@ const router = Router();
 router.get('/:id/files/{*filePath}', asyncHandler(async (req, res) => {
   const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string } });
   if (!artifact) throw AppError.notFound('Artifact not found');
-  if (!artifact.filePath?.startsWith('folders/')) throw AppError.badRequest('Not a folder artifact');
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
 
   const rawPath = req.params.filePath;
   const filePath = Array.isArray(rawPath) ? rawPath.join('/') : (rawPath as string);
@@ -31,7 +31,7 @@ router.get('/:id/files/{*filePath}', asyncHandler(async (req, res) => {
 router.get('/:id/preview/{*filePath}', asyncHandler(async (req, res) => {
   const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string } });
   if (!artifact) throw AppError.notFound('Artifact not found');
-  if (!artifact.filePath?.startsWith('folders/')) throw AppError.badRequest('Not a folder artifact');
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
 
   const rawPath = req.params.filePath;
   const filePath = Array.isArray(rawPath) ? rawPath.join('/') : (rawPath as string);
