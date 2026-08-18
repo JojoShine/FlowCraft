@@ -160,8 +160,23 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
     }
 
     if (mode === 'docx') {
-      setDocxLoading(true);
+      setLoading(true);
       setDocxError(false);
+      const previewUrl = artifactsApi.getPreviewUrl(artifact.id);
+      fetch(previewUrl)
+        .then(res => {
+          if (!res.ok) throw new Error('preview failed');
+          return res.text();
+        })
+        .then(text => {
+          setHtmlContent(DOMPurify.sanitize(text));
+          setLoading(false);
+        })
+        .catch(() => {
+          setHtmlContent(null);
+          setLoading(false);
+          setDocxLoading(true);
+        });
     }
 
     if (mode === 'spreadsheet') {
@@ -390,6 +405,38 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
         );
 
       case 'docx':
+        if (loading) {
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
+            </div>
+          );
+        }
+        if (htmlContent) {
+          return (
+            <>
+              <style>{`
+                .html-docx-preview { color: #1a1a1a; line-height: 1.6; }
+                .html-docx-preview img { max-width: 100%; }
+                .html-docx-preview table { border-collapse: collapse; }
+                .html-docx-preview td, .html-docx-preview th { border: 1px solid #ddd; padding: 6px 10px; }
+                [data-theme="dark"] .html-docx-preview {
+                  filter: invert(1) hue-rotate(180deg);
+                  color-scheme: light;
+                }
+                [data-theme="dark"] .html-docx-preview img,
+                [data-theme="dark"] .html-docx-preview video {
+                  filter: invert(1) hue-rotate(180deg);
+                }
+              `}</style>
+              <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>
+                  <div className="html-docx-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                </div>
+              </div>
+            </>
+          );
+        }
         return (
           <>
             <style>{`

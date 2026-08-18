@@ -69,7 +69,12 @@ router.get('/artifacts/:token/preview', asyncHandler(async (req, res) => {
   const buffer = Buffer.concat(chunks);
 
   const extractor = new WordExtractor();
-  const doc = await extractor.extract(buffer);
+  let doc;
+  try {
+    doc = await extractor.extract(buffer);
+  } catch {
+    throw AppError.badRequest('该文件无法解析为 .doc 格式，可能实际为 .docx 或其他格式');
+  }
   const body = doc.getBody();
   const paragraphs = body.split(/\r?\n/).filter((p: string) => p.trim().length > 0);
   const html = paragraphs.map((p: string) => `<p>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('\n');
@@ -99,7 +104,13 @@ router.get('/artifacts/:token/preview/{*filePath}', asyncHandler(async (req, res
     const buffer = Buffer.concat(chunks);
 
     const extractor = new WordExtractor();
-    const doc = await extractor.extract(buffer);
+    let doc;
+    try {
+      doc = await extractor.extract(buffer);
+    } catch {
+      res.status(400).json({ error: { message: '该文件无法解析为 .doc 格式' } });
+      return;
+    }
     const body = doc.getBody();
     const paragraphs = body.split(/\r?\n/).filter((p: string) => p.trim().length > 0);
     const html = paragraphs.map((p: string) => `<p>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('\n');

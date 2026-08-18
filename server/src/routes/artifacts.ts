@@ -109,8 +109,8 @@ router.get('/:id/preview', asyncHandler(async (req, res) => {
   const { stream, fileName } = await artifactService.getFileStream(req.params.id as string);
   const ext = path.extname(fileName).toLowerCase();
 
-  if (ext !== '.doc') {
-    throw AppError.badRequest('Preview only supported for .doc files');
+  if (ext !== '.doc' && ext !== '.docx') {
+    throw AppError.badRequest('Preview only supported for .doc and .docx files');
   }
 
   const chunks: Buffer[] = [];
@@ -119,8 +119,24 @@ router.get('/:id/preview', asyncHandler(async (req, res) => {
   }
   const buffer = Buffer.concat(chunks);
 
+  const head = buffer.slice(0, 256).toString('utf8').toLowerCase();
+  if (head.includes('<html') || head.includes('<!doctype html') || head.includes('<body')) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(buffer);
+    return;
+  }
+
+  if (ext === '.docx') {
+    throw AppError.badRequest('该 .docx 文件无法预览，仅支持标准 docx 格式或 HTML 保存的文件');
+  }
+
   const extractor = new WordExtractor();
-  const doc = await extractor.extract(buffer);
+  let doc;
+  try {
+    doc = await extractor.extract(buffer);
+  } catch {
+    throw AppError.badRequest('该文件无法解析为 .doc 格式，可能实际为其他格式');
+  }
   const body = doc.getBody();
   const paragraphs = body.split(/\r?\n/).filter((p: string) => p.trim().length > 0);
   const html = paragraphs.map((p: string) => `<p>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('\n');
