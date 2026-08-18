@@ -32,6 +32,7 @@
     "openai": "^6.49.0",
     "prisma": "^6.19.3",
     "sharp": "^0.35.3",
+    "word-extractor": "^1.0.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -39,6 +40,7 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.2.0",
+    "@types/word-extractor": "^1.0.6",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }

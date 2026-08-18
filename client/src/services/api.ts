@@ -105,6 +105,16 @@ export const artifactsApi = {
     const token = localStorage.getItem('token') || '';
     return `${baseURL}/artifacts/${id}/file?token=${encodeURIComponent(token)}`;
   },
+  getPreviewUrl: (id: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    const token = localStorage.getItem('token') || '';
+    return `${baseURL}/artifacts/${id}/preview?token=${encodeURIComponent(token)}`;
+  },
+  getFolderPreviewUrl: (artifactId: string, filePath: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    const token = localStorage.getItem('token') || '';
+    return `${baseURL}/artifacts/${artifactId}/preview/${filePath}?token=${encodeURIComponent(token)}`;
+  },
   share: (id: string) => api.post(`/artifacts/${id}/share`),
   unshare: (id: string) => api.delete(`/artifacts/${id}/share`),
   getPublicFileUrl: (token: string) => {
@@ -114,6 +124,14 @@ export const artifactsApi = {
   getPublicFolderFileUrl: (token: string, filePath: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     return `${baseURL}/public/artifacts/${token}/files/${filePath}`;
+  },
+  getPublicPreviewUrl: (token: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/preview`;
+  },
+  getPublicFolderPreviewUrl: (token: string, filePath: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/preview/${filePath}`;
   },
 };
 

@@ -20,7 +20,7 @@ interface ArtifactViewerProps {
   } | null;
 }
 
-type ViewerMode = 'image' | 'video' | 'audio' | 'pdf' | 'html' | 'markdown' | 'spreadsheet' | 'folder' | 'office' | 'docx' | 'unknown';
+type ViewerMode = 'image' | 'video' | 'audio' | 'pdf' | 'html' | 'markdown' | 'spreadsheet' | 'folder' | 'office' | 'doc' | 'docx' | 'unknown';
 
 function getExtension(filename: string): string {
   const parts = filename.split('.');
@@ -34,7 +34,7 @@ function detectMode(name: string, type: string, filePath?: string | null): Viewe
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', '3gp'];
   const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'wma', 'm4a', 'opus'];
   const spreadsheetExts = ['xls', 'xlsx', 'csv', 'ods'];
-  const officeExts = ['doc', 'ppt', 'pptx', 'odt', 'odp'];
+  const officeExts = ['ppt', 'pptx', 'odt', 'odp'];
 
   if (filePath && filePath.startsWith('folders/')) return 'folder';
   if (imageExts.includes(ext) || type === 'image') return 'image';
@@ -43,7 +43,7 @@ function detectMode(name: string, type: string, filePath?: string | null): Viewe
   if (ext === 'pdf') return 'pdf';
   if (ext === 'html' || ext === 'htm') return 'html';
   if (ext === 'md' || ext === 'markdown') return 'markdown';
-  if (ext === 'docx') return 'docx';
+  if (ext === 'doc' || ext === 'docx') return ext;
   if (spreadsheetExts.includes(ext) || type === 'spreadsheet') return 'spreadsheet';
   if (officeExts.includes(ext)) return 'office';
   return 'unknown';
@@ -59,6 +59,7 @@ const modeLabels: Record<ViewerMode, string> = {
   spreadsheet: '表格预览',
   folder: '文件夹',
   office: '文档预览',
+  doc: '文档预览',
   docx: '文档预览',
   unknown: '文件预览',
 };
@@ -141,6 +142,18 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
           const parsed = await marked(text);
           const raw = typeof parsed === 'string' ? parsed : '';
           setHtmlContent(DOMPurify.sanitize(raw));
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }
+
+    if (mode === 'doc') {
+      setLoading(true);
+      const previewUrl = artifactsApi.getPreviewUrl(artifact.id);
+      fetch(previewUrl)
+        .then(res => res.text())
+        .then(text => {
+          setHtmlContent(DOMPurify.sanitize(text));
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -336,6 +349,35 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
               <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
                 <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>
                   <div className="md-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                </div>
+              </div>
+            </>
+          );
+        }
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <div style={{ fontSize: 13, color: 'var(--red)' }}>加载失败</div>
+          </div>
+        );
+
+      case 'doc':
+        if (loading) {
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
+            </div>
+          );
+        }
+        if (htmlContent) {
+          return (
+            <>
+              <style>{`
+                .doc-preview { font-family: 'Times New Roman', 'SimSun', serif; color: var(--ink); line-height: 1.8; }
+                .doc-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+              `}</style>
+              <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>
+                  <div className="doc-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />
                 </div>
               </div>
             </>

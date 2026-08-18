@@ -8,6 +8,8 @@ import { compressImage } from '../lib/imageCompress';
 import { prisma } from '../lib/prisma';
 import { requireRole, scopeViewer } from '../middleware/auth';
 import path from 'path';
+import { Readable } from 'stream';
+import WordExtractor from 'word-extractor';
 import multer from 'multer';
 
 const folderUpload = multer({
@@ -100,6 +102,30 @@ router.get('/:id/file', asyncHandler(async (req, res) => {
   res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
 
   stream.pipe(res);
+}));
+
+router.get('/:id/preview', asyncHandler(async (req, res) => {
+  const { stream, fileName } = await artifactService.getFileStream(req.params.id as string);
+  const ext = path.extname(fileName).toLowerCase();
+
+  if (ext !== '.doc') {
+    throw AppError.badRequest('Preview only supported for .doc files');
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const buffer = Buffer.concat(chunks);
+
+  const extractor = new WordExtractor();
+  const doc = await extractor.extract(buffer);
+  const body = doc.getBody();
+  const paragraphs = body.split(/\r?\n/).filter((p: string) => p.trim().length > 0);
+  const html = paragraphs.map((p: string) => `<p>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('\n');
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 }));
 
 router.get('/', scopeViewer(), asyncHandler(async (req, res) => {

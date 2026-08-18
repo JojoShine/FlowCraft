@@ -13,7 +13,7 @@ interface SharedArtifactData {
   content: string | null;
 }
 
-type ViewerMode = 'image' | 'video' | 'audio' | 'pdf' | 'html' | 'markdown' | 'spreadsheet' | 'folder' | 'office' | 'docx' | 'unknown';
+type ViewerMode = 'image' | 'video' | 'audio' | 'pdf' | 'html' | 'markdown' | 'spreadsheet' | 'folder' | 'office' | 'doc' | 'docx' | 'unknown';
 
 function getExtension(filename: string): string {
   const parts = filename.split('.');
@@ -26,7 +26,7 @@ function detectMode(name: string, type: string, filePath?: string | null): Viewe
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', '3gp'];
   const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'wma', 'm4a', 'opus'];
   const spreadsheetExts = ['xls', 'xlsx', 'csv', 'ods'];
-  const officeExts = ['doc', 'ppt', 'pptx', 'odt', 'odp'];
+  const officeExts = ['ppt', 'pptx', 'odt', 'odp'];
 
   if (filePath && filePath.startsWith('folders/')) return 'folder';
   if (imageExts.includes(ext) || type === 'image') return 'image';
@@ -35,7 +35,7 @@ function detectMode(name: string, type: string, filePath?: string | null): Viewe
   if (ext === 'pdf') return 'pdf';
   if (ext === 'html' || ext === 'htm') return 'html';
   if (ext === 'md' || ext === 'markdown') return 'markdown';
-  if (ext === 'docx') return 'docx';
+  if (ext === 'doc' || ext === 'docx') return ext;
   if (spreadsheetExts.includes(ext) || type === 'spreadsheet') return 'spreadsheet';
   if (officeExts.includes(ext)) return 'office';
   return 'unknown';
@@ -100,6 +100,13 @@ export function SharedArtifact() {
       fetch(fileUrl).then(r => r.text()).then(async text => {
         const parsed = await marked(text);
         setHtmlContent(DOMPurify.sanitize(typeof parsed === 'string' ? parsed : ''));
+      }).catch(() => {});
+    }
+
+    if (mode === 'doc') {
+      const previewUrl = artifactsApi.getPublicPreviewUrl(token);
+      fetch(previewUrl).then(r => r.text()).then(text => {
+        setHtmlContent(DOMPurify.sanitize(text));
       }).catch(() => {});
     }
 
@@ -174,6 +181,21 @@ export function SharedArtifact() {
             <div style={{ width: '100%', height: '100%', overflow: 'auto', background: '#fff', display: 'flex', justifyContent: 'center' }}>
               <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>
                 <div className="md-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+              </div>
+            </div>
+          </>
+        );
+      case 'doc':
+        if (!htmlContent) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>加载中...</div>;
+        return (
+          <>
+            <style>{`
+              .doc-preview { font-family: 'Times New Roman', 'SimSun', serif; color: #18181b; line-height: 1.8; }
+              .doc-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+            `}</style>
+            <div style={{ width: '100%', height: '100%', overflow: 'auto', background: '#fff', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>
+                <div className="doc-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />
               </div>
             </div>
           </>

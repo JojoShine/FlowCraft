@@ -93,6 +93,14 @@ export function Kanban() {
     title: col.title,
     tasks: displayTasks
       .filter(t => t.column === col.id)
+      .sort((a, b) => {
+        if (col.id === 'done') {
+          const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+          const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+          return tb - ta;
+        }
+        return 0;
+      })
       .map(t => ({
         id: t.id,
         title: t.title,

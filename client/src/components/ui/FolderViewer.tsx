@@ -251,6 +251,7 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
   const isHtml = ext === 'html' || ext === 'htm';
   const isMarkdown = ext === 'md' || ext === 'markdown';
   const isDocx = ext === 'docx';
+  const isDoc = ext === 'doc';
   const isText = ['txt', 'log', 'csv', 'json', 'yaml', 'yml', 'toml', 'xml', 'js', 'ts', 'tsx', 'jsx', 'py', 'java', 'go', 'rs', 'css', 'scss', 'sh', 'bat', 'sql', 'env', 'gitignore', 'dockerignore', 'makefile', 'dockerfile'].includes(ext) || mimeType.startsWith('text/');
 
   useEffect(() => {
@@ -311,6 +312,10 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
 
   if (isDocx) {
     return <DocxPreview url={url} scale={scale} />;
+  }
+
+  if (isDoc) {
+    return <DocPreview artifactId={artifactId} filePath={filePath} scale={scale} />;
   }
 
   if (isText) {
@@ -449,6 +454,40 @@ function DocxPreview({ url, scale }: { url: string; scale: number }) {
         <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, width: '100%', maxWidth: 900 }}>
           <div ref={containerRef} />
           {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DocPreview({ artifactId, filePath, scale }: { artifactId: string; filePath: string; scale: number }) {
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const previewUrl = artifactsApi.getFolderPreviewUrl(artifactId, filePath);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(false);
+    setHtmlContent(null);
+    fetch(previewUrl)
+      .then(r => r.text())
+      .then(text => { setHtmlContent(DOMPurify.sanitize(text)); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, [previewUrl]);
+
+  if (error) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--red)', fontSize: 13 }}>加载失败，请尝试下载后打开</div>;
+
+  return (
+    <>
+      <style>{`
+        .doc-fv-preview { font-family: 'Times New Roman', 'SimSun', serif; color: var(--ink); line-height: 1.8; }
+        .doc-fv-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+      `}</style>
+      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, width: '100%', maxWidth: 800, padding: '24px 32px' }}>
+          {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>}
+          {htmlContent && <div className="doc-fv-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />}
         </div>
       </div>
     </>
