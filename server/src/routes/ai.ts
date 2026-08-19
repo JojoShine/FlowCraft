@@ -3,6 +3,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { chatService } from '../services/chatService';
 import { chatStream, type ChatMessage } from '../ai/llm';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.post('/chat', asyncHandler(async (req, res) => {
 
   let convId = conversationId;
   if (!convId) {
-    const conv = await chatService.createConversation(projectId);
+    const conv = await chatService.createConversation(projectId, req.user!.id);
     convId = conv.id;
     const title = message.length > 30 ? message.slice(0, 30) + '...' : message;
     await chatService.updateConversationTitle(convId, title);
@@ -55,22 +56,34 @@ router.post('/chat', asyncHandler(async (req, res) => {
 
 router.get('/conversations', asyncHandler(async (req, res) => {
   const projectId = req.query.projectId as string | undefined;
-  const conversations = await chatService.listConversations(projectId);
+  const conversations = await chatService.listConversations(projectId, req.user!.id);
   res.json(successResponse(conversations));
 }));
 
 router.post('/conversations', asyncHandler(async (req, res) => {
   const { projectId } = req.body;
-  const conversation = await chatService.createConversation(projectId);
+  const conversation = await chatService.createConversation(projectId, req.user!.id);
   res.status(201).json(successResponse(conversation));
 }));
 
 router.get('/conversations/:id', asyncHandler(async (req, res) => {
   const conversation = await chatService.getConversation(req.params.id as string);
+  if (conversation.userId && conversation.userId !== req.user!.id) {
+    res.status(403).json({ success: false, error: '无权访问该对话' });
+    return;
+  }
   res.json(successResponse(conversation));
 }));
 
 router.delete('/conversations/:id', asyncHandler(async (req, res) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: req.params.id as string },
+    select: { userId: true },
+  });
+  if (!conversation || (conversation.userId && conversation.userId !== req.user!.id)) {
+    res.status(403).json({ success: false, error: '无权操作该对话' });
+    return;
+  }
   await chatService.deleteConversation(req.params.id as string);
   res.status(204).end();
 }));

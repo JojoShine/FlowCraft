@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
 import { CalendarView } from '../components/kanban/CalendarView';
 import { TaskDrawer } from '../components/ui/TaskDrawer';
+import { EmptyState } from '../components/ui/EmptyState';
 import { tasksApi } from '../services/api';
 import { notifyDataChange } from '../utils/dataEvents';
 import { useToast } from '../components/ui/Toast';
@@ -43,7 +44,7 @@ export function Kanban() {
   const [defaultColumn, setDefaultColumn] = useState('todo');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const { selectedProjectId } = useProjectContext();
+  const { selectedProjectId, projects, projectsLoading } = useProjectContext();
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
   const { tasks, loading, error } = useTasks(selectedProjectId ?? undefined);
@@ -70,11 +71,20 @@ export function Kanban() {
     return tasks.filter(t => isTaskRecent(t));
   }, [tasks]);
 
-  if (loading) {
+  if (loading || projectsLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
       </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="暂无项目"
+        description="在左侧栏创建一个项目开始使用"
+      />
     );
   }
 

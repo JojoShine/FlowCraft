@@ -25,6 +25,7 @@ model User {
   assignedTasks  Task[]         @relation("TaskAssignee")
   createdArtifacts Artifact[]   @relation("ArtifactCreator")
   conversations  Conversation[]
+  templates      Template[]     @relation("TemplateCreator")
 }
 
 model Project {
@@ -123,6 +124,8 @@ model Template {
   content     String
   fileType    String   @default("html")
   usageCount  Int      @default(0)
+  creatorId   String?
+  creator     User?    @relation("TemplateCreator", fields: [creatorId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

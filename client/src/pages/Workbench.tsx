@@ -107,6 +107,15 @@ export function Workbench() {
     );
   }
 
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="暂无项目"
+        description="在左侧栏创建一个项目开始使用"
+      />
+    );
+  }
+
   return (
     <div className="hide-scrollbar" style={{ height: '100%', overflowY: 'auto' }}>
       {/* Page header */}

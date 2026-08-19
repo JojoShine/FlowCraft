@@ -2,8 +2,10 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/errorHandler';
 
 export const templateService = {
-  async list() {
-    return prisma.template.findMany({ orderBy: { updatedAt: 'desc' } });
+  async list(creatorId?: string) {
+    const where: Record<string, unknown> = {};
+    if (creatorId) where.creatorId = creatorId;
+    return prisma.template.findMany({ where, orderBy: { updatedAt: 'desc' } });
   },
 
   async getById(id: string) {
@@ -12,7 +14,7 @@ export const templateService = {
     return template;
   },
 
-  async create(data: { name: string; category: string; description?: string; content: string; fileType?: string }) {
+  async create(data: { name: string; category: string; description?: string; content: string; fileType?: string; creatorId?: string }) {
     if (!data.name || !data.category || !data.content) {
       throw AppError.badRequest('name, category, and content are required');
     }
@@ -23,6 +25,7 @@ export const templateService = {
         description: data.description,
         content: data.content,
         fileType: data.fileType || 'html',
+        creatorId: data.creatorId,
       },
     });
   },

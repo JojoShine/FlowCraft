@@ -5,10 +5,11 @@ import { compressImage } from '../lib/imageCompress';
 import { Readable } from 'stream';
 
 export const artifactService = {
-  async list(filters?: { projectId?: string; type?: string; page?: number; pageSize?: number }) {
+  async list(filters?: { projectId?: string; type?: string; page?: number; pageSize?: number; ownerId?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.type) where.type = filters.type;
+    if (filters?.ownerId && !filters?.projectId) where.project = { ownerId: filters.ownerId };
 
     const page = filters?.page || 1;
     const pageSize = filters?.pageSize || 20;

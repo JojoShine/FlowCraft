@@ -2,8 +2,9 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/errorHandler';
 
 export const projectService = {
-  async list() {
+  async list(ownerId: string) {
     return prisma.project.findMany({
+      where: { ownerId },
       include: {
         phases: { orderBy: { order: 'asc' } },
       },

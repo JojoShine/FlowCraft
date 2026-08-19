@@ -53,10 +53,31 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-export function scopeViewer() {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.role === 'viewer' && req.user.projectId) {
-      req.query.projectId = req.user.projectId;
+export async function checkProjectOwnership(userId: string, projectId: string): Promise<boolean> {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
+  return project?.ownerId === userId;
+}
+
+export function scopeProject() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      next();
+      return;
+    }
+    if (req.user.role === 'viewer') {
+      if (req.user.projectId) {
+        req.query.projectId = req.user.projectId;
+      }
+      next();
+      return;
+    }
+    const projectId = req.query.projectId as string | undefined;
+    if (projectId) {
+      const owned = await checkProjectOwnership(req.user.id, projectId);
+      if (!owned) {
+        res.status(403).json({ success: false, error: '无权访问该项目' });
+        return;
+      }
     }
     next();
   };

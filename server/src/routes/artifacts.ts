@@ -6,7 +6,7 @@ import { upload } from '../middleware/upload';
 import { uploadFile } from '../lib/minio';
 import { compressImage } from '../lib/imageCompress';
 import { prisma } from '../lib/prisma';
-import { requireRole, scopeViewer } from '../middleware/auth';
+import { requireRole, checkProjectOwnership } from '../middleware/auth';
 import path from 'path';
 import { Readable } from 'stream';
 import WordExtractor from 'word-extractor';
@@ -27,9 +27,12 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
 
   const { projectId, taskId, name, type } = req.body;
   if (!projectId) throw AppError.badRequest('projectId is required');
+  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该项目' });
+    return;
+  }
 
   const folderName = name || path.basename(files[0].originalname) || 'uploaded-folder';
-  const timestamp = Date.now();
   const artifactId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const taskDir = taskId || 'default';
 
@@ -75,6 +78,10 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const { name, type, projectId, taskId, status, content } = req.body;
+  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该项目' });
+    return;
+  }
   const artifact = await artifactService.create({ name, type, projectId, taskId, status, content });
   res.json(successResponse(artifact));
 }));
@@ -85,7 +92,11 @@ router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler
   }
 
   const { projectId, taskId, type, name } = req.body;
-  
+  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该项目' });
+    return;
+  }
+
   const artifact = await artifactService.upload(req.file, {
     projectId,
     taskId,
@@ -97,6 +108,11 @@ router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler
 }));
 
 router.get('/:id/file', asyncHandler(async (req, res) => {
+  const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!artifact || !(await checkProjectOwnership(req.user!.id, artifact.projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该产物' });
+    return;
+  }
   const { stream, contentType, fileName } = await artifactService.getFileStream(req.params.id as string);
 
   res.setHeader('Content-Type', contentType);
@@ -106,6 +122,11 @@ router.get('/:id/file', asyncHandler(async (req, res) => {
 }));
 
 router.get('/:id/preview', asyncHandler(async (req, res) => {
+  const artifactCheck = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!artifactCheck || !(await checkProjectOwnership(req.user!.id, artifactCheck.projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该产物' });
+    return;
+  }
   const { stream, fileName } = await artifactService.getFileStream(req.params.id as string);
   const ext = path.extname(fileName).toLowerCase();
 
@@ -145,33 +166,53 @@ router.get('/:id/preview', asyncHandler(async (req, res) => {
   res.send(html);
 }));
 
-router.get('/', scopeViewer(), asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { projectId, type, page, pageSize } = req.query;
   const result = await artifactService.list({
     projectId: projectId as string,
     type: type as string,
     page: page ? Number(page) : undefined,
     pageSize: pageSize ? Number(pageSize) : undefined,
+    ownerId: req.user!.id,
   });
   res.json(successResponse(result.data, { total: result.total, page: result.page, pageSize: result.pageSize }));
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {
   const artifact = await artifactService.getById(req.params.id as string);
+  if (!(await checkProjectOwnership(req.user!.id, artifact.projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该产物' });
+    return;
+  }
   res.json(successResponse(artifact));
 }));
 
 router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该产物' });
+    return;
+  }
   const artifact = await artifactService.update(req.params.id as string, req.body);
   res.json(successResponse(artifact));
 }));
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该产物' });
+    return;
+  }
   await artifactService.delete(req.params.id as string);
   res.status(204).send();
 }));
 
 router.post('/:id/share', requireRole('admin'), asyncHandler(async (req, res) => {
+  const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该产物' });
+    return;
+  }
   const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const artifact = await prisma.artifact.update({
     where: { id: req.params.id as string },
@@ -181,6 +222,11 @@ router.post('/:id/share', requireRole('admin'), asyncHandler(async (req, res) =>
 }));
 
 router.delete('/:id/share', requireRole('admin'), asyncHandler(async (req, res) => {
+  const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
+  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+    res.status(403).json({ success: false, error: '无权操作该产物' });
+    return;
+  }
   await prisma.artifact.update({
     where: { id: req.params.id as string },
     data: { shareToken: null },
@@ -189,4 +235,3 @@ router.delete('/:id/share', requireRole('admin'), asyncHandler(async (req, res) 
 }));
 
 export default router;
-

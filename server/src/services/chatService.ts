@@ -8,9 +8,10 @@ export const chatService = {
     });
   },
 
-  async listConversations(projectId?: string) {
+  async listConversations(projectId?: string, userId?: string) {
     const where: Record<string, unknown> = {};
     if (projectId) where.projectId = projectId;
+    if (userId) where.userId = userId;
 
     return prisma.conversation.findMany({
       where,

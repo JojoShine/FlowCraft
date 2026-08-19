@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem('flowcraft_selected_project');
     window.dispatchEvent(new Event('auth:logout'));
   }, []);
 

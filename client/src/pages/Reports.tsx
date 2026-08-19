@@ -181,6 +181,10 @@ export function Reports() {
     try {
       const res = await reportsApi.generate({ type, projectId: selectedProjectId });
       const raw = res.data;
+      if (!raw) {
+        addToast('当天没有已完成的任务，无需生成日报', 'default');
+        return;
+      }
       const parsed = parseReport(raw);
       await refetch();
       if (parsed) {

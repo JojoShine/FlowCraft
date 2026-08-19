@@ -9,6 +9,7 @@ import { ArtifactsCalendar } from '../components/artifacts/ArtifactsCalendar';
 import { ArtifactDialog } from '../components/ui/ArtifactDialog';
 import { ArtifactViewer } from '../components/ui/ArtifactViewer';
 import { Pagination } from '../components/ui/Pagination';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../components/ui/Toast';
 import { useConfirm } from '../components/ui/ConfirmDialog';
 import { artifactsApi, tasksApi } from '../services/api';
@@ -33,7 +34,7 @@ export function Artifacts() {
   const bindRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { selectedProjectId } = useProjectContext();
+  const { selectedProjectId, projects, projectsLoading } = useProjectContext();
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
   const isCalendar = viewMode === 'calendar';
@@ -116,11 +117,20 @@ export function Artifacts() {
   );
   const selectedTaskTitle = bindTasks.find(t => t.id === bindSelected)?.title;
 
-  if (initialLoading) {
+  if (initialLoading || projectsLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
       </div>
+    );
+  }
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="暂无项目"
+        description="在左侧栏创建一个项目开始使用"
+      />
     );
   }
 

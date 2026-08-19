@@ -104,10 +104,11 @@ async function generateSummary(
 }
 
 export const reportService = {
-  async list(filters?: { projectId?: string; type?: string; year?: number; month?: number }) {
+  async list(filters?: { projectId?: string; type?: string; year?: number; month?: number; ownerId?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.type) where.type = filters.type;
+    if (filters?.ownerId && !filters?.projectId) where.project = { ownerId: filters.ownerId };
     if (filters?.year && filters?.month) {
       const { start, end } = utc8MonthRange(filters.year, filters.month);
       where.date = { gte: start, lte: end };
@@ -213,6 +214,10 @@ export const reportService = {
     if (!project) throw AppError.notFound('Project not found');
 
     const tasks = await queryTasksForPeriod(projectId, rangeStart, rangeEnd);
+
+    if (type === 'daily' && tasks.completed.length === 0) {
+      return null;
+    }
 
     const summary = await generateSummary(project.name, type, label, tasks);
 
