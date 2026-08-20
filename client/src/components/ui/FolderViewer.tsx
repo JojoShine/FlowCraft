@@ -471,7 +471,10 @@ function DocPreview({ artifactId, filePath, scale }: { artifactId: string; fileP
     setError(false);
     setHtmlContent(null);
     fetch(previewUrl)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error('preview failed');
+        return r.text();
+      })
       .then(text => { setHtmlContent(DOMPurify.sanitize(text)); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
   }, [previewUrl]);
@@ -483,6 +486,11 @@ function DocPreview({ artifactId, filePath, scale }: { artifactId: string; fileP
       <style>{`
         .doc-fv-preview { font-family: 'Times New Roman', 'SimSun', serif; color: var(--ink); line-height: 1.8; }
         .doc-fv-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+        .doc-fv-preview * { color: inherit !important; }
+        .doc-fv-preview table { border-collapse: collapse; width: 100%; margin: 0.8em 0; }
+        .doc-fv-preview th, .doc-fv-preview td { border: 1px solid var(--border-subtle) !important; padding: 6px 12px; text-align: left; font-size: 14px; }
+        .doc-fv-preview th { background: var(--surface-overlay) !important; font-weight: 600; }
+        .doc-fv-preview td { background: var(--surface) !important; }
       `}</style>
       <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, width: '100%', maxWidth: 800, padding: '24px 32px' }}>

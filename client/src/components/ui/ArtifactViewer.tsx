@@ -92,6 +92,7 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   const docxContainerRef = useRef<HTMLDivElement>(null);
   const [docxLoading, setDocxLoading] = useState(false);
   const [docxError, setDocxError] = useState(false);
+  const [docError, setDocError] = useState(false);
   const [sheetData, setSheetData] = useState<{ headers: string[]; rows: string[][]; sheetNames: string[]; activeSheet: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -149,14 +150,21 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
 
     if (mode === 'doc') {
       setLoading(true);
+      setDocError(false);
       const previewUrl = artifactsApi.getPreviewUrl(artifact.id);
       fetch(previewUrl)
-        .then(res => res.text())
+        .then(res => {
+          if (!res.ok) throw new Error('preview failed');
+          return res.text();
+        })
         .then(text => {
           setHtmlContent(DOMPurify.sanitize(text));
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch(() => {
+          setDocError(true);
+          setLoading(false);
+        });
     }
 
     if (mode === 'docx') {
@@ -383,12 +391,26 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
             </div>
           );
         }
+        if (docError) {
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ fontSize: 13, color: 'var(--ink-2)', textAlign: 'center', lineHeight: 1.6 }}>
+                该文档格式暂不支持预览<br />请下载后使用其他软件打开
+              </div>
+            </div>
+          );
+        }
         if (htmlContent) {
           return (
             <>
               <style>{`
                 .doc-preview { font-family: 'Times New Roman', 'SimSun', serif; color: var(--ink); line-height: 1.8; }
                 .doc-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+                .doc-preview * { color: inherit !important; }
+                .doc-preview table { border-collapse: collapse; width: 100%; margin: 0.8em 0; }
+                .doc-preview th, .doc-preview td { border: 1px solid var(--border-subtle) !important; padding: 6px 12px; text-align: left; font-size: 14px; }
+                .doc-preview th { background: var(--surface-overlay) !important; font-weight: 600; }
+                .doc-preview td { background: var(--surface) !important; }
               `}</style>
               <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
                 <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>

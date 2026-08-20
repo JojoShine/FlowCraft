@@ -65,6 +65,7 @@ export function SharedArtifact() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [docError, setDocError] = useState(false);
   const [sheetData, setSheetData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
 
   const mode = useMemo(() => {
@@ -104,10 +105,19 @@ export function SharedArtifact() {
     }
 
     if (mode === 'doc') {
+      setDocError(false);
       const previewUrl = artifactsApi.getPublicPreviewUrl(token);
-      fetch(previewUrl).then(r => r.text()).then(text => {
-        setHtmlContent(DOMPurify.sanitize(text));
-      }).catch(() => {});
+      fetch(previewUrl)
+        .then(r => {
+          if (!r.ok) throw new Error('preview failed');
+          return r.text();
+        })
+        .then(text => {
+          setHtmlContent(DOMPurify.sanitize(text));
+        })
+        .catch(() => {
+          setDocError(true);
+        });
     }
 
     if (mode === 'spreadsheet') {
@@ -186,12 +196,23 @@ export function SharedArtifact() {
           </>
         );
       case 'doc':
+        if (docError) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>该文档格式暂不支持预览，请下载后使用其他软件打开</div>;
         if (!htmlContent) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>加载中...</div>;
         return (
           <>
             <style>{`
               .doc-preview { font-family: 'Times New Roman', 'SimSun', serif; color: #18181b; line-height: 1.8; }
               .doc-preview p { margin: 0.5em 0; text-indent: 2em; font-size: 14px; }
+              .doc-preview * { color: inherit !important; }
+              .doc-preview table { border-collapse: collapse; width: 100%; margin: 0.8em 0; }
+              .doc-preview th, .doc-preview td { border: 1px solid #e4e4e7 !important; padding: 6px 12px; text-align: left; font-size: 14px; }
+              .doc-preview th { background: #f4f4f5 !important; font-weight: 600; }
+              @media(prefers-color-scheme:dark) {
+                .doc-preview { color: #e4e4e7; }
+                .doc-preview th, .doc-preview td { border-color: #3f3f46 !important; }
+                .doc-preview th { background: #27272a !important; }
+                .doc-preview td { background: #18181b !important; }
+              }
             `}</style>
             <div style={{ width: '100%', height: '100%', overflow: 'auto', background: '#fff', display: 'flex', justifyContent: 'center' }}>
               <div style={{ padding: '32px 40px', maxWidth: 800, width: '100%' }}>

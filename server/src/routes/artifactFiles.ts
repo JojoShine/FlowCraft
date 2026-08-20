@@ -3,7 +3,6 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../lib/prisma';
 import { getFileStream as getMinIOStream } from '../lib/minio';
 import path from 'path';
-import WordExtractor from 'word-extractor';
 
 const router = Router();
 
@@ -51,20 +50,15 @@ router.get('/:id/preview/{*filePath}', asyncHandler(async (req, res) => {
     }
     const buffer = Buffer.concat(chunks);
 
-    const extractor = new WordExtractor();
-    let doc;
-    try {
-      doc = await extractor.extract(buffer);
-    } catch {
-      res.status(400).json({ error: { message: '该文件无法解析为 .doc 格式' } });
+    const head = buffer.slice(0, 1024).toString('utf8').toLowerCase();
+    if (head.includes('<html') || head.includes('<!doctype html') || head.includes('<body') || head.includes('<head') || head.includes('xmlns')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(buffer);
       return;
     }
-    const body = doc.getBody();
-    const paragraphs = body.split(/\r?\n/).filter((p: string) => p.trim().length > 0);
-    const html = paragraphs.map((p: string) => `<p>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('\n');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    res.send('<style>.doc-err{text-align:center;color:#999;padding:40px;font-size:14px}@media(prefers-color-scheme:dark){.doc-err{color:#888}}</style><p class="doc-err">该文档格式暂不支持预览，请下载后使用其他软件打开</p>');
   } catch {
     res.status(404).json({ error: { message: 'File not found in folder' } });
   }

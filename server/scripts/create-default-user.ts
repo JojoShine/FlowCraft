@@ -35,6 +35,12 @@ async function main() {
   });
   console.log(`Updated ${projectsUpdated.count} projects`);
 
+  // Update all templates to be created by this user
+  const templatesUpdated = await prisma.template.updateMany({
+    data: { creatorId: user.id },
+  });
+  console.log(`Updated ${templatesUpdated.count} templates`);
+
   console.log('\nDefault account created:');
   console.log(`Username: ${username}`);
   console.log(`Password: ${password}`);
