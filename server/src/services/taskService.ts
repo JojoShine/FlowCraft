@@ -35,13 +35,19 @@ export const taskService = {
     if (filters?.column) where.column = filters.column;
     if (filters?.ownerId && !filters?.projectId) where.project = { ownerId: filters.ownerId };
 
-    return prisma.task.findMany({
+    const tasks = await prisma.task.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
       include: {
-        phase: { select: { id: true, name: true, order: true, status: true } },
+        phase: { select: { id: true, name: true, order: true } },
         assignee: { select: { id: true, name: true } },
       },
+    });
+
+    return tasks.sort((a, b) => {
+      const aDone = a.column === 'done' || a.status === 'completed';
+      const bDone = b.column === 'done' || b.status === 'completed';
+      if (aDone !== bDone) return aDone ? 1 : -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   },
 
@@ -57,7 +63,7 @@ export const taskService = {
     const tasks = await prisma.task.findMany({
       where: { phaseId },
       include: {
-        phase: { select: { id: true, name: true, order: true, status: true } },
+        phase: { select: { id: true, name: true, order: true } },
         assignee: { select: { id: true, name: true } },
         artifacts: {
           select: {
@@ -87,7 +93,7 @@ export const taskService = {
     const task = await prisma.task.findUnique({
       where: { id },
       include: {
-        phase: { select: { id: true, name: true, order: true, status: true } },
+        phase: { select: { id: true, name: true, order: true } },
         assignee: { select: { id: true, name: true } },
         artifacts: true,
       },

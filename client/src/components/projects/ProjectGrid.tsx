@@ -6,7 +6,6 @@ interface Project {
   type: string;
   description: string;
   status: 'discovery' | 'research' | 'design' | 'prototype' | 'development' | 'testing' | 'completed';
-  progress: number;
   startDate: string;
   endDate: string;
   owner: string;

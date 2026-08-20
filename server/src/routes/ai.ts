@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { chatService } from '../services/chatService';
-import { chatStream, type ChatMessage } from '../ai/llm';
+import { type ChatMessage } from '../ai/llm';
+import { runRAG } from '../ai/graph/rag';
+import { indexProjectData, indexAllProjects } from '../ai/indexing/orchestrator';
+import { getCollectionStats } from '../ai/vectorstore';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
@@ -39,19 +42,42 @@ router.post('/chat', asyncHandler(async (req, res) => {
   let fullContent = '';
 
   try {
-    for await (const token of chatStream(history)) {
-      fullContent += token;
-      res.write(`event: token\ndata: ${JSON.stringify({ content: token })}\n\n`);
+    for await (const event of runRAG(message, projectId, history)) {
+      if (typeof event === 'string') {
+        fullContent += event;
+        res.write(`event: token\ndata: ${JSON.stringify({ content: event })}\n\n`);
+      } else if (event.type === 'sources') {
+        res.write(`event: sources\ndata: ${JSON.stringify({ sources: (event.sources || []).map(s => ({
+          content: s.text.slice(0, 200),
+          metadata: s.metadata,
+          score: s.score,
+        })) })}\n\n`);
+      }
     }
 
     const assistantMsg = await chatService.addAssistantMessage(convId, fullContent);
-
     res.write(`event: done\ndata: ${JSON.stringify({ messageId: assistantMsg.id, conversationId: convId })}\n\n`);
   } catch (err: any) {
     res.write(`event: error\ndata: ${JSON.stringify({ error: err.message || '生成失败' })}\n\n`);
   }
 
   res.end();
+}));
+
+router.post('/index', asyncHandler(async (req, res) => {
+  const { projectId } = req.body;
+  if (projectId) {
+    const result = await indexProjectData(projectId);
+    res.json(successResponse(result));
+  } else {
+    const results = await indexAllProjects();
+    res.json(successResponse(results));
+  }
+}));
+
+router.get('/index/status', asyncHandler(async (_req, res) => {
+  const stats = await getCollectionStats();
+  res.json(successResponse(stats));
 }));
 
 router.get('/conversations', asyncHandler(async (req, res) => {

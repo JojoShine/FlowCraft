@@ -7,6 +7,8 @@ import { prisma } from './lib/prisma';
 import { minioClient, BUCKET_NAME } from './lib/minio';
 import { aiConfig } from './ai/config';
 import { startScheduler } from './services/reportScheduler';
+import { indexAllProjects } from './ai/indexing/orchestrator';
+import { getCollectionStats } from './ai/vectorstore';
 import axios from 'axios';
 
 const PORT = process.env.PORT || 3800;
@@ -46,23 +48,39 @@ async function checkMinIO(): Promise<boolean> {
 
 async function checkLLM(): Promise<boolean> {
   try {
-    if (!aiConfig.apiKey) {
+    if (!aiConfig.deepseek.apiKey) {
       logger.warn('⚠ LLM API key not configured');
       return false;
     }
     
-    await axios.get(`${aiConfig.baseURL}/v1/models`, {
+    await axios.get(`${aiConfig.deepseek.baseURL}/v1/models`, {
       headers: {
-        'Authorization': `Bearer ${aiConfig.apiKey}`,
+        'Authorization': `Bearer ${aiConfig.deepseek.apiKey}`,
       },
       timeout: 5000,
     });
     
-    logger.info('✓ LLM connection successful', { model: aiConfig.model });
+    logger.info('✓ LLM connection successful', { model: aiConfig.deepseek.model });
     return true;
   } catch (error) {
     logger.error('✗ LLM connection failed', { error: String(error) });
     return false;
+  }
+}
+
+async function autoIndexVectorStore() {
+  try {
+    const stats = await getCollectionStats();
+    if (stats.documentCount > 0) {
+      logger.info(`✓ Vector store has ${stats.documentCount} documents, skipping auto-index`);
+      return;
+    }
+    logger.info('Vector store is empty, starting auto-index...');
+    const results = await indexAllProjects();
+    const total = results.reduce((sum, r) => sum + r.indexed, 0);
+    logger.info(`✓ Auto-index complete: ${total} documents indexed across ${results.length} projects`);
+  } catch (error) {
+    logger.warn('⚠ Auto-index failed (vector store may be unavailable)', { error: String(error) });
   }
 }
 
@@ -88,6 +106,7 @@ async function startServer() {
       llm: llmOk ? '✓' : '✗',
     });
     startScheduler();
+    autoIndexVectorStore();
   });
 
   process.on('SIGTERM', () => {

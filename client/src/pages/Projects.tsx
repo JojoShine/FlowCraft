@@ -26,7 +26,6 @@ export function Projects() {
     type: p.type,
     description: p.description || '',
     status: (p.status || 'discovery') as any,
-    progress: p.progress || 0,
     startDate: p.startDate ? formatDate(p.startDate) : '',
     endDate: p.endDate ? formatDate(p.endDate) : '',
     owner: p.ownerId || '',

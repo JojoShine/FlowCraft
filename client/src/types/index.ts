@@ -12,7 +12,6 @@ export interface Phase {
   projectId: string;
   name: string;
   order: number;
-  status: string;
   startDate: string | null;
   endDate: string | null;
   _count?: { tasks: number };
@@ -33,7 +32,7 @@ export interface Task {
   column: string;
   isMilestone: boolean;
   completedAt?: string | null;
-  phase?: Pick<Phase, 'id' | 'name' | 'order' | 'status'> | null;
+  phase?: Pick<Phase, 'id' | 'name' | 'order'> | null;
   assignee?: Pick<User, 'id' | 'name'> | null;
   artifacts?: Artifact[];
   createdAt?: string;
@@ -63,7 +62,6 @@ export interface Project {
   type: string;
   description: string | null;
   status: string;
-  progress: number;
   startDate: string | null;
   endDate: string | null;
   ownerId: string;

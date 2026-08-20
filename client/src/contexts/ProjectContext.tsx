@@ -50,7 +50,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       fetchProjects();
     } else {
       setProjects([]);
-      setSelectedProjectId(null);
       setProjectsLoading(false);
     }
   }, [isAuthenticated, fetchProjects]);

@@ -1,19 +1,9 @@
-import { useEffect } from 'react';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { ProjectSpace } from './ProjectSpace';
 import { EmptyState } from '../components/ui/EmptyState';
 
 export function ProjectPage() {
-  const { selectedProjectId, selectProject, projects, projectsLoading: loading } = useProjectContext();
-
-  useEffect(() => {
-    if (loading) return;
-    if (projects.length === 0) return;
-    const exists = projects.some(p => p.id === selectedProjectId);
-    if (!exists || !selectedProjectId) {
-      selectProject(projects[0].id);
-    }
-  }, [selectedProjectId, loading, projects, selectProject]);
+  const { selectedProjectId, projects, projectsLoading: loading } = useProjectContext();
 
   if (loading) {
     return (

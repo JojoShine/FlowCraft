@@ -1,11 +1,26 @@
 import { useState, useCallback, useRef } from 'react';
 import { aiApi } from '../services/api';
 
+export interface Source {
+  content: string;
+  metadata: {
+    sourceType: string;
+    sourceId?: string;
+    projectId?: string;
+    title?: string;
+    label?: string;
+    type?: string;
+    [key: string]: unknown;
+  };
+  score: number;
+}
+
 interface Message {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
+  sources?: Source[];
 }
 
 interface Conversation {
@@ -50,7 +65,7 @@ export function useAIChat() {
     } catch { /* ignore */ }
   }, [currentConvId]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, projectId?: string) => {
     if (!content.trim() || loading) return;
 
     const userMsg: Message = { role: 'user', content };
@@ -61,13 +76,14 @@ export function useAIChat() {
     setMessages(prev => [...prev, assistantMsg]);
 
     try {
-      const response = await aiApi.chat(currentConvId, content);
+      const response = await aiApi.chat(currentConvId, content, projectId);
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
       const decoder = new TextDecoder();
       let buffer = '';
       let accumulated = '';
+      let currentEvent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -78,22 +94,36 @@ export function useAIChat() {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
+
           if (line.startsWith('data: ')) {
             const jsonStr = line.slice(6);
             try {
               const data = JSON.parse(jsonStr);
-              if (data.content) {
+
+              if (currentEvent === 'sources' && data.sources) {
+                setMessages(prev => {
+                  const next = [...prev];
+                  next[next.length - 1] = { ...next[next.length - 1], sources: data.sources };
+                  return next;
+                });
+              } else if (currentEvent === 'token' && data.content) {
                 accumulated += data.content;
                 setMessages(prev => {
                   const next = [...prev];
                   next[next.length - 1] = { ...next[next.length - 1], content: accumulated };
                   return next;
                 });
-              }
-              if (data.conversationId && !currentConvId) {
-                setCurrentConvId(data.conversationId);
+              } else if (currentEvent === 'done') {
+                if (data.conversationId && !currentConvId) {
+                  setCurrentConvId(data.conversationId);
+                }
               }
             } catch { /* skip malformed */ }
+            currentEvent = '';
           }
         }
       }

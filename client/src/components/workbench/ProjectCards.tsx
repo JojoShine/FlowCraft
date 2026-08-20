@@ -5,7 +5,6 @@ interface Project {
   name: string;
   phase: string;
   avatar: string;
-  progress: number;
   startDate: string;
   endDate: string;
   owner: string;
@@ -69,25 +68,7 @@ export function ProjectCards({ projects }: ProjectCardsProps) {
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div style={{ marginBottom: 6 }}>
-            <div style={{
-              height: 3,
-              background: 'var(--surface-raised)',
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${project.progress}%`,
-                background: 'var(--ink)',
-                borderRadius: 2,
-                transition: 'width 300ms',
-              }} />
-            </div>
-          </div>
-
-          {/* Progress label */}
+          {/* Footer */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -96,7 +77,7 @@ export function ProjectCards({ projects }: ProjectCardsProps) {
             fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
           }}>
             <span>{project.owner}</span>
-            <span>{project.progress}%</span>
+            <span>{project.phase}</span>
           </div>
         </div>
       ))}

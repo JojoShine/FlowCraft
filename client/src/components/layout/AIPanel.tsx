@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useAIChat } from '../../hooks/useAIChat';
+import { useAIChat, type Source } from '../../hooks/useAIChat';
+import { useProjectContext } from '../../contexts/ProjectContext';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -9,11 +10,85 @@ interface AIPanelProps {
 }
 
 const suggestions = [
-  '帮我梳理当前项目的任务进度',
-  '如何优化项目阶段划分',
-  '帮我写一份项目周报',
-  '从实施方案中拆解开发任务',
+  '列出所有未完成的高优先级任务',
+  '汇总最近的周报要点',
+  '当前项目有哪些关键产物和交付物',
+  '哪些任务已逾期或即将到期',
 ];
+
+const sourceTypeLabels: Record<string, string> = {
+  task: '任务',
+  artifact: '产物',
+  phase: '阶段',
+  report: '报告',
+  project: '项目',
+};
+
+function SourcesBlock({ sources }: { sources: Source[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? sources : sources.slice(0, 3);
+
+  return (
+    <div style={{
+      marginTop: 8, padding: '8px 10px',
+      background: 'var(--canvas)', borderRadius: 6,
+      border: '1px solid var(--border-subtle)',
+    }}>
+      <div style={{
+        fontSize: 11, fontWeight: 500, color: 'var(--ink-3)',
+        marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        引用来源 ({sources.length})
+      </div>
+      {visible.map((source, i) => {
+        const typeLabel = sourceTypeLabels[source.metadata.sourceType] || source.metadata.sourceType;
+        const title = source.metadata.title || source.metadata.label || `${typeLabel}内容`;
+        return (
+          <div key={i} style={{
+            fontSize: 11, padding: '4px 0',
+            borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <span style={{
+                fontSize: 10, padding: '1px 5px', borderRadius: 3,
+                background: 'var(--surface-raised)', color: 'var(--ink-3)',
+                fontWeight: 500,
+              }}>
+                {typeLabel}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--ink)', fontWeight: 500 }}>
+                {title}
+              </span>
+            </div>
+            <div style={{
+              fontSize: 11, color: 'var(--ink-4)', lineHeight: 1.4,
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            }}>
+              {source.content}
+            </div>
+          </div>
+        );
+      })}
+      {sources.length > 3 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            fontSize: 11, color: 'var(--blue)', background: 'none',
+            border: 'none', cursor: 'pointer', padding: '4px 0 0',
+            fontFamily: 'inherit',
+          }}
+        >
+          {expanded ? '收起' : `展开更多 (${sources.length - 3})`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const {
@@ -21,6 +96,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
     sendMessage, selectConversation, deleteConversation,
     newConversation, loadConversations,
   } = useAIChat();
+
+  const { selectedProjectId } = useProjectContext();
 
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -36,7 +113,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
 
   const handleSend = () => {
     if (!input.trim() || loading) return;
-    sendMessage(input.trim());
+    sendMessage(input.trim(), selectedProjectId || undefined);
     setInput('');
   };
 
@@ -219,7 +296,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
 
       {/* Body */}
       <div className="hide-scrollbar" style={{ flex: 1, padding: '16px 18px', overflowY: 'auto' }}>
-        {isEmpty ? (
+        {isEmpty && (
           <div style={{ marginBottom: 16 }}>
             <div style={{
               fontSize: 11, fontWeight: 500, color: 'var(--ink-3)',
@@ -231,45 +308,19 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               <p style={{ marginBottom: 6 }}>
                 你好，我是 FlowCraft助手。我可以帮你管理项目、分析任务进度、生成报告等。
               </p>
-              <p style={{ marginBottom: 6 }}>试试以下指令：</p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-              {suggestions.map((suggestion, i) => (
-                <button
-                  key={i}
-                  onClick={() => { sendMessage(suggestion); }}
-                  style={{
-                    fontSize: 12, padding: '5px 12px',
-                    border: '1px solid var(--border-subtle)', borderRadius: 20,
-                    cursor: 'pointer', color: 'var(--ink-2)', background: 'transparent',
-                    transition: 'all 150ms', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--ink)';
-                    e.currentTarget.style.color = 'var(--canvas)';
-                    e.currentTarget.style.borderColor = 'var(--ink)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--ink-2)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                  }}
-                >
-                  {suggestion}
-                </button>
-              ))}
             </div>
           </div>
-        ) : (
-          messages.map((msg, idx) => (
-            <div key={idx} style={{ marginBottom: 16 }}>
-              <div style={{
-                fontSize: 11, fontWeight: 500, color: 'var(--ink-3)',
-                textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4,
-              }}>
-                {msg.role === 'user' ? '你' : 'FlowCraft助手'}
-              </div>
-              {msg.role === 'user' ? (
+        )}
+
+        {!isEmpty && messages.map((msg, idx) => (
+          <div key={idx} style={{ marginBottom: 16 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 500, color: 'var(--ink-3)',
+              textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4,
+            }}>
+              {msg.role === 'user' ? '你' : 'FlowCraft助手'}
+            </div>
+            {msg.role === 'user' ? (
                 <div style={{
                   fontSize: 13.5, lineHeight: 1.65, color: 'var(--ink)',
                   whiteSpace: 'pre-wrap',
@@ -277,6 +328,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                   {msg.content}
                 </div>
               ) : (
+                <>
                 <div className="ai-markdown" style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--ink)' }}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -350,10 +402,53 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                     }} />
                   )}
                 </div>
+                {msg.sources && msg.sources.length > 0 && (
+                  <SourcesBlock sources={msg.sources} />
+                )}
+                </>
               )}
             </div>
           ))
-        )}
+        }
+
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 500, color: 'var(--ink-3)',
+            textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6,
+          }}>
+            快捷操作
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { sendMessage(s, selectedProjectId || undefined); }}
+                disabled={loading}
+                style={{
+                  textAlign: 'left', fontSize: 12.5, padding: '7px 10px',
+                  border: '1px solid var(--border-subtle)', borderRadius: 6,
+                  background: 'var(--surface-raised)', color: 'var(--ink-2)',
+                  cursor: loading ? 'default' : 'pointer',
+                  opacity: loading ? 0.5 : 1,
+                  transition: 'all 150ms', fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.color = 'var(--ink)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                  e.currentTarget.style.color = 'var(--ink-2)';
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div ref={messagesEndRef} />
       </div>
 

@@ -19,7 +19,6 @@ export const phaseService = {
     projectId: string;
     name: string;
     order: number;
-    status?: string;
     startDate?: string;
     endDate?: string;
   }) {
@@ -31,7 +30,6 @@ export const phaseService = {
         projectId: data.projectId,
         name: data.name,
         order: data.order,
-        status: data.status || 'upcoming',
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
       },
@@ -41,7 +39,6 @@ export const phaseService = {
   async update(id: string, data: {
     name?: string;
     order?: number;
-    status?: string;
     startDate?: string;
     endDate?: string;
   }) {
@@ -52,7 +49,6 @@ export const phaseService = {
       data: {
         name: data.name,
         order: data.order,
-        status: data.status,
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
       },

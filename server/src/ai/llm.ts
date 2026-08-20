@@ -2,8 +2,8 @@ import OpenAI from 'openai';
 import { aiConfig } from './config';
 
 const client = new OpenAI({
-  apiKey: aiConfig.apiKey,
-  baseURL: aiConfig.baseURL,
+  apiKey: aiConfig.deepseek.apiKey,
+  baseURL: aiConfig.deepseek.baseURL,
 });
 
 export interface ChatMessage {
@@ -11,35 +11,23 @@ export interface ChatMessage {
   content: string;
 }
 
-const SYSTEM_PROMPT = '你是 FlowCraft 的 AI 助手，一个项目管理智能助理。你可以帮助用户管理项目、任务、产物等。请用中文回答，回答简洁专业。';
-
 export async function chatComplete(messages: ChatMessage[]): Promise<string> {
   const response = await client.chat.completions.create({
-    model: aiConfig.model,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...messages,
-    ],
+    model: aiConfig.deepseek.model,
+    messages,
     stream: false,
   });
-
   return response.choices[0]?.message?.content || '';
 }
 
 export async function* chatStream(messages: ChatMessage[]): AsyncGenerator<string> {
   const stream = await client.chat.completions.create({
-    model: aiConfig.model,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...messages,
-    ],
+    model: aiConfig.deepseek.model,
+    messages,
     stream: true,
   });
-
   for await (const chunk of stream) {
     const content = chunk.choices[0]?.delta?.content;
-    if (content) {
-      yield content;
-    }
+    if (content) yield content;
   }
 }

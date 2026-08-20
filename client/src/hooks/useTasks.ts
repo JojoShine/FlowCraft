@@ -10,10 +10,10 @@ export function useTasks(projectId?: string, column?: string) {
   const initialLoad = useRef(true);
 
   const fetchTasks = useCallback(async (silent = false) => {
+    if (!projectId) return;
     if (!silent) setLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (projectId) params.projectId = projectId;
+      const params: Record<string, string> = { projectId };
       if (column) params.column = column;
       const response = await tasksApi.list(params);
       setTasks(response.data);

@@ -8,7 +8,6 @@ interface PhaseWithCount {
   id: string;
   name: string;
   order: number;
-  status: string;
   startDate: string | null;
   endDate: string | null;
   _count: { tasks: number };
@@ -20,7 +19,6 @@ interface ProjectSummary {
   type: string;
   description: string | null;
   status: string;
-  progress: number | null;
   startDate: string | null;
   endDate: string | null;
   ownerId: string | null;

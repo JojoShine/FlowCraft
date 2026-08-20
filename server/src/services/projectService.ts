@@ -33,7 +33,7 @@ export const projectService = {
           include: {
             artifacts: true,
             assignee: { select: { id: true, name: true } },
-            phase: { select: { id: true, name: true, order: true, status: true } },
+            phase: { select: { id: true, name: true, order: true } },
           },
         },
         artifacts: true,
@@ -48,7 +48,7 @@ export const projectService = {
       where: { id },
       select: {
         id: true, name: true, type: true, description: true,
-        status: true, progress: true, startDate: true, endDate: true,
+        status: true, startDate: true, endDate: true,
         ownerId: true, createdAt: true, updatedAt: true,
         phases: {
           orderBy: { order: 'asc' },
@@ -85,7 +85,6 @@ export const projectService = {
           name,
           order: i,
           projectId: project.id,
-          status: i === 0 ? 'active' : 'upcoming',
         })),
       });
 
@@ -96,30 +95,9 @@ export const projectService = {
     });
   },
 
-  async update(id: string, data: { name?: string; type?: string; description?: string; status?: string; progress?: number; startDate?: string; endDate?: string }) {
+  async update(id: string, data: { name?: string; type?: string; description?: string; status?: string; startDate?: string; endDate?: string }) {
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Project not found');
-
-    if (data.status === 'completed') {
-      return prisma.$transaction([
-        prisma.project.update({
-          where: { id },
-          data: {
-            name: data.name,
-            type: data.type,
-            description: data.description,
-            status: data.status,
-            progress: data.progress,
-            startDate: data.startDate ? new Date(data.startDate) : undefined,
-            endDate: data.endDate ? new Date(data.endDate) : undefined,
-          },
-        }),
-        prisma.phase.updateMany({
-          where: { projectId: id },
-          data: { status: 'done' },
-        }),
-      ]).then(([project]) => project);
-    }
 
     return prisma.project.update({
       where: { id },
@@ -128,7 +106,6 @@ export const projectService = {
         type: data.type,
         description: data.description,
         status: data.status,
-        progress: data.progress,
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
       },
