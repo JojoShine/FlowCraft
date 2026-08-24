@@ -143,11 +143,7 @@ export function ArtifactsCalendar({ artifacts }: ArtifactsCalendarProps) {
         </div>
         {evts.slice(0, 2).map((evt, idx) => {
           const typeColorMap: Record<string, string> = {
-            document: 'var(--ink-2)',
-            prototype: 'var(--ink)',
-            diagram: 'var(--ink-3)',
-            spreadsheet: 'var(--ink-1)',
-            report: '#27272A',
+            file: 'var(--ink-2)',
             folder: 'var(--ink-4)',
           };
           return (

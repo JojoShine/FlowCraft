@@ -28,7 +28,7 @@ function getExtension(filename: string): string {
 }
 
 function detectMode(name: string, type: string, filePath?: string | null, content?: string | null): ViewerMode {
-  const ext = getExtension(name);
+  const ext = filePath ? getExtension(filePath) : '';
 
   const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif'];
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', '3gp'];
@@ -36,12 +36,17 @@ function detectMode(name: string, type: string, filePath?: string | null, conten
   const spreadsheetExts = ['xls', 'xlsx', 'csv', 'ods'];
   const officeExts = ['ppt', 'pptx', 'odt', 'odp'];
 
-  if (content) return 'folder';
+  if (type === 'html' || ext === 'html' || ext === 'htm') return 'html';
+  if (content) {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return 'folder';
+    } catch { /* not JSON, continue */ }
+  }
   if (imageExts.includes(ext) || type === 'image') return 'image';
   if (videoExts.includes(ext)) return 'video';
   if (audioExts.includes(ext)) return 'audio';
   if (ext === 'pdf') return 'pdf';
-  if (ext === 'html' || ext === 'htm') return 'html';
   if (ext === 'md' || ext === 'markdown') return 'markdown';
   if (ext === 'doc' || ext === 'docx') return ext;
   if (spreadsheetExts.includes(ext) || type === 'spreadsheet') return 'spreadsheet';
@@ -93,7 +98,14 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   const [docxLoading, setDocxLoading] = useState(false);
   const [docxError, setDocxError] = useState(false);
   const [docError, setDocError] = useState(false);
-  const [sheetData, setSheetData] = useState<{ headers: string[]; rows: string[][]; sheetNames: string[]; activeSheet: string } | null>(null);
+  const [sheetData, setSheetData] = useState<{
+    headers: string[];
+    rows: string[][];
+    sheetNames: string[];
+    activeSheet: string;
+    merges: Map<string, { rowSpan: number; colSpan: number }>;
+    hiddenCells: Set<string>;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role !== 'viewer';
@@ -126,13 +138,18 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
 
     if (mode === 'html') {
       setLoading(true);
-      fetch(fileUrl)
-        .then(res => res.text())
-        .then(text => {
-          setHtmlContent(text);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
+      if (artifact.content) {
+        setHtmlContent(artifact.content);
+        setLoading(false);
+      } else {
+        fetch(fileUrl)
+          .then(res => res.text())
+          .then(text => {
+            setHtmlContent(text);
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      }
     }
 
     if (mode === 'markdown') {
@@ -168,23 +185,7 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
     }
 
     if (mode === 'docx') {
-      setLoading(true);
-      setDocxError(false);
-      const previewUrl = artifactsApi.getPreviewUrl(artifact.id);
-      fetch(previewUrl)
-        .then(res => {
-          if (!res.ok) throw new Error('preview failed');
-          return res.text();
-        })
-        .then(text => {
-          setHtmlContent(DOMPurify.sanitize(text));
-          setLoading(false);
-        })
-        .catch(() => {
-          setHtmlContent(null);
-          setLoading(false);
-          setDocxLoading(true);
-        });
+      setLoading(false);
     }
 
     if (mode === 'spreadsheet') {
@@ -192,17 +193,38 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
       fetch(fileUrl)
         .then(res => res.arrayBuffer())
         .then(buf => {
-          const wb = XLSX.read(buf);
+          const wb = XLSX.read(buf, { cellDates: true });
           const sheetNames = wb.SheetNames;
           const activeSheet = sheetNames[0];
           const ws = wb.Sheets[activeSheet];
-          const json = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' });
+          const json = XLSX.utils.sheet_to_json<(string | Date)[]>(ws, { header: 1, defval: '', raw: false });
+
+          const parseMerges = (worksheet: XLSX.WorkSheet) => {
+            const merges = new Map<string, { rowSpan: number; colSpan: number }>();
+            const hiddenCells = new Set<string>();
+            const list = worksheet['!merges'];
+            if (!list) return { merges, hiddenCells };
+            for (const range of list) {
+              const key = `${range.s.r},${range.s.c}`;
+              merges.set(key, { rowSpan: range.e.r - range.s.r + 1, colSpan: range.e.c - range.s.c + 1 });
+              for (let r = range.s.r; r <= range.e.r; r++) {
+                for (let c = range.s.c; c <= range.e.c; c++) {
+                  if (r !== range.s.r || c !== range.s.c) hiddenCells.add(`${r},${c}`);
+                }
+              }
+            }
+            return { merges, hiddenCells };
+          };
+
+          const { merges, hiddenCells } = parseMerges(ws);
+
           if (json.length === 0) {
-            setSheetData({ headers: [], rows: [], sheetNames, activeSheet });
+            setSheetData({ headers: [], rows: [], sheetNames, activeSheet, merges, hiddenCells });
           } else {
-            const headers = (json[0] as string[]).map(String);
-            const rows = json.slice(1).map(row => (row as string[]).map(String));
-            setSheetData({ headers, rows, sheetNames, activeSheet });
+            const fmt = (v: string | Date) => v instanceof Date ? v.toLocaleDateString('zh-CN') : String(v);
+            const headers = (json[0] as (string | Date)[]).map(fmt);
+            const rows = json.slice(1).map(row => (row as (string | Date)[]).map(fmt));
+            setSheetData({ headers, rows, sheetNames, activeSheet, merges, hiddenCells });
           }
           setLoading(false);
         })
@@ -211,25 +233,49 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   }, [isOpen, artifact, mode, fileUrl]);
 
   useEffect(() => {
-    if (mode !== 'docx' || !isOpen || !fileUrl || !docxContainerRef.current) return;
-    const container = docxContainerRef.current;
-    container.innerHTML = '';
+    if (mode !== 'docx' || !isOpen || !fileUrl) return;
     setDocxLoading(true);
+    setDocxError(false);
+    setHtmlContent(null);
 
     fetch(fileUrl)
       .then(r => r.arrayBuffer())
-      .then(buf => renderAsync(buf, container, undefined, {
-        className: 'docx-body',
-        inWrapper: true,
-        ignoreWidth: false,
-        ignoreHeight: false,
-        ignoreFonts: false,
-        breakPages: true,
-        renderHeaders: true,
-        renderFooters: true,
-        renderFootnotes: true,
-        renderEndnotes: true,
-      }).then(() => setDocxLoading(false)))
+      .then(async buf => {
+        const container = docxContainerRef.current;
+        if (!container) { setDocxLoading(false); return; }
+        container.innerHTML = '';
+        try {
+          await renderAsync(buf, container, undefined, {
+            className: 'docx-body',
+            inWrapper: true,
+            ignoreWidth: true,
+            ignoreHeight: false,
+            ignoreFonts: false,
+            breakPages: true,
+            renderHeaders: true,
+            renderFooters: true,
+            renderFootnotes: true,
+            renderEndnotes: true,
+          });
+          container.querySelectorAll('table').forEach(table => {
+            table.style.width = '100%';
+            table.style.removeProperty('max-width');
+          });
+          container.querySelectorAll('col').forEach(col => {
+            col.style.removeProperty('width');
+          });
+          setDocxLoading(false);
+        } catch {
+          const head = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(1024, buf.byteLength))).toLowerCase();
+          if (head.includes('<html') || head.includes('<!doctype') || head.includes('<body') || head.includes('<head') || head.includes('xmlns')) {
+            const text = new TextDecoder().decode(buf);
+            setHtmlContent(DOMPurify.sanitize(text));
+          } else {
+            setDocxError(true);
+          }
+          setDocxLoading(false);
+        }
+      })
       .catch(() => { setDocxError(true); setDocxLoading(false); });
   }, [mode, isOpen, fileUrl]);
 
@@ -260,15 +306,31 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
     fetch(fileUrl)
       .then(res => res.arrayBuffer())
       .then(buf => {
-        const wb = XLSX.read(buf);
+        const wb = XLSX.read(buf, { cellDates: true });
         const ws = wb.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' });
+        const json = XLSX.utils.sheet_to_json<(string | Date)[]>(ws, { header: 1, defval: '', raw: false });
+        const fmt = (v: string | Date) => v instanceof Date ? v.toLocaleDateString('zh-CN') : String(v);
+
+        const merges = new Map<string, { rowSpan: number; colSpan: number }>();
+        const hiddenCells = new Set<string>();
+        const list = ws['!merges'];
+        if (list) {
+          for (const range of list) {
+            merges.set(`${range.s.r},${range.s.c}`, { rowSpan: range.e.r - range.s.r + 1, colSpan: range.e.c - range.s.c + 1 });
+            for (let r = range.s.r; r <= range.e.r; r++) {
+              for (let c = range.s.c; c <= range.e.c; c++) {
+                if (r !== range.s.r || c !== range.s.c) hiddenCells.add(`${r},${c}`);
+              }
+            }
+          }
+        }
+
         if (json.length === 0) {
-          setSheetData(prev => prev ? { ...prev, activeSheet: sheetName, headers: [], rows: [] } : null);
+          setSheetData(prev => prev ? { ...prev, activeSheet: sheetName, headers: [], rows: [], merges, hiddenCells } : null);
         } else {
-          const headers = (json[0] as string[]).map(String);
-          const rows = json.slice(1).map(row => (row as string[]).map(String));
-          setSheetData(prev => prev ? { ...prev, activeSheet: sheetName, headers, rows } : null);
+          const headers = (json[0] as (string | Date)[]).map(fmt);
+          const rows = json.slice(1).map(row => (row as (string | Date)[]).map(fmt));
+          setSheetData(prev => prev ? { ...prev, activeSheet: sheetName, headers, rows, merges, hiddenCells } : null);
         }
         setLoading(false);
       })
@@ -340,15 +402,31 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
           );
         }
         if (htmlContent) {
-          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+          const hideScrollbarCSS = '::-webkit-scrollbar{display:none}*{scrollbar-width:none}html{overflow-y:auto}';
+          const responsiveHTML = htmlContent.includes('<meta') && htmlContent.includes('viewport')
+            ? htmlContent.replace(/<\/head>/i, `<style>${hideScrollbarCSS}</style></head>`)
+            : htmlContent.replace(
+                /<head([^>]*)>/i,
+                `<head$1><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${hideScrollbarCSS}html{font-size:clamp(14px,0.9vw,18px)}img,video,canvas,svg{max-width:100%;height:auto}table{max-width:100%;overflow-x:auto;display:block}</style>`
+              ).replace(
+                /^(?!.*<head)/s,
+                (match) => `<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${hideScrollbarCSS}html{font-size:clamp(14px,0.9vw,18px)}img,video,canvas,svg{max-width:100%;height:auto}table{max-width:100%;overflow-x:auto;display:block}</style></head>${match}`
+              );
+          const blob = new Blob([responsiveHTML], { type: 'text/html;charset=utf-8' });
           const blobUrl = URL.createObjectURL(blob);
           return (
-            <iframe
-              src={blobUrl}
-              title={artifact.name}
-              sandbox="allow-scripts allow-same-origin"
-              style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: 'var(--surface)' }}
-            />
+            <div style={{
+              width: '100%', height: '100%', display: 'flex',
+              justifyContent: 'center', alignItems: 'stretch',
+              padding: '16px 24px', boxSizing: 'border-box',
+            }}>
+              <iframe
+                src={blobUrl}
+                title={artifact.name}
+                sandbox="allow-scripts allow-same-origin"
+                style={{ width: '100%', maxWidth: 960, height: '100%', border: 'none', borderRadius: 4, background: 'var(--surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              />
+            </div>
           );
         }
         return (
@@ -427,13 +505,6 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
         );
 
       case 'docx':
-        if (loading) {
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-              <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>加载中...</div>
-            </div>
-          );
-        }
         if (htmlContent) {
           return (
             <>
@@ -463,11 +534,13 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
           <>
             <style>{`
               .docx-wrapper { background: var(--surface) !important; padding: 0 !important; }
-              .docx-wrapper > section.docx { box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important; margin: 24px auto !important; }
-              .docx-wrapper .docx .page { margin: 0 auto !important; }
+              .docx-wrapper > section.docx { box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important; margin: 24px auto !important; width: 100% !important; }
+              .docx-wrapper .docx .page { margin: 0 auto !important; width: 100% !important; max-width: none !important; }
+              .docx-wrapper table { width: 100% !important; table-layout: fixed !important; }
+              .docx-wrapper td, .docx-wrapper th { word-break: break-word !important; overflow-wrap: break-word !important; }
             `}</style>
             <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface-overlay)', display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: '100%', maxWidth: 900 }}>
+              <div style={{ width: '100%', maxWidth: 1050 }}>
                 <div ref={docxContainerRef} />
                 {docxLoading && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>
@@ -529,14 +602,18 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
                           padding: '6px 10px', textAlign: 'left', fontWeight: 600,
                           color: 'var(--ink-2)', whiteSpace: 'nowrap',
                         }}>#</th>
-                        {sheetData.headers.map((h, i) => (
-                          <th key={i} style={{
-                            position: 'sticky', top: 0, zIndex: 1,
-                            background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)',
-                            padding: '6px 10px', textAlign: 'left', fontWeight: 600,
-                            color: 'var(--ink-2)', whiteSpace: 'nowrap',
-                          }}>{h}</th>
-                        ))}
+                        {sheetData.headers.map((h, i) => {
+                          if (sheetData.hiddenCells.has(`0,${i}`)) return null;
+                          const m = sheetData.merges.get(`0,${i}`);
+                          return (
+                            <th key={i} colSpan={m?.colSpan} rowSpan={m?.rowSpan} style={{
+                              position: 'sticky', top: 0, zIndex: 1,
+                              background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)',
+                              padding: '6px 10px', textAlign: 'left', fontWeight: 600,
+                              color: 'var(--ink-2)', whiteSpace: 'nowrap',
+                            }}>{h}</th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>
@@ -547,14 +624,19 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
                             padding: '4px 10px', color: 'var(--ink-3)', textAlign: 'center',
                             whiteSpace: 'nowrap',
                           }}>{ri + 1}</td>
-                          {sheetData.headers.map((_, ci) => (
-                            <td key={ci} style={{
-                              border: '1px solid var(--border-subtle)',
-                              padding: '4px 10px', color: 'var(--ink)',
-                              maxWidth: 300, overflow: 'hidden',
-                              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            }}>{row[ci] || ''}</td>
-                          ))}
+                          {sheetData.headers.map((_, ci) => {
+                            const sheetRow = ri + 1;
+                            if (sheetData.hiddenCells.has(`${sheetRow},${ci}`)) return null;
+                            const m = sheetData.merges.get(`${sheetRow},${ci}`);
+                            return (
+                              <td key={ci} colSpan={m?.colSpan} rowSpan={m?.rowSpan} style={{
+                                border: '1px solid var(--border-subtle)',
+                                padding: '4px 10px', color: 'var(--ink)',
+                                maxWidth: 300, overflow: 'hidden',
+                                textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>{row[ci] || ''}</td>
+                            );
+                          })}
                         </tr>
                       ))}
                     </tbody>

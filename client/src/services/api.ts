@@ -65,7 +65,7 @@ export const tasksApi = {
 };
 
 export const artifactsApi = {
-  list: (params?: { projectId?: string; type?: string; page?: number; pageSize?: number }) => api.get('/artifacts', { params }),
+  list: (params?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number }) => api.get('/artifacts', { params }),
   get: (id: string) => api.get(`/artifacts/${id}`),
   create: (data: unknown) => api.post('/artifacts', data),
   update: (id: string, data: unknown) => api.patch(`/artifacts/${id}`, data),
@@ -189,7 +189,7 @@ export const authApi = {
 };
 
 export const aiApi = {
-  chat(conversationId: string | null, message: string, projectId?: string) {
+  chat(conversationId: string | null, message: string, projectId?: string, templateIds?: string[]) {
     const token = localStorage.getItem('token');
     return fetch(`${baseURL}/ai/chat`, {
       method: 'POST',
@@ -197,7 +197,7 @@ export const aiApi = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ conversationId, message, projectId }),
+      body: JSON.stringify({ conversationId, message, projectId, templateIds }),
     });
   },
   listConversations: (projectId?: string) =>
@@ -205,6 +205,7 @@ export const aiApi = {
   getConversation: (id: string) => api.get(`/ai/conversations/${id}`),
   createConversation: (projectId?: string) => api.post('/ai/conversations', { projectId }),
   deleteConversation: (id: string) => api.delete(`/ai/conversations/${id}`),
+  clearConversations: () => api.delete('/ai/conversations'),
 };
 
 export default api;

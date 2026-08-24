@@ -3,7 +3,7 @@ import { artifactsApi } from '../services/api';
 import { onDataChange } from '../utils/dataEvents';
 import type { Artifact } from '../types';
 
-export function useArtifacts(projectId?: string, type?: string, page: number = 1, pageSize: number = 20) {
+export function useArtifacts(projectId?: string, type?: string, keyword?: string, page: number = 1, pageSize: number = 20) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
     setArtifacts([]);
     setTotal(0);
     setError(null);
-  }, [projectId, type]);
+  }, [projectId, type, keyword]);
 
   useEffect(() => {
     const fetchArtifacts = async () => {
@@ -26,6 +26,7 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
         const params: Record<string, string> = {};
         if (projectId) params.projectId = projectId;
         if (type) params.type = type;
+        if (keyword) params.keyword = keyword;
         params.page = String(page);
         params.pageSize = String(pageSize);
         const response = await artifactsApi.list(params);
@@ -41,13 +42,13 @@ export function useArtifacts(projectId?: string, type?: string, page: number = 1
       }
     };
     fetchArtifacts();
-  }, [projectId, type, page, pageSize, trigger]);
+  }, [projectId, type, keyword, page, pageSize, trigger]);
 
   useEffect(() => {
     return onDataChange((dataType) => {
       if (dataType === 'artifacts') refetch();
     });
-  }, [projectId, type, page, pageSize]);
+  }, [projectId, type, keyword, page, pageSize]);
 
   return { artifacts, total, loading, initialLoading, error, refetch };
 }

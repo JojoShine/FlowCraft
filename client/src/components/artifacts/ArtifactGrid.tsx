@@ -4,7 +4,7 @@ import { ImagePreview } from '../ui/ImagePreview';
 interface Artifact {
   id: string;
   name: string;
-  type: 'document' | 'prototype' | 'diagram' | 'spreadsheet' | 'report' | 'image' | string;
+  type: 'file' | 'folder' | string;
   updatedAt: string;
   owner: string;
   taskName?: string;
@@ -20,48 +20,22 @@ interface ArtifactGridProps {
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
-  document: (
+  file: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
     </svg>
   ),
-  prototype: (
+  folder: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="M3 9h18"/>
-      <path d="M9 21V9"/>
-    </svg>
-  ),
-  diagram: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-    </svg>
-  ),
-  spreadsheet: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <line x1="3" y1="9" x2="21" y2="9"/>
-      <line x1="3" y1="15" x2="21" y2="15"/>
-      <line x1="9" y1="3" x2="9" y2="21"/>
-      <line x1="15" y1="3" x2="15" y2="21"/>
-    </svg>
-  ),
-  report: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20V10"/>
-      <path d="M18 20V4"/>
-      <path d="M6 20v-4"/>
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
     </svg>
   ),
 };
 
 const typeLabels: Record<string, string> = {
-  document: '文档',
-  prototype: '原型',
-  diagram: '流程图',
-  spreadsheet: '表格',
-  report: '汇报',
+  file: '文件',
+  folder: '文件夹',
 };
 
 function CardMenu({ onDelete, onBindTask }: { onDelete: () => void; onBindTask: () => void }) {
@@ -188,7 +162,7 @@ export function ArtifactGrid({ artifacts, onArtifactClick, onDelete, onBindTask 
               flexShrink: 0,
             }}>
               <div style={{ width: 16, height: 16, color: 'var(--ink-2)' }}>
-                {typeIcons[artifact.type] || typeIcons.document}
+                {typeIcons[artifact.type] || typeIcons.file}
               </div>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,18 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import { aiApi } from '../services/api';
 
-export interface Source {
-  content: string;
-  metadata: {
-    sourceType: string;
-    sourceId?: string;
-    projectId?: string;
-    title?: string;
-    label?: string;
-    type?: string;
-    [key: string]: unknown;
-  };
-  score: number;
+export interface ToolCallInfo {
+  name: string;
+  args: Record<string, unknown>;
+  result?: any;
 }
 
 interface Message {
@@ -20,7 +12,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   streaming?: boolean;
-  sources?: Source[];
+  toolCalls?: ToolCallInfo[];
 }
 
 interface Conversation {
@@ -65,7 +57,16 @@ export function useAIChat() {
     } catch { /* ignore */ }
   }, [currentConvId]);
 
-  const sendMessage = useCallback(async (content: string, projectId?: string) => {
+  const clearAllConversations = useCallback(async () => {
+    try {
+      await aiApi.clearConversations();
+      setConversations([]);
+      setCurrentConvId(null);
+      setMessages([]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const sendMessage = useCallback(async (content: string, projectId?: string, templateIds?: string[]) => {
     if (!content.trim() || loading) return;
 
     const userMsg: Message = { role: 'user', content };
@@ -76,7 +77,7 @@ export function useAIChat() {
     setMessages(prev => [...prev, assistantMsg]);
 
     try {
-      const response = await aiApi.chat(currentConvId, content, projectId);
+      const response = await aiApi.chat(currentConvId, content, projectId, templateIds);
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
@@ -104,10 +105,12 @@ export function useAIChat() {
             try {
               const data = JSON.parse(jsonStr);
 
-              if (currentEvent === 'sources' && data.sources) {
+              if (currentEvent === 'tool_call') {
                 setMessages(prev => {
                   const next = [...prev];
-                  next[next.length - 1] = { ...next[next.length - 1], sources: data.sources };
+                  const last = next[next.length - 1];
+                  const toolCalls = [...(last.toolCalls || []), { name: data.name, args: data.args, result: data.result }];
+                  next[next.length - 1] = { ...last, toolCalls };
                   return next;
                 });
               } else if (currentEvent === 'token' && data.content) {
@@ -159,6 +162,6 @@ export function useAIChat() {
   return {
     conversations, currentConvId, messages, loading,
     sendMessage, selectConversation, deleteConversation,
-    newConversation, loadConversations,
+    newConversation, loadConversations, clearAllConversations,
   };
 }

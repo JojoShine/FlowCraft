@@ -3,12 +3,14 @@ import { AppError } from '../middleware/errorHandler';
 import { uploadFile, getFileStream as getMinIOStream, deleteFile } from '../lib/minio';
 import { compressImage } from '../lib/imageCompress';
 import { Readable } from 'stream';
+import htmlToDocx from 'html-to-docx';
 
 export const artifactService = {
-  async list(filters?: { projectId?: string; type?: string; page?: number; pageSize?: number; ownerId?: string }) {
+  async list(filters?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number; ownerId?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;
     if (filters?.type) where.type = filters.type;
+    if (filters?.keyword) where.name = { contains: filters.keyword, mode: 'insensitive' };
     if (filters?.ownerId && !filters?.projectId) where.project = { ownerId: filters.ownerId };
 
     const page = filters?.page || 1;
@@ -56,13 +58,30 @@ export const artifactService = {
     if (!data.name || !data.type || !data.projectId) {
       throw AppError.badRequest('name, type, and projectId are required');
     }
+
+    let { type, filePath, content } = data;
+
+    if (type === 'html' && content) {
+      try {
+        const docxBuffer = await htmlToDocx(content) as Buffer;
+        const timestamp = Date.now();
+        const safeName = data.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const objectName = `${data.projectId}/ai-generated/${timestamp}-${safeName}.docx`;
+        filePath = await uploadFile(docxBuffer, objectName, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        type = 'docx';
+        content = undefined;
+      } catch {
+        // conversion failed, keep as html
+      }
+    }
+
     return prisma.artifact.create({
       data: {
         name: data.name,
-        type: data.type,
+        type,
         status: data.status || 'draft',
-        filePath: data.filePath,
-        content: data.content,
+        filePath,
+        content,
         taskId: data.taskId,
         projectId: data.projectId,
         creatorId: data.creatorId,
@@ -160,18 +179,12 @@ export const artifactService = {
     return {
       stream,
       contentType,
-      fileName: artifact.name,
+      fileName: artifact.filePath.split('/').pop() || artifact.name,
     };
   },
 
-  inferType(mimeType: string): string {
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.includes('pdf')) return 'document';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'spreadsheet';
-    if (mimeType.includes('zip')) return 'archive';
-    if (mimeType.includes('html')) return 'prototype';
-    return 'document';
+  inferType(_mimeType: string): string {
+    return 'file';
   },
 };
 

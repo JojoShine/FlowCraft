@@ -15,7 +15,6 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@langchain/textsplitters": "^1.0.1",
     "@prisma/client": "^6.19.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -23,10 +22,10 @@
     "axios": "^1.19.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
-    "chromadb": "^3.5.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "html-to-docx": "^1.8.0",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.1",
     "minio": "^8.0.7",

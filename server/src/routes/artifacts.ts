@@ -26,7 +26,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
 
   const { projectId, taskId, name, type } = req.body;
   if (!projectId) throw AppError.badRequest('projectId is required');
-  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -59,7 +59,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
     data: {
       id: artifactId,
       name: folderName,
-      type: type || 'prototype',
+      type: type || 'folder',
       status: 'approved',
       filePath: `${projectId}/${taskDir}/${artifactId}`,
       content: JSON.stringify(fileTree),
@@ -77,7 +77,7 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const { name, type, projectId, taskId, status, content } = req.body;
-  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -91,7 +91,7 @@ router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler
   }
 
   const { projectId, taskId, type, name } = req.body;
-  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -108,7 +108,7 @@ router.post('/upload', requireRole('admin'), upload.single('file'), asyncHandler
 
 router.get('/:id/file', asyncHandler(async (req, res) => {
   const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!artifact || !(await checkProjectOwnership(req.user!.id, artifact.projectId))) {
+  if (!artifact || !(await checkProjectOwnership(req.user!, artifact.projectId))) {
     res.status(403).json({ success: false, error: '无权访问该产物' });
     return;
   }
@@ -121,17 +121,18 @@ router.get('/:id/file', asyncHandler(async (req, res) => {
 }));
 
 router.get('/:id/preview', asyncHandler(async (req, res) => {
-  const artifactCheck = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!artifactCheck || !(await checkProjectOwnership(req.user!.id, artifactCheck.projectId))) {
+  const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true, filePath: true } });
+  if (!artifact || !(await checkProjectOwnership(req.user!, artifact.projectId))) {
     res.status(403).json({ success: false, error: '无权访问该产物' });
     return;
   }
-  const { stream, fileName } = await artifactService.getFileStream(req.params.id as string);
-  const ext = path.extname(fileName).toLowerCase();
+  const ext = artifact.filePath ? path.extname(artifact.filePath).toLowerCase() : '';
 
-  if (ext !== '.doc' && ext !== '.docx') {
-    throw AppError.badRequest('Preview only supported for .doc and .docx files');
+  if (ext !== '.doc') {
+    throw AppError.badRequest('Preview only supported for .doc files');
   }
+
+  const { stream } = await artifactService.getFileStream(req.params.id as string);
 
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -146,19 +147,16 @@ router.get('/:id/preview', asyncHandler(async (req, res) => {
     return;
   }
 
-  if (ext === '.docx') {
-    throw AppError.badRequest('该 .docx 文件无法预览，仅支持标准 docx 格式或 HTML 保存的文件');
-  }
-
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send('<style>.doc-err{text-align:center;color:#999;padding:40px;font-size:14px}@media(prefers-color-scheme:dark){.doc-err{color:#888}}</style><p class="doc-err">该文档格式暂不支持预览，请下载后使用其他软件打开</p>');
 }));
 
 router.get('/', asyncHandler(async (req, res) => {
-  const { projectId, type, page, pageSize } = req.query;
+  const { projectId, type, keyword, page, pageSize } = req.query;
   const result = await artifactService.list({
     projectId: projectId as string,
     type: type as string,
+    keyword: keyword as string,
     page: page ? Number(page) : undefined,
     pageSize: pageSize ? Number(pageSize) : undefined,
     ownerId: req.user!.id,
@@ -168,7 +166,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   const artifact = await artifactService.getById(req.params.id as string);
-  if (!(await checkProjectOwnership(req.user!.id, artifact.projectId))) {
+  if (!(await checkProjectOwnership(req.user!, artifact.projectId))) {
     res.status(403).json({ success: false, error: '无权访问该产物' });
     return;
   }
@@ -177,7 +175,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该产物' });
     return;
   }
@@ -187,7 +185,7 @@ router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该产物' });
     return;
   }
@@ -197,7 +195,7 @@ router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.post('/:id/share', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该产物' });
     return;
   }
@@ -211,7 +209,7 @@ router.post('/:id/share', requireRole('admin'), asyncHandler(async (req, res) =>
 
 router.delete('/:id/share', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该产物' });
     return;
   }

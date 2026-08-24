@@ -7,8 +7,6 @@ import { prisma } from './lib/prisma';
 import { minioClient, BUCKET_NAME } from './lib/minio';
 import { aiConfig } from './ai/config';
 import { startScheduler } from './services/reportScheduler';
-import { indexAllProjects } from './ai/indexing/orchestrator';
-import { getCollectionStats } from './ai/vectorstore';
 import axios from 'axios';
 
 const PORT = process.env.PORT || 3800;
@@ -68,22 +66,6 @@ async function checkLLM(): Promise<boolean> {
   }
 }
 
-async function autoIndexVectorStore() {
-  try {
-    const stats = await getCollectionStats();
-    if (stats.documentCount > 0) {
-      logger.info(`✓ Vector store has ${stats.documentCount} documents, skipping auto-index`);
-      return;
-    }
-    logger.info('Vector store is empty, starting auto-index...');
-    const results = await indexAllProjects();
-    const total = results.reduce((sum, r) => sum + r.indexed, 0);
-    logger.info(`✓ Auto-index complete: ${total} documents indexed across ${results.length} projects`);
-  } catch (error) {
-    logger.warn('⚠ Auto-index failed (vector store may be unavailable)', { error: String(error) });
-  }
-}
-
 async function startServer() {
   logger.info('Running startup health checks...');
   
@@ -106,7 +88,6 @@ async function startServer() {
       llm: llmOk ? '✓' : '✗',
     });
     startScheduler();
-    autoIndexVectorStore();
   });
 
   process.on('SIGTERM', () => {

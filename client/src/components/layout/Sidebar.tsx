@@ -75,7 +75,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
   const [taskCount, setTaskCount] = useState(0);
-  const { total: artifactsTotal } = useArtifacts(selectedProjectId ?? undefined, undefined, 1, 1);
+  const { total: artifactsTotal } = useArtifacts(selectedProjectId ?? undefined, undefined, undefined, 1, 1);
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { Input } from '../components/ui/Input';
 
 export function Login() {
   const { login, register, isAuthenticated } = useAuth();
@@ -320,104 +321,35 @@ export function Login() {
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 8 }}>
-                用户名
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                placeholder="请输入用户名"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 10,
-                  fontSize: 14,
-                  background: 'var(--surface)',
-                  color: 'var(--ink)',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 200ms var(--ease), box-shadow 200ms var(--ease)',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--primary)';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
+            <Input
+              label="用户名"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              placeholder="请输入用户名"
+              style={{ padding: '10px 14px', height: undefined, borderRadius: 10, fontSize: 14 }}
+            />
 
             {isRegister && (
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 8 }}>
-                  昵称（可选）
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="请输入昵称"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    background: 'var(--surface)',
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'border-color 200ms var(--ease), box-shadow 200ms var(--ease)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+              <Input
+                label="昵称（可选）"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="请输入昵称"
+                style={{ padding: '10px 14px', height: undefined, borderRadius: 10, fontSize: 14 }}
+              />
             )}
 
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 8 }}>
-                密码
-              </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)', letterSpacing: '-0.01em' }}>密码</label>
               <div style={{ position: 'relative' }}>
-                <input
+                <Input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="请输入密码"
-                  style={{
-                    width: '100%',
-                    padding: '10px 40px 10px 14px',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    background: 'var(--surface)',
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'border-color 200ms var(--ease), box-shadow 200ms var(--ease)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
+                  style={{ padding: '10px 40px 10px 14px', height: undefined, borderRadius: 10, fontSize: 14 }}
                 />
                 <button
                   type="button"
@@ -458,37 +390,16 @@ export function Login() {
             </div>
 
             {isRegister && (
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 8 }}>
-                  确认密码
-                </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)', letterSpacing: '-0.01em' }}>确认密码</label>
                 <div style={{ position: 'relative' }}>
-                  <input
+                  <Input
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="请再次输入密码"
-                    style={{
-                      width: '100%',
-                      padding: '10px 40px 10px 14px',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 10,
-                      fontSize: 14,
-                      background: 'var(--surface)',
-                      color: 'var(--ink)',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 200ms var(--ease), box-shadow 200ms var(--ease)',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--primary)';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    style={{ padding: '10px 40px 10px 14px', height: undefined, borderRadius: 10, fontSize: 14 }}
                   />
                   <button
                     type="button"

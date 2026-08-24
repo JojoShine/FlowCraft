@@ -139,6 +139,7 @@ model Report {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([type, projectId, date])
   @@index([projectId])
   @@index([date])
   @@index([type])

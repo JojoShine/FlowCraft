@@ -27,18 +27,16 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
         if (selectedProjectId) params.projectId = selectedProjectId;
         const res = await tasksApi.list(params);
         const allTasks = (res.data as any[]) || [];
-        const now = new Date();
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
         const overdue = allTasks.filter((t: any) => {
-          if (t.column === 'done') return false;
+          if (t.status === 'completed') return false;
           if (!t.dueDate) return false;
-          const dueEnd = new Date(t.dueDate);
-          dueEnd.setHours(23, 59, 59, 999);
-          return dueEnd < now;
+          const dueDate = new Date(t.dueDate);
+          return dueDate < startOfToday;
         });
         overdue.sort((a: any, b: any) => {
-          const aEnd = new Date(a.dueDate); aEnd.setHours(23, 59, 59, 999);
-          const bEnd = new Date(b.dueDate); bEnd.setHours(23, 59, 59, 999);
-          return aEnd.getTime() - bEnd.getTime();
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         });
         setOverdueTasks(overdue);
       } catch {

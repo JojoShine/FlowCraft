@@ -65,32 +65,11 @@ function TagInput({
       }}>
         {label}
       </label>
-      <input
-        type="text"
+      <Input
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        style={{
-          height: 36,
-          padding: '0 12px',
-          fontSize: 13,
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          color: 'var(--ink)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 8,
-          outline: 'none',
-          transition: 'all 150ms',
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'var(--ink-3)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(24,24,27,0.08)';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-default)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
       />
       {tags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -286,45 +265,15 @@ export function ProjectDrawer({ isOpen, onClose }: ProjectDrawerProps) {
             options={projectTypeOptions}
           />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--ink-2)',
-              letterSpacing: '-0.01em',
-            }}>
-              项目描述
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="简要描述项目背景和目标..."
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid var(--border-default)',
-                borderRadius: 8,
-                fontSize: 13,
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                color: 'var(--ink)',
-                background: 'var(--surface)',
-                outline: 'none',
-                resize: 'vertical',
-                minHeight: 60,
-                lineHeight: 1.5,
-                transition: 'all 150ms',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'var(--ink-3)';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(24,24,27,0.08)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-default)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-          </div>
+          <Input
+            as="textarea"
+            label="项目描述"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="简要描述项目背景和目标..."
+            rows={3}
+            style={{ minHeight: 60 }}
+          />
 
           <SectionHeader>时间与周期</SectionHeader>
 

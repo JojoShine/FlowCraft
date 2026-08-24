@@ -36,7 +36,12 @@ export function startScheduler() {
   });
 
   cron.schedule('0 18 * * 5', () => {
-    logger.info('Cron: generating weekly reports');
+    logger.info('Cron: generating weekly reports (Friday 18:00)');
+    generateForAllProjects('weekly');
+  });
+
+  cron.schedule('0 18 * * 0', () => {
+    logger.info('Cron: generating weekly reports supplement (Sunday 18:00)');
     generateForAllProjects('weekly');
   });
 

@@ -16,7 +16,9 @@ function buildDailyLabel(date: Date): string {
 }
 
 function buildWeeklyLabel(weekEnd: Date): string {
-  const { year, month, day } = getCSTComponents(weekEnd);
+  const thursday = new Date(weekEnd);
+  thursday.setDate(thursday.getDate() - 3);
+  const { year, month, day } = getCSTComponents(thursday);
   const weekNum = Math.ceil(day / 7);
   return `${year}年${month}月第${weekNum}周 工作周报`;
 }
@@ -41,43 +43,20 @@ function buildReportDate(type: string, date: Date): Date {
 }
 
 async function queryTasksForPeriod(projectId: string, start: Date, end: Date) {
-  const [completed, inProgress, overdue] = await Promise.all([
-    prisma.task.findMany({
-      where: {
-        projectId,
-        column: 'done',
-        OR: [
-          { completedAt: { gte: start, lte: end } },
-          { completedAt: null, updatedAt: { gte: start, lte: end } },
-        ],
-      },
-      orderBy: { updatedAt: 'asc' },
-      select: { title: true, completedAt: true, updatedAt: true },
-    }),
-    prisma.task.findMany({
-      where: {
-        projectId,
-        column: { not: 'done' },
-        dueDate: { gte: start, lte: end },
-      },
-      orderBy: { dueDate: 'asc' },
-      select: { title: true, dueDate: true },
-    }),
-    prisma.task.findMany({
-      where: {
-        projectId,
-        column: { not: 'done' },
-        dueDate: { lt: new Date() },
-      },
-      orderBy: { dueDate: 'asc' },
-      select: { title: true, dueDate: true },
-    }),
-  ]);
+  const completed = await prisma.task.findMany({
+    where: {
+      projectId,
+      column: 'done',
+      completedAt: { gte: start, lte: end },
+    },
+    orderBy: { completedAt: 'asc' },
+    select: { title: true },
+  });
 
   return {
     completed: completed.map(t => t.title),
-    nextSteps: inProgress.map(t => t.title),
-    issues: overdue.map(t => t.title),
+    nextSteps: [] as string[],
+    issues: [] as string[],
   };
 }
 
@@ -170,20 +149,24 @@ export const reportService = {
         break;
       }
       case 'weekly': {
-        const ws = params.weekStart ? new Date(params.weekStart) : (() => {
-          const today = new Date(now);
-          const cstComp = getCSTComponents(today);
-          const dayOfWeek = today.getDay() || 7;
-          const monday = new Date(Date.UTC(cstComp.year, cstComp.month - 1, cstComp.day - dayOfWeek + 1));
-          return monday;
-        })();
-        const range = utc8WeekRange(year, ws);
+        let monday: Date;
+        if (params.weekStart) {
+          monday = new Date(params.weekStart);
+        } else {
+          const cstComp = getCSTComponents(now);
+          const cstDow = new Date(Date.UTC(cstComp.year, cstComp.month - 1, cstComp.day)).getUTCDay();
+          const dayOfWeek = cstDow || 7;
+          const friday = new Date(Date.UTC(cstComp.year, cstComp.month - 1, cstComp.day + (5 - dayOfWeek)));
+          monday = new Date(friday);
+          monday.setDate(monday.getDate() - 4);
+        }
+        const friday = new Date(monday);
+        friday.setDate(friday.getDate() + 4);
+        const range = utc8WeekRange(monday.getFullYear(), monday);
         rangeStart = range.start;
         rangeEnd = range.end;
-        const weekEndDate = new Date(ws);
-        weekEndDate.setDate(weekEndDate.getDate() + 6);
-        label = buildWeeklyLabel(weekEndDate);
-        reportDate = buildReportDate('weekly', weekEndDate);
+        label = buildWeeklyLabel(friday);
+        reportDate = friday;
         break;
       }
       case 'monthly': {
@@ -229,30 +212,12 @@ export const reportService = {
     });
 
     const cstComp = getCSTComponents(reportDate);
-    const { start: dayStart, end: dayEnd } = utc8DayRange(cstComp.year, cstComp.month, cstComp.day);
+    const { start: dayStart } = utc8DayRange(cstComp.year, cstComp.month, cstComp.day);
 
-    return prisma.$transaction(async (tx) => {
-      const existing = await tx.report.findFirst({
-        where: {
-          type,
-          projectId,
-          date: { gte: dayStart, lte: dayEnd },
-        },
-      });
-
-      if (existing) {
-        await tx.report.delete({ where: { id: existing.id } });
-      }
-
-      return tx.report.create({
-        data: {
-          type,
-          label,
-          content,
-          date: dayStart,
-          projectId,
-        },
-      });
+    return prisma.report.upsert({
+      where: { type_projectId_date: { type, projectId, date: dayStart } },
+      update: { label, content },
+      create: { type, label, content, date: dayStart, projectId },
     });
   },
 };

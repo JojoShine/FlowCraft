@@ -3,18 +3,27 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { chatService } from '../services/chatService';
 import { type ChatMessage } from '../ai/llm';
-import { runRAG } from '../ai/graph/rag';
-import { indexProjectData, indexAllProjects } from '../ai/indexing/orchestrator';
-import { getCollectionStats } from '../ai/vectorstore';
+import { runAgent } from '../ai/agent';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
 
 router.post('/chat', asyncHandler(async (req, res) => {
-  const { conversationId, message, projectId } = req.body;
+  const { conversationId, message, projectId, templateIds } = req.body;
 
   if (!message?.trim()) {
     throw AppError.badRequest('message is required');
+  }
+
+  let templateContext: string | undefined;
+  if (Array.isArray(templateIds) && templateIds.length > 0) {
+    const templates = await prisma.template.findMany({
+      where: { id: { in: templateIds } },
+      select: { name: true, content: true },
+    });
+    if (templates.length > 0) {
+      templateContext = templates.map(t => `【${t.name}】\n${t.content}`).join('\n\n');
+    }
   }
 
   let convId = conversationId;
@@ -42,16 +51,12 @@ router.post('/chat', asyncHandler(async (req, res) => {
   let fullContent = '';
 
   try {
-    for await (const event of runRAG(message, projectId, history)) {
-      if (typeof event === 'string') {
-        fullContent += event;
-        res.write(`event: token\ndata: ${JSON.stringify({ content: event })}\n\n`);
-      } else if (event.type === 'sources') {
-        res.write(`event: sources\ndata: ${JSON.stringify({ sources: (event.sources || []).map(s => ({
-          content: s.text.slice(0, 200),
-          metadata: s.metadata,
-          score: s.score,
-        })) })}\n\n`);
+    for await (const event of runAgent(message, projectId, history, templateContext)) {
+      if (event.type === 'token') {
+        fullContent += event.content;
+        res.write(`event: token\ndata: ${JSON.stringify({ content: event.content })}\n\n`);
+      } else if (event.type === 'tool_call') {
+        res.write(`event: tool_call\ndata: ${JSON.stringify({ name: event.name, args: event.args, result: event.result })}\n\n`);
       }
     }
 
@@ -64,26 +69,15 @@ router.post('/chat', asyncHandler(async (req, res) => {
   res.end();
 }));
 
-router.post('/index', asyncHandler(async (req, res) => {
-  const { projectId } = req.body;
-  if (projectId) {
-    const result = await indexProjectData(projectId);
-    res.json(successResponse(result));
-  } else {
-    const results = await indexAllProjects();
-    res.json(successResponse(results));
-  }
-}));
-
-router.get('/index/status', asyncHandler(async (_req, res) => {
-  const stats = await getCollectionStats();
-  res.json(successResponse(stats));
-}));
-
 router.get('/conversations', asyncHandler(async (req, res) => {
   const projectId = req.query.projectId as string | undefined;
   const conversations = await chatService.listConversations(projectId, req.user!.id);
   res.json(successResponse(conversations));
+}));
+
+router.delete('/conversations', asyncHandler(async (req, res) => {
+  await chatService.clearAllConversations(req.user!.id);
+  res.status(204).end();
 }));
 
 router.post('/conversations', asyncHandler(async (req, res) => {

@@ -21,6 +21,8 @@ const pageSize = 12;
 export function Artifacts() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filterId = searchParams.get('artifact');
+  const urlKeyword = searchParams.get('keyword') || '';
+  const [resolvedKeyword, setResolvedKeyword] = useState(urlKeyword);
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [showNewArtifactDialog, setShowNewArtifactDialog] = useState(false);
   const [page, setPage] = useState(1);
@@ -38,17 +40,30 @@ export function Artifacts() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
   const isCalendar = viewMode === 'calendar';
-  const { artifacts, total, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, undefined, page, (isCalendar || filterId) ? 9999 : pageSize);
-
-  const clearFilter = () => {
-    setSearchParams({});
-  };
+  const keyword = resolvedKeyword || urlKeyword;
+  const { artifacts, total, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, undefined, keyword || undefined, page, isCalendar ? 9999 : pageSize);
 
   useEffect(() => {
     if (filterId) {
-      setViewMode('grid');
+      artifactsApi.get(filterId).then(res => {
+        setResolvedKeyword(res.data.name);
+        setSearchParams({ keyword: res.data.name }, { replace: true });
+      }).catch(() => {});
     }
   }, [filterId]);
+
+  useEffect(() => {
+    setResolvedKeyword(urlKeyword);
+  }, [urlKeyword]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [keyword]);
+
+  const clearKeyword = () => {
+    setSearchParams({});
+    setResolvedKeyword('');
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -148,7 +163,7 @@ export function Artifacts() {
     return {
       id: a.id,
       name: a.name,
-      type: (a.type || 'document') as 'document' | 'prototype' | 'diagram' | 'spreadsheet' | 'report',
+      type: (a.type || 'file') as 'file' | 'folder',
       updatedAt: (() => {
         if (!rawDate) return '';
         return formatDate(rawDate);
@@ -161,11 +176,7 @@ export function Artifacts() {
     };
   });
 
-  const transformedArtifacts = filterId
-    ? allTransformed.filter(a => a.id === filterId)
-    : allTransformed;
-
-  const filterMatchName = filterId ? allTransformed.find(a => a.id === filterId)?.name : undefined;
+  const transformedArtifacts = allTransformed;
 
   return (
     <div>
@@ -245,42 +256,29 @@ export function Artifacts() {
         )}
       </div>
 
-      {/* Search filter banner */}
-      {filterId && (
+      {/* Keyword filter banner */}
+      {keyword && (
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 14px',
-          marginBottom: 16,
-          background: 'var(--surface-overlay)',
-          borderRadius: 8,
-          fontSize: 12,
-          color: 'var(--ink-2)',
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+          padding: '8px 14px', borderRadius: 8,
+          background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)',
+          fontSize: 13, color: 'var(--ink-2)',
         }}>
-          <span>
-            搜索结果：{filterMatchName ? <strong style={{ fontWeight: 500, color: 'var(--ink)' }}>{filterMatchName}</strong> : '未找到匹配产物'}
-            {transformedArtifacts.length === 0 && <span style={{ color: 'var(--ink-3)', marginLeft: 6 }}>该产物可能不在当前筛选条件下</span>}
-          </span>
+          <span>筛选：<strong style={{ color: 'var(--ink)' }}>{keyword}</strong></span>
+          <span style={{ color: 'var(--ink-4)' }}>共 {total} 条结果</span>
           <button
-            onClick={clearFilter}
+            onClick={clearKeyword}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '3px 8px',
-              borderRadius: 5,
-              border: '1px solid var(--border-default)',
-              background: 'var(--surface)',
-              fontSize: 11,
-              color: 'var(--ink-2)',
-              cursor: 'pointer',
+              marginLeft: 'auto', height: 26, padding: '0 10px', borderRadius: 6,
+              border: '1px solid var(--border-default)', background: 'transparent',
+              fontSize: 12, color: 'var(--ink-2)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
-            清除
+            清除筛选
           </button>
         </div>
       )}

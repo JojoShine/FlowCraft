@@ -53,9 +53,10 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-export async function checkProjectOwnership(userId: string, projectId: string): Promise<boolean> {
+export async function checkProjectOwnership(user: { id: string; role: string; projectId: string | null }, projectId: string): Promise<boolean> {
+  if (user.role === 'viewer') return user.projectId === projectId;
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
-  return project?.ownerId === userId;
+  return project?.ownerId === user.id;
 }
 
 export function scopeProject() {
@@ -73,7 +74,7 @@ export function scopeProject() {
     }
     const projectId = req.query.projectId as string | undefined;
     if (projectId) {
-      const owned = await checkProjectOwnership(req.user.id, projectId);
+      const owned = await checkProjectOwnership(req.user, projectId);
       if (!owned) {
         res.status(403).json({ success: false, error: '无权访问该项目' });
         return;

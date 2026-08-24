@@ -35,6 +35,10 @@ export const chatService = {
     await prisma.conversation.delete({ where: { id } });
   },
 
+  async clearAllConversations(userId: string) {
+    await prisma.conversation.deleteMany({ where: { userId } });
+  },
+
   async addUserMessage(conversationId: string, content: string) {
     return prisma.message.create({
       data: { conversationId, role: 'user', content },

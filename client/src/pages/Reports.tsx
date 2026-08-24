@@ -207,10 +207,12 @@ export function Reports() {
     try {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const weekStartStr = `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`;
       const res = await reportsApi.generate({
         type: 'weekly',
         projectId: selectedProjectId,
-        weekStart: weekStart.toISOString(),
+        weekStart: weekStartStr,
       });
       const raw = res.data;
       const parsed = parseReport(raw);
@@ -256,16 +258,22 @@ export function Reports() {
     });
   };
 
-  // Week picker: show 4 weeks of current month
+  // Week picker: Mon-Sun weeks, starting from the first Monday within the month
   const weeks: { start: Date; end: Date; label: string }[] = [];
-  for (let d = 1; d <= totalDays; d += 7) {
-    const weekStart = new Date(year, month, d);
-    const weekEnd = new Date(year, month, Math.min(d + 6, totalDays));
-    weeks.push({
-      start: weekStart,
-      end: weekEnd,
-      label: `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`,
-    });
+  {
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysUntilMonday = firstDow <= 1 ? (1 - firstDow) : (8 - firstDow);
+    let d = 1 + daysUntilMonday;
+    while (d <= totalDays) {
+      const weekStart = new Date(year, month, d);
+      const weekEnd = new Date(year, month, d + 6);
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        label: `${weekStart.getMonth() + 1}/${weekStart.getDate()} - ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`,
+      });
+      d += 7;
+    }
   }
 
   // Month picker: show 12 months of current year

@@ -92,7 +92,7 @@ export function RadioGroup({ label, value, onValueChange, options, direction = '
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = 'var(--ink-3)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(24,24,27,0.08)';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--ink) 8%, transparent)';
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = 'var(--border-default)';

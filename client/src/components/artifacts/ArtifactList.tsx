@@ -1,7 +1,7 @@
 interface Artifact {
   id: string;
   name: string;
-  type: 'document' | 'prototype' | 'diagram' | 'spec';
+  type: 'file' | 'folder' | string;
   status: 'draft' | 'review' | 'approved';
   updatedAt: string;
   owner: string;
@@ -13,44 +13,22 @@ interface ArtifactListProps {
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
-  document: (
+  file: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
     </svg>
   ),
-  prototype: (
+  folder: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-      <rect x="2" y="3" width="20" height="14" rx="2"/>
-      <path d="M8 21h8"/>
-      <path d="M12 17v4"/>
-      <polygon points="10 8 10 12 14 10 10 8" fill="currentColor" stroke="none"/>
-    </svg>
-  ),
-  diagram: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-      <rect x="3" y="3" width="7" height="7"/>
-      <rect x="14" y="3" width="7" height="7"/>
-      <rect x="3" y="14" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/>
-    </svg>
-  ),
-  spec: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <path d="M9 15l2 2 4-4"/>
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
     </svg>
   ),
 };
 
 const typeLabels: Record<string, string> = {
-  document: '文档',
-  prototype: '原型',
-  diagram: '流程图',
-  spec: '规范',
+  file: '文件',
+  folder: '文件夹',
 };
 
 const statusLabels: Record<string, string> = {

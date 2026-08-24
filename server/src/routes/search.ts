@@ -16,7 +16,9 @@ router.get('/', asyncHandler(async (req, res) => {
 
   const projectFilter = projectId
     ? { projectId }
-    : { project: { ownerId: userId } };
+    : req.user!.role === 'viewer'
+      ? (req.user!.projectId ? { projectId: req.user!.projectId } : { projectId: '__none__' })
+      : { project: { ownerId: userId } };
 
   const like = { contains: q };
 

@@ -313,7 +313,7 @@ export function Workbench() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{art.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1, display: 'flex', gap: 8 }}>
-                      <span>{{ prototype: '原型', diagram: '流程图', document: '文档', spreadsheet: '表格', report: '汇报' }[art.type] || art.type}</span>
+                      <span>{{ file: '文件', folder: '文件夹' }[art.type] || art.type}</span>
                       <span>{art.createdAt ? formatDate(art.createdAt) : ''}</span>
                     </div>
                     {art.task?.title && (

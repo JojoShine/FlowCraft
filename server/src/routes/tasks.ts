@@ -13,7 +13,7 @@ router.get('/count', asyncHandler(async (req, res) => {
     res.status(400).json({ error: 'projectId required' });
     return;
   }
-  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权访问该项目' });
     return;
   }
@@ -33,7 +33,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const { projectId, column, phaseId } = req.query;
   if (phaseId) {
     const phase = await prisma.phase.findUnique({ where: { id: phaseId as string }, select: { projectId: true } });
-    if (!phase || !(await checkProjectOwnership(req.user!.id, phase.projectId))) {
+    if (!phase || !(await checkProjectOwnership(req.user!, phase.projectId))) {
       res.status(403).json({ success: false, error: '无权访问该项目' });
       return;
     }
@@ -55,7 +55,7 @@ router.get('/options', asyncHandler(async (req, res) => {
     res.status(400).json({ error: 'projectId required' });
     return;
   }
-  if (!(await checkProjectOwnership(req.user!.id, projectId))) {
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权访问该项目' });
     return;
   }
@@ -65,7 +65,7 @@ router.get('/options', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   const task = await taskService.getById(req.params.id as string);
-  if (!(await checkProjectOwnership(req.user!.id, task.projectId))) {
+  if (!(await checkProjectOwnership(req.user!, task.projectId))) {
     res.status(403).json({ success: false, error: '无权访问该项目' });
     return;
   }
@@ -73,7 +73,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
-  if (!(await checkProjectOwnership(req.user!.id, req.body.projectId))) {
+  if (!(await checkProjectOwnership(req.user!, req.body.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -83,7 +83,7 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.task.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -93,7 +93,7 @@ router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.task.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }

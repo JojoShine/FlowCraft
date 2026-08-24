@@ -13,11 +13,12 @@ export const taskService = {
   },
 
   async countOverdueByProject(projectIds: string[]) {
-    const now = new Date();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
     const tasks = await prisma.task.findMany({
       where: {
-        column: { not: 'done' },
-        dueDate: { not: null, lt: now },
+        status: { not: 'completed' },
+        dueDate: { not: null, lt: startOfToday },
         projectId: { in: projectIds },
       },
       select: { projectId: true },
@@ -152,10 +153,13 @@ export const taskService = {
     const existing = await prisma.task.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Task not found');
 
-    const isCompleting = (data.status === 'completed' || data.column === 'done') &&
-                         existing.status !== 'completed' && existing.column !== 'done';
-    const isUncompleting = (data.status && data.status !== 'completed' && existing.status === 'completed') ||
-                           (data.column && data.column !== 'done' && existing.column === 'done');
+    let resolvedStatus = data.status;
+    if (!data.status && data.column && data.column !== existing.column) {
+      resolvedStatus = data.column === 'done' ? 'completed' : 'todo';
+    }
+
+    const isCompleting = resolvedStatus === 'completed' && existing.status !== 'completed';
+    const isUncompleting = resolvedStatus && resolvedStatus !== 'completed' && existing.status === 'completed';
 
     return prisma.task.update({
       where: { id },
@@ -164,7 +168,7 @@ export const taskService = {
         description: data.description,
         type: data.type,
         priority: data.priority,
-        status: data.status,
+        status: resolvedStatus,
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
         phaseId: data.phaseId,

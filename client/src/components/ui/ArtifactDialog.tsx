@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileUpload } from './FileUpload';
+import { Input } from './Input';
 import { Select } from './Select';
 import { useToast } from './Toast';
 import { artifactsApi, tasksApi } from '../../services/api';
@@ -64,8 +65,11 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
 
     setCreating(true);
     try {
-      if (task) {
-        await artifactsApi.update(uploadedFile.id, { taskId: task });
+      const updates: Record<string, unknown> = {};
+      if (task) updates.taskId = task;
+      if (name.trim()) updates.name = name.trim();
+      if (Object.keys(updates).length > 0) {
+        await artifactsApi.update(uploadedFile.id, updates);
       }
       toast({ title: '产物已创建', variant: 'success' });
       notifyDataChange('artifacts');
@@ -152,34 +156,11 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }}>
             {/* Artifact Name */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>
-                产物名称
-              </label>
-              <input
-                type="text"
+              <Input
+                label="产物名称"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="输入产物名称（留空则使用文件名）"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  background: 'var(--surface)',
-                  color: 'var(--ink)',
-                  outline: 'none',
-                  transition: 'border-color 150ms, box-shadow 150ms',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--ink-3)';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.04)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-default)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                placeholder="输入产物名称"
               />
             </div>
 
@@ -221,9 +202,9 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                     const res = await artifactsApi.upload(file, {
                       projectId: pid,
                       taskId: task || undefined,
+                      name: name || undefined,
                     });
                     setUploadedFile({ id: res.data.id, name: file.name });
-                    if (!name) setName(file.name);
                   }}
                 />
               ) : (
@@ -253,7 +234,6 @@ export function ArtifactDialog({ isOpen, onClose, projectId: defaultProjectId }:
                             taskId: task || undefined,
                           });
                           setUploadedFile({ id: res.data.id, name: folderName });
-                          if (!name) setName(folderName);
                           toast({ title: `文件夹已上传 (${files.length} 个文件)`, variant: 'success' });
                         } catch (err: any) {
                           toast({ title: '上传失败', description: err?.message, variant: 'error' });

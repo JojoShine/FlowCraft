@@ -13,7 +13,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
-  if (!(await checkProjectOwnership(req.user!.id, req.body.projectId))) {
+  if (!(await checkProjectOwnership(req.user!, req.body.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
@@ -23,7 +23,7 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
 
 router.patch('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   const existing = await prisma.phase.findUnique({ where: { id: req.params.id as string }, select: { projectId: true } });
-  if (!existing || !(await checkProjectOwnership(req.user!.id, existing.projectId))) {
+  if (!existing || !(await checkProjectOwnership(req.user!, existing.projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }

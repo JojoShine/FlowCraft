@@ -109,12 +109,10 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
   const [phases, setPhases] = useState<Phase[]>([]);
 
   const [pendingArtifacts, setPendingArtifacts] = useState<{ id: string; name: string; type: string; isNew?: boolean }[]>([]);
-  const [artifactType, setArtifactType] = useState('proto');
   const [artifactUploadMode, setArtifactUploadMode] = useState<'file' | 'folder'>('file');
 
   useEffect(() => {
     if (!isOpen) return;
-    setArtifactType('proto');
     setArtifactUploadMode('file');
     if (mode === 'create') {
       setTitle('');
@@ -221,6 +219,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
       const phaseId = await resolvePhaseId();
       let targetTaskId: string | null = task?.id || null;
       if (mode === 'edit' && task?.id) {
+        const columnChanged = column !== task.column;
         await tasksApi.update(task.id, {
           title: title.trim(),
           type: taskType,
@@ -228,6 +227,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
           phaseId,
           priority,
           column,
+          status: columnChanged ? (column === 'done' ? 'completed' : 'todo') : undefined,
           startDate: startDate || null,
           dueDate: dueDate || null,
           description: description.trim() || null,
@@ -456,45 +456,15 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'var(--ink-2)',
-                  letterSpacing: '-0.01em',
-                }}>
-                  完成备注 <span style={{ color: 'var(--red)' }}>*</span>
-                </label>
-                <textarea
-                  value={completionNotes}
-                  onChange={(e) => setCompletionNotes(e.target.value)}
-                  placeholder="请描述完成情况、产出成果等..."
-                  rows={5}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    resize: 'vertical',
-                    minHeight: 100,
-                    lineHeight: 1.5,
-                    transition: 'all 150ms',
-                    background: 'var(--surface)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--ink-3)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(24,24,27,0.08)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+              <Input
+                as="textarea"
+                label="完成备注"
+                value={completionNotes}
+                onChange={(e) => setCompletionNotes(e.target.value)}
+                placeholder="请描述完成情况、产出成果等..."
+                rows={5}
+                style={{ minHeight: 100 }}
+              />
 
               <FileUpload
                 label="产出物（可选）"
@@ -712,8 +682,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {pendingArtifacts.map((a) => {
                       const artifactTypeLabels: Record<string, string> = {
-                        prototype: '原型', diagram: '流程图', document: '文档',
-                        spreadsheet: '表格', report: '汇报', design: '设计稿',
+                        file: '文件', folder: '文件夹',
                       };
                       return (
                         <div key={a.id} style={{
@@ -811,45 +780,15 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                 onChange={setDueDate}
               />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'var(--ink-2)',
-                  letterSpacing: '-0.01em',
-                }}>
-                  描述
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="任务描述..."
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                    color: 'var(--ink)',
-                    outline: 'none',
-                    resize: 'vertical',
-                    minHeight: 80,
-                    lineHeight: 1.5,
-                    transition: 'all 150ms',
-                    background: 'var(--surface)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--ink-3)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(24,24,27,0.08)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+              <Input
+                as="textarea"
+                label="描述"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="任务描述..."
+                rows={4}
+                style={{ minHeight: 80 }}
+              />
 
               <FileUpload
                 label="依赖附件"
@@ -878,36 +817,6 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                   产物上传
                   <span style={{ fontWeight: 400, color: 'var(--ink-3)', marginLeft: 6 }}>创建后自动绑定到此任务</span>
                 </label>
-
-                {/* Artifact type selector */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[
-                    { value: 'proto', label: '原型' },
-                    { value: 'flow', label: '流程图' },
-                    { value: 'doc', label: '文档' },
-                    { value: 'table', label: '表格' },
-                    { value: 'report', label: '汇报' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setArtifactType(opt.value)}
-                      style={{
-                        height: 28,
-                        padding: '0 10px',
-                        borderRadius: 6,
-                        border: '1px solid var(--border-default)',
-                        background: artifactType === opt.value ? 'var(--ink)' : 'transparent',
-                        color: artifactType === opt.value ? 'var(--canvas)' : 'var(--ink-2)',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 150ms',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
 
                 {/* File / Folder toggle */}
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -954,16 +863,13 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                         toast({ title: '请先选择所属项目', variant: 'error' });
                         throw new Error('Project not selected');
                       }
-                      const typeToApi: Record<string, string> = {
-                        proto: 'prototype', flow: 'diagram', doc: 'document', table: 'spreadsheet', report: 'report',
-                      };
                       const res = await artifactsApi.upload(file, {
                         projectId: project,
-                        type: typeToApi[artifactType] || 'document',
+                        type: artifactUploadMode,
                       });
                       const artifactId = (res.data as any)?.id;
                       if (artifactId) {
-                        setPendingArtifacts(prev => [...prev, { id: artifactId, name: file.name, type: artifactType, isNew: true }]);
+                        setPendingArtifacts(prev => [...prev, { id: artifactId, name: file.name, type: artifactUploadMode, isNew: true }]);
                       }
                     }}
                   />
@@ -1001,7 +907,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                           });
                           const artifactId = (res.data as any)?.id;
                           if (artifactId) {
-                            setPendingArtifacts(prev => [...prev, { id: artifactId, name: folderName, type: artifactType, isNew: true }]);
+                            setPendingArtifacts(prev => [...prev, { id: artifactId, name: folderName, type: artifactUploadMode, isNew: true }]);
                             toast({ title: `文件夹已上传 (${fileList.length} 个文件)`, variant: 'success' });
                           }
                         } catch (err: any) {
@@ -1024,8 +930,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {pendingArtifacts.map((a, i) => {
                       const typeLabels: Record<string, string> = {
-                        proto: '原型', flow: '流程图', doc: '文档', table: '表格', report: '汇报',
-                        prototype: '原型', diagram: '流程图', document: '文档', spreadsheet: '表格',
+                        file: '文件', folder: '文件夹',
                       };
                       return (
                         <div key={a.id} style={{
