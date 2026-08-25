@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import * as XLSX from 'xlsx';
+import { renderAsync } from 'docx-preview';
 import { artifactsApi, publicApi } from '../services/api';
 
 interface SharedArtifactData {
@@ -21,7 +22,7 @@ function getExtension(filename: string): string {
 }
 
 function detectMode(name: string, type: string, filePath?: string | null, content?: string | null): ViewerMode {
-  const ext = getExtension(name);
+  const ext = filePath ? getExtension(filePath) : '';
   const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif'];
   const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'm4v', '3gp'];
   const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'wma', 'm4a', 'opus'];
@@ -67,6 +68,9 @@ export function SharedArtifact() {
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [docError, setDocError] = useState(false);
   const [sheetData, setSheetData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+  const [docxLoading, setDocxLoading] = useState(false);
+  const [docxError, setDocxError] = useState(false);
+  const docxContainerRef = useRef<HTMLDivElement>(null);
 
   const mode = useMemo(() => {
     if (!artifact) return 'unknown';
@@ -134,6 +138,46 @@ export function SharedArtifact() {
       }).catch(() => {});
     }
   }, [artifact, token, mode, fileUrl]);
+
+  useEffect(() => {
+    if (mode !== 'docx' || !fileUrl) return;
+    setDocxLoading(true);
+    setDocxError(false);
+
+    fetch(fileUrl)
+      .then(r => r.arrayBuffer())
+      .then(async buf => {
+        const container = docxContainerRef.current;
+        if (!container) { setDocxLoading(false); return; }
+        container.innerHTML = '';
+        try {
+          await renderAsync(buf, container, undefined, {
+            className: 'docx-body',
+            inWrapper: true,
+            ignoreWidth: true,
+            ignoreHeight: false,
+            ignoreFonts: false,
+            breakPages: true,
+            renderHeaders: true,
+            renderFooters: true,
+            renderFootnotes: true,
+            renderEndnotes: true,
+          });
+          container.querySelectorAll('table').forEach(table => {
+            table.style.width = '100%';
+            table.style.removeProperty('max-width');
+          });
+          container.querySelectorAll('col').forEach(col => {
+            col.style.removeProperty('width');
+          });
+          setDocxLoading(false);
+        } catch {
+          setDocxError(true);
+          setDocxLoading(false);
+        }
+      })
+      .catch(() => { setDocxError(true); setDocxLoading(false); });
+  }, [mode, fileUrl]);
 
   if (loading) {
     return (
@@ -221,6 +265,20 @@ export function SharedArtifact() {
             </div>
           </>
         );
+      case 'docx':
+        if (docxError) return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}><div style={{ fontSize: 13, color: '#71717a' }}>该文档格式暂不支持预览，请下载后使用其他软件打开</div><a href={fileUrl} download style={{ fontSize: 12, color: '#18181b', textDecoration: 'underline' }}>下载文件</a></div>;
+        return (
+          <>
+            <style>{`
+              .docx-wrapper { background: #fff !important; }
+              .docx-wrapper > section.docx { box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin: 0 auto 16px !important; }
+            `}</style>
+            <div style={{ width: '100%', height: '100%', overflow: 'auto', background: '#fafafa', display: 'flex', justifyContent: 'center' }}>
+              <div ref={docxContainerRef} style={{ padding: '16px 0', maxWidth: 900, width: '100%' }} />
+            </div>
+            {docxLoading && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 13, color: '#71717a' }}>加载中...</div>}
+          </>
+        );
       case 'spreadsheet':
         if (!sheetData) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>加载中...</div>;
         return (
@@ -280,6 +338,59 @@ export function SharedArtifact() {
   );
 }
 
+function PublicDocxPreview({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = '';
+    setLoading(true);
+    setError(false);
+
+    fetch(url)
+      .then(r => r.arrayBuffer())
+      .then(buf => renderAsync(buf, container, undefined, {
+        className: 'docx-body',
+        inWrapper: true,
+        ignoreWidth: true,
+        ignoreHeight: false,
+        ignoreFonts: false,
+        breakPages: true,
+        renderHeaders: true,
+        renderFooters: true,
+        renderFootnotes: true,
+        renderEndnotes: true,
+      }).then(() => {
+        container.querySelectorAll('table').forEach(table => {
+          table.style.width = '100%';
+          table.style.removeProperty('max-width');
+        });
+        container.querySelectorAll('col').forEach(col => {
+          col.style.removeProperty('width');
+        });
+        setLoading(false);
+      }))
+      .catch(() => { setError(true); setLoading(false); });
+  }, [url]);
+
+  return (
+    <>
+      <style>{`
+        .docx-wrapper { background: #fff !important; }
+        .docx-wrapper > section.docx { box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin: 0 auto 16px !important; }
+      `}</style>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: '#fafafa', display: 'flex', justifyContent: 'center' }}>
+        <div ref={containerRef} style={{ padding: '16px 0', maxWidth: 900, width: '100%' }} />
+      </div>
+      {loading && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 13, color: '#71717a' }}>加载中...</div>}
+      {error && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>该文档格式暂不支持预览</div>}
+    </>
+  );
+}
+
 function PublicFolderViewer({ artifactName, fileTree, token, folderFileUrl }: {
   artifactId: string;
   artifactName: string;
@@ -325,6 +436,7 @@ function PublicFolderViewer({ artifactName, fileTree, token, folderFileUrl }: {
   const isHtml = fileExt === 'html' || fileExt === 'htm';
   const isPdf = fileExt === 'pdf';
   const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(fileExt);
+  const isDocx = fileExt === 'docx';
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -361,7 +473,8 @@ function PublicFolderViewer({ artifactName, fileTree, token, folderFileUrl }: {
               {isHtml && <iframe src={url} title={selectedFile.path} sandbox="allow-scripts allow-same-origin" style={{ width: '100%', height: '100%', border: 'none' }} />}
               {isPdf && <iframe src={url} title={selectedFile.path} style={{ width: '100%', height: '100%', border: 'none' }} />}
               {isVideo && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><video src={url} controls style={{ maxWidth: '100%', maxHeight: '100%' }} /></div>}
-              {!isImage && !isHtml && !isPdf && !isVideo && (
+              {isDocx && <PublicDocxPreview url={url} />}
+              {!isImage && !isHtml && !isPdf && !isVideo && !isDocx && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#71717a', fontSize: 13 }}>
                   该文件类型暂不支持预览
                 </div>
