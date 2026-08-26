@@ -520,6 +520,31 @@ export function Login() {
               {isRegister ? '已有账户？去登录' : '没有账户？去注册'}
             </button>
           </div>
+
+          <div style={{
+            textAlign: 'center',
+            marginTop: 16,
+            fontSize: 12,
+            color: 'var(--ink-3)',
+            opacity: 0.7,
+          }}>
+            Powered by{' '}
+            <a
+              href="https://tbtparent.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'var(--ink-3)',
+                textDecoration: 'none',
+                fontWeight: 500,
+                transition: 'color 200ms var(--ease)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--ink)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ink-3)'}
+            >
+              TBTparent
+            </a>
+          </div>
         </div>
       </div>
 
