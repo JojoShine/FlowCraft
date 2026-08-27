@@ -19,6 +19,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node-cron": "^3.0.11",
+    "archiver": "^8.0.0",
     "axios": "^1.19.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
@@ -41,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",

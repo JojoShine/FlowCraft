@@ -117,6 +117,10 @@ export const artifactsApi = {
     const token = localStorage.getItem('token') || '';
     return `${baseURL}/artifacts/${artifactId}/preview/${filePath}?token=${encodeURIComponent(token)}`;
   },
+  getFolderDownloadUrl: (artifactId: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/artifacts/${artifactId}/download`;
+  },
   share: (id: string) => api.post(`/artifacts/${id}/share`),
   unshare: (id: string) => api.delete(`/artifacts/${id}/share`),
   getPublicFileUrl: (token: string) => {
@@ -134,6 +138,10 @@ export const artifactsApi = {
   getPublicFolderPreviewUrl: (token: string, filePath: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     return `${baseURL}/public/artifacts/${token}/preview/${filePath}`;
+  },
+  getPublicFolderDownloadUrl: (token: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/download`;
   },
 };
 

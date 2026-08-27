@@ -3,8 +3,50 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../lib/prisma';
 import { getFileStream as getMinIOStream } from '../lib/minio';
 import path from 'path';
+import { ZipArchive } from 'archiver';
+import { authenticate, checkProjectOwnership } from '../middleware/auth';
 
 const router = Router();
+
+router.get('/:id/download', authenticate, asyncHandler(async (req, res) => {
+  const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { id: true, name: true, content: true, filePath: true, projectId: true } });
+  if (!artifact) throw AppError.notFound('Artifact not found');
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
+  if (!(await checkProjectOwnership(req.user!, artifact.projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该产物' });
+    return;
+  }
+
+  const fileTree: { path: string; size: number; mimeType: string }[] = JSON.parse(artifact.content);
+  if (!Array.isArray(fileTree) || fileTree.length === 0) {
+    throw AppError.badRequest('Folder is empty');
+  }
+
+  const folderName = artifact.name || 'download';
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(folderName)}.zip"`);
+
+  const archive = new ZipArchive({ zlib: { level: 6 } });
+  archive.on('error', (err: Error) => {
+    console.error('[FolderDownload] Archive error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: { message: 'Failed to create archive' } });
+    }
+  });
+  archive.pipe(res);
+
+  for (const file of fileTree) {
+    const objectName = `${artifact.filePath}/${file.path}`;
+    try {
+      const { stream } = await getMinIOStream(objectName);
+      archive.append(stream, { name: file.path });
+    } catch (err) {
+      console.warn(`[FolderDownload] Skipping missing file: ${objectName}`);
+    }
+  }
+
+  await archive.finalize();
+}));
 
 router.get('/:id/files/{*filePath}', asyncHandler(async (req, res) => {
   const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string } });

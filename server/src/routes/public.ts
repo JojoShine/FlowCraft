@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { getFileStream as getMinIOStream } from '../lib/minio';
 import { AppError } from '../middleware/errorHandler';
 import path from 'path';
+import { ZipArchive } from 'archiver';
 
 const router = Router();
 
@@ -33,6 +34,41 @@ router.get('/artifacts/:token/file', asyncHandler(async (req, res) => {
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(artifact.name)}"`);
   stream.pipe(res);
+}));
+
+router.get('/artifacts/:token/download', asyncHandler(async (req, res) => {
+  const artifact = await getArtifactByToken(req.params.token as string);
+  if (!artifact.content) throw AppError.badRequest('Not a folder artifact');
+
+  const fileTree: { path: string; size: number; mimeType: string }[] = JSON.parse(artifact.content);
+  if (!Array.isArray(fileTree) || fileTree.length === 0) {
+    throw AppError.badRequest('Folder is empty');
+  }
+
+  const folderName = artifact.name || 'download';
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(folderName)}.zip"`);
+
+  const archive = new ZipArchive({ zlib: { level: 6 } });
+  archive.on('error', (err: Error) => {
+    console.error('[PublicFolderDownload] Archive error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: { message: 'Failed to create archive' } });
+    }
+  });
+  archive.pipe(res);
+
+  for (const file of fileTree) {
+    const objectName = `${artifact.filePath}/${file.path}`;
+    try {
+      const { stream } = await getMinIOStream(objectName);
+      archive.append(stream, { name: file.path });
+    } catch (err) {
+      console.warn(`[PublicFolderDownload] Skipping missing file: ${objectName}`);
+    }
+  }
+
+  await archive.finalize();
 }));
 
 router.get('/artifacts/:token/files/{*filePath}', asyncHandler(async (req, res) => {

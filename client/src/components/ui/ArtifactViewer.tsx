@@ -112,6 +112,7 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   const [showShare, setShowShare] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(artifact?.shareToken || null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const mode = useMemo(() => {
     if (!artifact) return 'unknown';
@@ -291,13 +292,37 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   if (!isOpen || !artifact) return null;
 
   const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = fileUrl;
-    a.download = artifact.name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (downloading) return;
+    if (mode === 'folder' && artifact) {
+      setDownloading(true);
+      const token = localStorage.getItem('token') || '';
+      const url = artifactsApi.getFolderDownloadUrl(artifact.id);
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => {
+          if (!res.ok) throw new Error('Download failed');
+          return res.blob();
+        })
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = `${artifact.name}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        })
+        .catch(() => {})
+        .finally(() => setDownloading(false));
+    } else {
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      a.download = artifact!.name;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   const handleSheetChange = (sheetName: string) => {
@@ -853,19 +878,33 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
             )}
             <button
               onClick={handleDownload}
+              disabled={downloading}
               style={{
                 height: 30, padding: '0 12px', borderRadius: 6,
                 border: '1px solid var(--border-default)', background: 'transparent',
-                fontSize: 12, color: 'var(--ink-2)', cursor: 'pointer',
+                fontSize: 12, color: 'var(--ink-2)',
+                cursor: downloading ? 'not-allowed' : 'pointer',
+                opacity: downloading ? 0.5 : 1,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              下载
+              {downloading ? (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }}>
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                  打包中...
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  下载
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -889,6 +928,12 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
           {renderContent()}
         </div>
       </div>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 }
