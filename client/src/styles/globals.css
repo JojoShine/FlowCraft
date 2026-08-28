@@ -128,33 +128,14 @@ button, a, input, select, textarea {
 
 #root { min-height: 100vh; }
 
-/* Hide scrollbar for kanban tasks */
-.kanban-tasks-scroll {
+/* Hide all scrollbars */
+* {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.kanban-tasks-scroll::-webkit-scrollbar {
+*::-webkit-scrollbar {
   display: none;
-}
-
-/* Hide scrollbar for search results */
-.search-results-scroll {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.search-results-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for project space content */
-.ps-scroll::-webkit-scrollbar {
-  display: none;
-}
-.ps-scroll {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 @keyframes spin {
@@ -186,10 +167,3 @@ button, a, input, select, textarea {
   to { transform: scale(1); opacity: 1; }
 }
 
-.hide-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}

@@ -149,7 +149,6 @@ export function KanbanColumn({ column, onTaskMove, onTaskClick, onAddClick, onEd
 
       {/* Tasks */}
       <div
-        className="kanban-tasks-scroll"
         style={{
           flex: 1,
           minHeight: 0,

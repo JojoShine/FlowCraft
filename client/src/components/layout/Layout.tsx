@@ -42,7 +42,7 @@ export function Layout() {
         overflow: 'hidden',
       }}>
         <Topbar title={title} aiOpen={aiOpen} onAiToggle={() => setAiOpen(!aiOpen)} />
-        <main className="hide-scrollbar" style={{ flex: 1, padding: 24, overflow: 'auto' }}>
+        <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>
           <Outlet />
         </main>
       </div>

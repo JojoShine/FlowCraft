@@ -482,7 +482,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'none' }} className="hide-scrollbar">
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {isView ? (
             <>
               {/* View mode: read-only display */}
@@ -600,8 +600,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   overflow: 'auto',
-                  scrollbarWidth: 'none',
-                }} className="hide-scrollbar">
+                }}>
                   {template?.content}
                 </div>
               </div>

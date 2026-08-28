@@ -788,7 +788,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
       )}
 
       {/* Body */}
-      <div className="hide-scrollbar" style={{ flex: 1, padding: '16px 18px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, padding: '16px 18px', overflowY: 'auto' }}>
         {isEmpty && (
           <div style={{ marginBottom: 16 }}>
             <div style={{

@@ -44,11 +44,14 @@ async function queryTasksForPeriod(projectId: string, start: Date, end: Date) {
       completedAt: { gte: start, lte: end },
     },
     orderBy: { completedAt: 'asc' },
-    select: { title: true },
+    select: { title: true, description: true },
   });
 
   return {
-    completed: completed.map(t => t.title),
+    completed: completed.map(t => ({
+      title: t.title,
+      description: t.description || '',
+    })),
     nextSteps: [] as string[],
     issues: [] as string[],
   };
@@ -58,14 +61,17 @@ async function generateSummary(
   projectName: string,
   type: string,
   periodLabel: string,
-  tasks: { completed: string[]; nextSteps: string[]; issues: string[] },
+  tasks: { completed: { title: string; description: string }[]; nextSteps: string[]; issues: string[] },
 ): Promise<string> {
+  const completedText = tasks.completed.length > 0
+    ? tasks.completed.map(t => t.description ? `${t.title}（${t.description}）` : t.title).join('、')
+    : '无';
   const messages: ChatMessage[] = [
     {
       role: 'user',
       content: `请为项目「${projectName}」的${periodLabel}生成一段简要概述（2-4句话）。
 
-已完成任务：${tasks.completed.length > 0 ? tasks.completed.join('、') : '无'}
+已完成任务：${completedText}
 进行中任务：${tasks.nextSteps.length > 0 ? tasks.nextSteps.join('、') : '无'}
 逾期任务：${tasks.issues.length > 0 ? tasks.issues.join('、') : '无'}
 

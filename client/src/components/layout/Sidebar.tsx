@@ -407,7 +407,7 @@ export function Sidebar() {
                 )}
               </div>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 6px', scrollbarWidth: 'none' }} className="hide-scrollbar">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 6px' }}>
               {filteredProjects.map((p) => {
                 const isSelected = p.id === selectedProjectId;
                 const overdueCount = overdueMap[p.id] || 0;

@@ -117,7 +117,7 @@ export function Workbench() {
   }
 
   return (
-    <div className="hide-scrollbar" style={{ height: '100%', overflowY: 'auto' }}>
+    <div style={{ height: '100%', overflowY: 'auto' }}>
       {/* Page header */}
       <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>

@@ -389,7 +389,7 @@ export function Artifacts() {
                         }}
                       />
                     </div>
-                    <div className="hide-scrollbar" style={{ maxHeight: 180, overflowY: 'auto', padding: '4px' }}>
+                    <div style={{ maxHeight: 180, overflowY: 'auto', padding: '4px' }}>
                       <div
                         onClick={() => { setBindSelected(''); setBindOpen(false); setBindSearch(''); }}
                         style={{

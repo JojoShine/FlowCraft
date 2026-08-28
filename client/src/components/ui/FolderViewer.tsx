@@ -290,7 +290,7 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
 
   if (isPdf) {
     return (
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
         <iframe src={url} title={filePath} style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, border: 'none', transform: `scale(${scale})`, transformOrigin: '0 0' }} />
       </div>
     );
@@ -298,7 +298,7 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
 
   if (isHtml) {
     return (
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)' }}>
         <div style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, transformOrigin: '0 0', transform: `scale(${scale})` }}>
           <iframe src={url} title={filePath} sandbox="allow-scripts allow-same-origin" style={{ width: '100%', height: '100%', border: 'none', background: 'var(--surface)' }} />
         </div>
@@ -327,7 +327,7 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
       return <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>;
     }
     return (
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--canvas)', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--canvas)', display: 'flex', justifyContent: 'center' }}>
         <pre style={{
           margin: 0, padding: 20,
           fontSize: 13 * scale, lineHeight: 1.6, fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
@@ -403,7 +403,7 @@ function MarkdownPreview({ url, scale }: { url: string; scale: number }) {
   return (
     <>
       <style>{markdownCSS}</style>
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, padding: '32px 40px', maxWidth: 800, width: '100%' }}>
           <div className="md-preview" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
@@ -450,7 +450,7 @@ function DocxPreview({ url, scale }: { url: string; scale: number }) {
         .docx-wrapper > section.docx { box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important; margin: 24px auto !important; }
         .docx-wrapper .docx .page { margin: 0 auto !important; }
       `}</style>
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface-overlay)', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface-overlay)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, width: '100%', maxWidth: 900 }}>
           <div ref={containerRef} />
           {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>}
@@ -492,7 +492,7 @@ function DocPreview({ artifactId, filePath, scale }: { artifactId: string; fileP
         .doc-fv-preview th { background: var(--surface-overlay) !important; font-weight: 600; }
         .doc-fv-preview td { background: var(--surface) !important; }
       `}</style>
-      <div className="fv-scroll" style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--surface)', display: 'flex', justifyContent: 'center' }}>
         <div style={{ transformOrigin: 'top center', transform: `scale(${scale})`, width: '100%', maxWidth: 800, padding: '24px 32px' }}>
           {loading && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>}
           {htmlContent && <div className="doc-fv-preview" dangerouslySetInnerHTML={{ __html: htmlContent }} />}
@@ -558,11 +558,6 @@ const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.05;
 
-const hideScrollbarCSS = `
-  .fv-scroll::-webkit-scrollbar { display: none; }
-  .fv-scroll { scrollbar-width: none; -ms-overflow-style: none; }
-`;
-
 export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewerProps) {
   const tree = useMemo(() => buildTree(fileTree), [fileTree]);
   const defaultPath = useMemo(() => {
@@ -587,10 +582,9 @@ export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewe
 
   return (
     <div style={{ display: 'flex', height: '100%', background: 'var(--surface)' }}>
-      <style>{hideScrollbarCSS}</style>
       {/* Left: File tree */}
       {sidebarOpen && (
-        <div className="fv-scroll" style={{
+        <div style={{
           width: 260, flexShrink: 0,
           borderRight: '1px solid var(--border-subtle)',
           overflow: 'auto', padding: '8px 0',
@@ -627,7 +621,7 @@ export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewe
       )}
 
       {/* Right: File preview */}
-      <div className="fv-scroll" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {selectedFile ? (
           <>
             <div style={{
@@ -662,7 +656,7 @@ export function FolderViewer({ artifactId, artifactName, fileTree }: FolderViewe
               </span>
               <ZoomControls scale={scale} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onZoomReset={handleZoomReset} />
             </div>
-            <div className="fv-scroll" style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
               <FilePreview artifactId={artifactId} filePath={selectedFile.path} mimeType={selectedFile.mimeType} scale={scale} />
             </div>
           </>

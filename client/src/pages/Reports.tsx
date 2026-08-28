@@ -6,11 +6,21 @@ import { useToast } from '../components/ui/Toast';
 import { reportsApi } from '../services/api';
 import { formatDate, getYearInTZ, getMonthInTZ, getDayInTZ } from '../utils/date';
 
+interface CompletedItem {
+  title: string;
+  description: string;
+}
+
 interface ReportContent {
   summary: string;
-  completed: string[];
+  completed: (string | CompletedItem)[];
   issues: string[];
   nextSteps: string[];
+}
+
+function normalizeCompleted(item: string | CompletedItem): CompletedItem {
+  if (typeof item === 'string') return { title: item, description: '' };
+  return item;
 }
 
 interface Report {
@@ -36,8 +46,6 @@ function parseReport(raw: { id: string; type: string; label: string; date: strin
   }
 }
 
-const CN_NUMS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
-  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十'];
 
 const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 const dayNames = ['一', '二', '三', '四', '五', '六', '日'];
@@ -81,8 +89,15 @@ function formatReportAsTxt(report: Report, projectName: string): string {
 
   if (report.content.completed.length > 0) {
     lines.push(report.type === 'daily' ? '【今日完成】' : '【已完成】');
-    report.content.completed.forEach((item, idx) => {
-      lines.push(`（${CN_NUMS[idx + 1] || String(idx + 1)}）${item}`);
+    report.content.completed.forEach((raw, idx) => {
+      const item = normalizeCompleted(raw);
+      const num = idx + 1;
+      if (item.description) {
+        lines.push(`（${num}）${item.title}`);
+        lines.push(`    ${item.description}`);
+      } else {
+        lines.push(`（${num}）${item.title}`);
+      }
     });
     lines.push('');
   }
@@ -90,7 +105,7 @@ function formatReportAsTxt(report: Report, projectName: string): string {
   if (report.content.issues.length > 0) {
     lines.push('【存在问题】');
     report.content.issues.forEach((item, idx) => {
-      lines.push(`（${CN_NUMS[idx + 1] || String(idx + 1)}）${item}`);
+      lines.push(`（${idx + 1}）${item}`);
     });
     lines.push('');
   }
@@ -98,7 +113,7 @@ function formatReportAsTxt(report: Report, projectName: string): string {
   if (report.content.nextSteps.length > 0) {
     lines.push(report.type === 'daily' ? '【明日计划】' : '【下一步计划】');
     report.content.nextSteps.forEach((item, idx) => {
-      lines.push(`（${CN_NUMS[idx + 1] || String(idx + 1)}）${item}`);
+      lines.push(`（${idx + 1}）${item}`);
     });
   }
 
@@ -838,6 +853,7 @@ export function Reports() {
               zIndex: 999,
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'hidden',
             }}
           >
             {/* Drawer header */}
@@ -939,7 +955,7 @@ export function Reports() {
             </div>
 
             {/* Drawer body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Date */}
               <div style={{
                 fontSize: 12,
@@ -959,7 +975,7 @@ export function Reports() {
                 <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>
                   概要
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--ink-1)', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: 'var(--ink-1)', lineHeight: 1.6, overflowWrap: 'break-word' }}>
                   {viewingReport.content.summary || '暂无概要'}
                 </div>
               </div>
@@ -971,21 +987,32 @@ export function Reports() {
                     已完成
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {viewingReport.content.completed.map((item, idx) => (
-                      <div key={idx} style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                        fontSize: 13,
-                        color: 'var(--ink-1)',
-                        lineHeight: 1.5,
-                      }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 3 }}>
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        {item}
-                      </div>
-                    ))}
+                    {viewingReport.content.completed.map((raw, idx) => {
+                      const item = normalizeCompleted(raw);
+                      return (
+                        <div key={idx} style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 8,
+                          fontSize: 13,
+                          color: 'var(--ink-1)',
+                          lineHeight: 1.5,
+                          overflowWrap: 'break-word',
+                        }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 3 }}>
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          <div style={{ minWidth: 0, overflowWrap: 'break-word' }}>
+                            <div>{item.title}</div>
+                            {item.description && (
+                              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2, lineHeight: 1.5 }}>
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1005,13 +1032,14 @@ export function Reports() {
                         fontSize: 13,
                         color: 'var(--ink-1)',
                         lineHeight: 1.5,
+                        overflowWrap: 'break-word',
                       }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 3 }}>
                           <circle cx="12" cy="12" r="10"/>
                           <line x1="12" y1="8" x2="12" y2="12"/>
                           <line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        {item}
+                        <span style={{ minWidth: 0 }}>{item}</span>
                       </div>
                     ))}
                   </div>
@@ -1033,12 +1061,13 @@ export function Reports() {
                         fontSize: 13,
                         color: 'var(--ink-1)',
                         lineHeight: 1.5,
+                        overflowWrap: 'break-word',
                       }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0, marginTop: 3 }}>
                           <line x1="12" y1="5" x2="12" y2="19"/>
                           <polyline points="19 12 12 19 5 12"/>
                         </svg>
-                        {item}
+                        <span style={{ minWidth: 0 }}>{item}</span>
                       </div>
                     ))}
                   </div>

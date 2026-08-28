@@ -366,7 +366,7 @@ export function TaskDrawer({ isOpen, onClose, mode = 'create', task, defaultColu
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16, scrollbarWidth: 'none' }} className="hide-scrollbar">
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {mode === 'complete' ? (
             <>
               {/* Full task info */}
