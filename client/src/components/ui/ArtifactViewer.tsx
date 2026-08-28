@@ -3,6 +3,8 @@ import * as XLSX from 'xlsx';
 import { marked } from 'marked';
 import { renderAsync } from 'docx-preview';
 import DOMPurify from 'dompurify';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { artifactsApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { FolderViewer } from './FolderViewer';
@@ -113,6 +115,7 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
   const [shareToken, setShareToken] = useState<string | null>(artifact?.shareToken || null);
   const [shareCopied, setShareCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const mode = useMemo(() => {
     if (!artifact) return 'unknown';
@@ -324,6 +327,68 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
       document.body.removeChild(a);
     }
   };
+
+  const handleExportPdf = async () => {
+    if (!artifact || exportingPdf) return;
+
+    const sourceEl = mode === 'docx' ? docxContainerRef.current : null;
+    if (!sourceEl) return;
+
+    setExportingPdf(true);
+    const origOverflow = sourceEl.style.overflow;
+    const parentEl = sourceEl.parentElement;
+    const origParentOverflow = parentEl?.style.overflow;
+    sourceEl.style.overflow = 'visible';
+    if (parentEl) parentEl.style.overflow = 'visible';
+
+    try {
+      const canvas = await html2canvas(sourceEl, {
+        scale: 1.5,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const totalPages = Math.ceil(imgH / pageH);
+
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) pdf.addPage();
+        const ySrc = Math.round((i * pageH / imgH) * canvas.height);
+        const hSrc = Math.min(
+          Math.round((pageH / imgH) * canvas.height),
+          canvas.height - ySrc,
+        );
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = hSrc;
+        slice.getContext('2d')!.drawImage(
+          canvas,
+          0, ySrc, canvas.width, hSrc,
+          0, 0, canvas.width, hSrc,
+        );
+        const sliceH = (i === totalPages - 1)
+          ? imgH - i * pageH
+          : pageH;
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, imgW, sliceH);
+      }
+
+      pdf.save(`${artifact.name}.pdf`);
+    } finally {
+      sourceEl.style.overflow = origOverflow;
+      if (parentEl) parentEl.style.overflow = origParentOverflow || '';
+      setExportingPdf(false);
+    }
+  };
+
+  const canExportPdf = mode === 'docx'
+    && !docxLoading
+    && !docxError
+    && (!!artifact?.content || !!htmlContent || (docxContainerRef.current?.innerHTML.length ?? 0) > 0);
 
   const handleSheetChange = (sheetName: string) => {
     if (!artifact) return;
@@ -875,6 +940,38 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
                   </div>
                 )}
               </div>
+            )}
+            {canExportPdf && (
+              <button
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                style={{
+                  height: 30, padding: '0 12px', borderRadius: 6,
+                  border: '1px solid var(--border-default)', background: 'transparent',
+                  fontSize: 12, color: 'var(--ink-2)',
+                  cursor: exportingPdf ? 'not-allowed' : 'pointer',
+                  opacity: exportingPdf ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {exportingPdf ? (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }}>
+                      <path d="M21 12a9 9 1 1-6.219-8.56"/>
+                    </svg>
+                    导出中...
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                      <path d="M14 3v4a1 1 0 001 1h4"/>
+                      <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h5l5 5v11a2 2 0 01-2 2z"/>
+                      <path d="M9 15l2 2 4-4"/>
+                    </svg>
+                    导出 PDF
+                  </>
+                )}
+              </button>
             )}
             <button
               onClick={handleDownload}

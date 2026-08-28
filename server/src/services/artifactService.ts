@@ -102,7 +102,8 @@ export const artifactService = {
       if (converted) {
         filePath = converted.filePath;
         type = 'docx';
-        content = undefined;
+        // content intentionally kept as the original HTML source — enables browser-based
+        // PDF export (window.print) and keeps a human-readable fallback in the DB.
       }
     }
 
