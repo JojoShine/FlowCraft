@@ -101,7 +101,7 @@ async function getReports(args: Record<string, unknown>, projectId: string) {
     take: limit,
   });
 
-  const typeLabels: Record<string, string> = { daily: '日报', weekly: '周报', monthly: '月报' };
+  const typeLabels: Record<string, string> = { daily: '日报', weekly: '周报', monthly: '月报', yearly: '年报' };
 
   if (reports.length === 0) return { count: 0, reports: [], message: '没有找到符合条件的报告' };
 

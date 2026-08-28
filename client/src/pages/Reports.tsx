@@ -72,7 +72,7 @@ function formatReportAsTxt(report: Report, projectName: string): string {
   } else if (report.type === 'monthly') {
     title = `${projectName} ${y}年${m}月 工作月报`;
   } else if (report.type === 'yearly') {
-    title = `${projectName} ${y}年 工作年报`;
+    title = `${projectName} ${report.label}`;
   } else {
     title = report.label;
   }
@@ -245,6 +245,27 @@ export function Reports() {
       if (parsed) setViewingReport(parsed);
     } catch (err: any) {
       addToast(err?.message || '生成月报失败', 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleGenerateYearly = async () => {
+    if (!selectedProjectId) return;
+    setGenerating(true);
+    setShowDropdown(false);
+    try {
+      const res = await reportsApi.generate({
+        type: 'yearly',
+        projectId: selectedProjectId,
+      });
+      const raw = res.data;
+      const parsed = parseReport(raw);
+      setCurrentDate(new Date());
+      await refetch();
+      if (parsed) setViewingReport(parsed);
+    } catch (err: any) {
+      addToast(err?.message || '生成年报失败', 'error');
     } finally {
       setGenerating(false);
     }
@@ -531,6 +552,24 @@ export function Reports() {
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 月报
+              </button>
+              <button
+                onClick={handleGenerateYearly}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px 14px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: 'var(--ink-1)',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-raised)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                年报
               </button>
             </div>
           )}

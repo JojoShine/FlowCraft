@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+.env.production
 *.log
 .DS_Store
 .idea/
@@ -8,3 +9,9 @@ dist/
 server/prisma/dev.db
 server/prisma/dev.db-journal
 server/logs/
+
+# Deployment artifacts and configs (tar.gz archives, nginx configs, secrets)
+deploy/
+
+# One-off maintenance scripts (not part of product runtime)
+server/scripts/sync-task-status.ts

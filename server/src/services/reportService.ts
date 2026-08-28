@@ -1,14 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middleware/errorHandler';
-import { utc8DayRange, utc8MonthRange, utc8YearRange, utc8WeekRange, getCSTComponents } from '../lib/timezone';
+import { utc8DayRange, utc8MonthRange, utc8WeekRange, getCSTComponents } from '../lib/timezone';
 import { chatComplete, ChatMessage } from '../ai/llm';
-
-const TYPE_LABELS: Record<string, string> = {
-  daily: '日报',
-  weekly: '周报',
-  monthly: '月报',
-  yearly: '年报',
-};
 
 function buildDailyLabel(date: Date): string {
   const { year, month, day } = getCSTComponents(date);
@@ -28,9 +21,10 @@ function buildMonthlyLabel(date: Date): string {
   return `${year}年${month}月 工作月报`;
 }
 
-function buildYearlyLabel(date: Date): string {
-  const { year } = getCSTComponents(date);
-  return `${year}年 工作年报`;
+function buildYearlyLabel(start: Date, end: Date): string {
+  const s = getCSTComponents(start);
+  const e = getCSTComponents(end);
+  return `${s.year}年${s.month}月${s.day}日 - ${e.year}年${e.month}月${e.day}日 工作年报`;
 }
 
 function buildReportDate(type: string, date: Date): Date {
@@ -130,7 +124,6 @@ export const reportService = {
   }) {
     const { type, projectId } = params;
     const now = new Date();
-    const { year, month, day } = getCSTComponents(now);
 
     let rangeStart: Date;
     let rangeEnd: Date;
@@ -181,12 +174,13 @@ export const reportService = {
         break;
       }
       case 'yearly': {
-        const targetYear = params.date ? new Date(params.date).getFullYear() : year;
-        const range = utc8YearRange(targetYear);
-        rangeStart = range.start;
-        rangeEnd = range.end;
-        label = buildYearlyLabel(new Date(Date.UTC(targetYear, 0, 1)));
-        reportDate = utc8DayRange(targetYear, 12, 31).start;
+        const endDate = params.date ? new Date(params.date) : now;
+        const startDate = new Date(endDate);
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        rangeStart = startDate;
+        rangeEnd = endDate;
+        label = buildYearlyLabel(startDate, endDate);
+        reportDate = endDate;
         break;
       }
       default:

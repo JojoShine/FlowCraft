@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma';
 import { reportService } from './reportService';
 import { logger } from '../lib/logger';
 
-async function generateForAllProjects(type: 'daily' | 'weekly' | 'monthly' | 'yearly') {
+async function generateForAllProjects(type: 'daily' | 'weekly' | 'monthly') {
   const projects = await prisma.project.findMany({ select: { id: true, name: true } });
   logger.info(`Auto-generating ${type} reports for ${projects.length} projects`);
 
@@ -49,11 +49,6 @@ export function startScheduler() {
     if (!isLastDayOfMonth()) return;
     logger.info('Cron: generating monthly reports');
     generateForAllProjects('monthly');
-  });
-
-  cron.schedule('0 18 31 12 *', () => {
-    logger.info('Cron: generating yearly reports');
-    generateForAllProjects('yearly');
   });
 
   logger.info('Report scheduler started');
