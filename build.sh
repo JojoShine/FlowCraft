@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Load nvm for non-interactive shells
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DIST_DIR="$PROJECT_ROOT/deploy"
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
