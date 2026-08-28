@@ -4,6 +4,42 @@ import { uploadFile, getFileStream as getMinIOStream, deleteFile } from '../lib/
 import { compressImage } from '../lib/imageCompress';
 import { Readable } from 'stream';
 import htmlToDocx from 'html-to-docx';
+import { logger } from '../lib/logger';
+
+function sanitizeHtmlForDocx(html: string): string {
+  return html
+    .replace(/style\s*=\s*"([^"]*)"/gi, (_m, s: string) =>
+      'style="' + s.replace(/width\s*:\s*\d+(\.\d+)?%/gi, '') + '"',
+    )
+    .replace(/width\s*=\s*"(\d+(\.\d+)?%)"/gi, '');
+}
+
+async function tryConvertHtmlToDocx(
+  html: string,
+  projectId: string,
+  artifactName: string,
+): Promise<{ filePath: string } | null> {
+  try {
+    const sanitized = sanitizeHtmlForDocx(html);
+    const docxBuffer = await htmlToDocx(sanitized) as Buffer;
+    const timestamp = Date.now();
+    const safeName = artifactName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectName = `${projectId}/ai-generated/${timestamp}-${safeName}.docx`;
+    const filePath = await uploadFile(
+      docxBuffer,
+      objectName,
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    return { filePath };
+  } catch (err) {
+    logger.warn('[artifactService] html→docx conversion failed, keeping as html', {
+      projectId,
+      name: artifactName,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
 
 export const artifactService = {
   async list(filters?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number; ownerId?: string }) {
@@ -62,16 +98,11 @@ export const artifactService = {
     let { type, filePath, content } = data;
 
     if (type === 'html' && content) {
-      try {
-        const docxBuffer = await htmlToDocx(content) as Buffer;
-        const timestamp = Date.now();
-        const safeName = data.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const objectName = `${data.projectId}/ai-generated/${timestamp}-${safeName}.docx`;
-        filePath = await uploadFile(docxBuffer, objectName, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      const converted = await tryConvertHtmlToDocx(content, data.projectId, data.name);
+      if (converted) {
+        filePath = converted.filePath;
         type = 'docx';
         content = undefined;
-      } catch {
-        // conversion failed, keep as html
       }
     }
 
@@ -99,14 +130,33 @@ export const artifactService = {
   }) {
     const existing = await prisma.artifact.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Artifact not found');
+
+    const nextType = data.type ?? existing.type;
+    const nextContent = data.content ?? existing.content;
+    let nextFilePath = data.filePath ?? existing.filePath;
+    let finalType = nextType;
+    let finalContent: string | undefined | null = nextContent;
+
+    if (nextType === 'html' && nextContent) {
+      const converted = await tryConvertHtmlToDocx(nextContent, existing.projectId, data.name ?? existing.name);
+      if (converted) {
+        nextFilePath = converted.filePath;
+        finalType = 'docx';
+        finalContent = null;
+        if (existing.filePath) {
+          try { await deleteFile(existing.filePath); } catch { /* ignore */ }
+        }
+      }
+    }
+
     return prisma.artifact.update({
       where: { id },
       data: {
         name: data.name,
-        type: data.type,
+        type: finalType,
         status: data.status,
-        filePath: data.filePath,
-        content: data.content,
+        filePath: nextFilePath,
+        content: finalContent,
         taskId: data.taskId,
       },
     });
