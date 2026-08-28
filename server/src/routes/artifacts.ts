@@ -7,6 +7,7 @@ import { uploadFile } from '../lib/minio';
 import { compressImage } from '../lib/imageCompress';
 import { prisma } from '../lib/prisma';
 import { requireRole, checkProjectOwnership } from '../middleware/auth';
+import { logger } from '../lib/logger';
 import path from 'path';
 import { Readable } from 'stream';
 import multer from 'multer';
@@ -76,12 +77,13 @@ router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 
 }));
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
-  const { name, type, projectId, taskId, status, content } = req.body;
+  const { name, type, projectId, taskId, templateId, outputFormat, status, content } = req.body;
+  logger.info('[artifacts] POST create', { name, type, projectId, templateId, outputFormat });
   if (!(await checkProjectOwnership(req.user!, projectId))) {
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
-  const artifact = await artifactService.create({ name, type, projectId, taskId, status, content });
+  const artifact = await artifactService.create({ name, type, projectId, taskId, templateId, outputFormat, status, content });
   res.json(successResponse(artifact));
 }));
 

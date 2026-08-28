@@ -14,6 +14,12 @@ const fileTypeConfig: Record<string, { label: string; color: string }> = {
   markdown: { label: 'MD', color: '#2E7D32' },
 };
 
+const outputFormatConfig: Record<string, { label: string; color: string }> = {
+  docx: { label: 'Word', color: '#1565C0' },
+  xlsx: { label: 'Excel', color: '#2E7D32' },
+  html: { label: 'HTML', color: '#E65100' },
+};
+
 const categoryOptions = ['需求', '技术', '测试', '文档', '设计', '运维'];
 
 export function Templates() {
@@ -59,7 +65,7 @@ export function Templates() {
     }
   };
 
-  const handleSave = async (data: { name: string; category: string; description: string; content: string; fileType: string }) => {
+  const handleSave = async (data: { name: string; category: string; description: string; content: string; fileType: string; outputFormat: string }) => {
     try {
       if (editingTemplate) {
         const res = await templatesApi.update(editingTemplate.id, data);
@@ -266,6 +272,22 @@ export function Templates() {
                   }}>
                     {ft.label}
                   </span>
+                  {(() => {
+                    const of = outputFormatConfig[tpl.outputFormat] || outputFormatConfig.docx;
+                    return (
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
+                        color: of.color,
+                        padding: '1px 6px',
+                        background: `color-mix(in srgb, ${of.color} 8%, var(--surface-raised))`,
+                        borderRadius: 3,
+                      }}>
+                        →{of.label}
+                      </span>
+                    );
+                  })()}
                   <span style={{
                     marginLeft: 'auto',
                     fontSize: 10,
@@ -334,7 +356,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
   isOpen: boolean;
   mode: 'view' | 'edit' | 'create';
   template: Template | null;
-  onSave: (data: { name: string; category: string; description: string; content: string; fileType: string }) => void;
+  onSave: (data: { name: string; category: string; description: string; content: string; fileType: string; outputFormat: string }) => void;
   onClose: () => void;
   onSwitchToEdit: () => void;
   isViewer?: boolean;
@@ -342,6 +364,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
   const [name, setName] = useState(template?.name || '');
   const [category, setCategory] = useState(template?.category || categoryOptions[0]);
   const [fileType, setFileType] = useState(template?.fileType || 'html');
+  const [outputFormat, setOutputFormat] = useState(template?.outputFormat || 'docx');
   const [description, setDescription] = useState(template?.description || '');
   const [content, setContent] = useState(template?.content || '');
   const [copied, setCopied] = useState(false);
@@ -351,6 +374,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
       setName(template?.name || '');
       setCategory(template?.category || categoryOptions[0]);
       setFileType(template?.fileType || 'html');
+      setOutputFormat(template?.outputFormat || 'docx');
       setDescription(template?.description || '');
       setContent(template?.content || '');
       setCopied(false);
@@ -359,7 +383,7 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
 
   const handleSubmit = () => {
     if (!name.trim() || !content.trim()) return;
-    onSave({ name: name.trim(), category, fileType, description: description.trim(), content });
+    onSave({ name: name.trim(), category, fileType, outputFormat, description: description.trim(), content });
   };
 
   const categoryOpts = categoryOptions.map(c => ({ value: c, label: c }));
@@ -367,6 +391,11 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
     { value: 'html', label: 'HTML' },
     { value: 'word', label: 'Word' },
     { value: 'markdown', label: 'Markdown' },
+  ];
+  const outputFormatOpts = [
+    { value: 'docx', label: 'Word' },
+    { value: 'xlsx', label: 'Excel' },
+    { value: 'html', label: 'HTML' },
   ];
 
   if (!isOpen) return null;
@@ -518,6 +547,25 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
                     {ft.label}
                   </span>
                 </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', marginBottom: 6, letterSpacing: '0.02em' }}>输出格式</div>
+                  {(() => {
+                    const of = outputFormatConfig[template?.outputFormat || 'docx'] || outputFormatConfig.docx;
+                    return (
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
+                        color: of.color,
+                        padding: '2px 8px',
+                        background: `color-mix(in srgb, ${of.color} 8%, var(--surface-raised))`,
+                        borderRadius: 4,
+                      }}>
+                        →{of.label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
 
               {template?.description && (
@@ -610,9 +658,10 @@ function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdi
               {/* Edit / Create mode: form */}
               <Input label="模板名称" value={name} onChange={(e) => setName(e.target.value)} placeholder="输入模板名称" />
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <Select label="分类" value={category} onValueChange={setCategory} options={categoryOpts} />
                 <Select label="格式" value={fileType} onValueChange={setFileType} options={fileTypeOpts} />
+                <Select label="输出格式" value={outputFormat} onValueChange={setOutputFormat} options={outputFormatOpts} />
               </div>
 
               <Input label="描述" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="简要描述模板用途" />

@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAIChat, type ToolCallInfo } from '../../hooks/useAIChat';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { TaskDrawer } from '../ui/TaskDrawer';
+import { Select } from '../ui/Select';
+import { Input } from '../ui/Input';
 import { tasksApi, templatesApi, artifactsApi, projectsApi } from '../../services/api';
 import { notifyDataChange } from '../../utils/dataEvents';
 
@@ -130,6 +132,7 @@ function SaveArtifactDialog({
   const [name, setName] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [outputFormat, setOutputFormat] = useState('docx');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -152,6 +155,7 @@ function SaveArtifactDialog({
         type: 'html',
         projectId,
         content: html,
+        outputFormat,
       });
       notifyDataChange('artifacts');
       onSaved();
@@ -161,6 +165,12 @@ function SaveArtifactDialog({
       setSaving(false);
     }
   };
+
+  const projectOpts = [{ value: '', label: '选择项目' }, ...projects.map(p => ({ value: p.id, label: p.name }))];
+  const formatOpts = [
+    { value: 'docx', label: 'Word' },
+    { value: 'xlsx', label: 'Excel' },
+  ];
 
   return (
     <div style={{
@@ -172,50 +182,16 @@ function SaveArtifactDialog({
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--surface)', borderRadius: 12,
-          padding: 20, width: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          padding: 20, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: 'var(--ink)' }}>
           保存为产物
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 4, display: 'block' }}>
-              产物名称
-            </label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="输入产物名称"
-              style={{
-                width: '100%', padding: '8px 12px', borderRadius: 6,
-                border: '1px solid var(--border-subtle)', background: 'var(--canvas)',
-                fontSize: 13, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit',
-                boxSizing: 'border-box',
-              }}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 4, display: 'block' }}>
-              所属项目
-            </label>
-            <select
-              value={projectId}
-              onChange={e => setProjectId(e.target.value)}
-              style={{
-                width: '100%', padding: '8px 12px', borderRadius: 6,
-                border: '1px solid var(--border-subtle)', background: 'var(--canvas)',
-                fontSize: 13, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit',
-                boxSizing: 'border-box',
-              }}
-            >
-              <option value="">选择项目</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          <Input label="产物名称" value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="输入产物名称" />
+          <Select label="所属项目" value={projectId} onValueChange={setProjectId} options={projectOpts} placeholder="选择项目" />
+          <Select label="输出格式" value={outputFormat} onValueChange={setOutputFormat} options={formatOpts} />
           {error && (
             <div style={{ fontSize: 12, color: 'var(--red)' }}>{error}</div>
           )}
@@ -472,6 +448,12 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const [mentionFilter, setMentionFilter] = useState('');
   const [mentionHighlightIdx, setMentionHighlightIdx] = useState(0);
   const mentionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!mentionRef.current) return;
+    const el = mentionRef.current.querySelector(`[data-index="${mentionHighlightIdx}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [mentionHighlightIdx]);
 
   const [saveDialogHtml, setSaveDialogHtml] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -968,6 +950,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               filteredTemplates.map((t, i) => (
                 <div
                   key={t.id}
+                  data-index={i}
                   onClick={() => selectTemplate(t)}
                   style={{
                     padding: '6px 10px', borderRadius: 6, cursor: 'pointer',

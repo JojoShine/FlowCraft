@@ -101,9 +101,11 @@ model Artifact {
   filePath   String?
   content    String?
   shareToken String?  @unique
-  taskId     String?
-  task       Task?    @relation(fields: [taskId], references: [id])
-  projectId  String
+  taskId       String?
+  task         Task?     @relation(fields: [taskId], references: [id])
+  templateId   String?
+  template     Template? @relation(fields: [templateId], references: [id])
+  projectId    String
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   creatorId  String?
   creator    User?    @relation("ArtifactCreator", fields: [creatorId], references: [id])
@@ -115,17 +117,20 @@ model Artifact {
 }
 
 model Template {
-  id          String   @id @default(uuid())
-  name        String
-  category    String
-  description String?
-  content     String
-  fileType    String   @default("html")
-  usageCount  Int      @default(0)
-  creatorId   String?
-  creator     User?    @relation("TemplateCreator", fields: [creatorId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  category     String
+  description  String?
+  content      String
+  fileType     String   @default("html")
+  outputFormat String   @default("docx")
+  usageCount   Int      @default(0)
+  creatorId    String?
+  creator      User?    @relation("TemplateCreator", fields: [creatorId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  artifacts Artifact[]
 }
 
 model Report {

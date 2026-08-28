@@ -14,7 +14,7 @@ export const templateService = {
     return template;
   },
 
-  async create(data: { name: string; category: string; description?: string; content: string; fileType?: string; creatorId?: string }) {
+  async create(data: { name: string; category: string; description?: string; content: string; fileType?: string; outputFormat?: string; creatorId?: string }) {
     if (!data.name || !data.category || !data.content) {
       throw AppError.badRequest('name, category, and content are required');
     }
@@ -25,12 +25,13 @@ export const templateService = {
         description: data.description,
         content: data.content,
         fileType: data.fileType || 'html',
+        outputFormat: data.outputFormat || 'docx',
         creatorId: data.creatorId,
       },
     });
   },
 
-  async update(id: string, data: { name?: string; category?: string; description?: string; content?: string; fileType?: string; usageCount?: number }) {
+  async update(id: string, data: { name?: string; category?: string; description?: string; content?: string; fileType?: string; outputFormat?: string; usageCount?: number }) {
     const existing = await prisma.template.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Template not found');
     return prisma.template.update({
@@ -41,6 +42,7 @@ export const templateService = {
         description: data.description,
         content: data.content,
         fileType: data.fileType,
+        outputFormat: data.outputFormat,
         usageCount: data.usageCount,
       },
     });

@@ -48,6 +48,7 @@ export interface Artifact {
   content: string | null;
   shareToken?: string | null;
   taskId: string | null;
+  templateId: string | null;
   projectId: string;
   creatorId: string | null;
   createdAt?: string;
@@ -78,6 +79,7 @@ export interface Template {
   description: string | null;
   content: string;
   fileType: string;
+  outputFormat: string;
   usageCount: number;
   createdAt?: string;
   updatedAt?: string;

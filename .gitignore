@@ -1,7 +1,8 @@
 node_modules/
 dist/
-.env
-.env.production
+server/.env
+server/.env.local
+server/.env.production
 *.log
 .DS_Store
 .idea/
