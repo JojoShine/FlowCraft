@@ -53,10 +53,11 @@ export const projectsApi = {
 };
 
 export const tasksApi = {
-  list: (params?: { projectId?: string; column?: string }) => api.get('/tasks', { params }),
+  list: (params?: { projectId?: string; column?: string }, signal?: AbortSignal) => api.get('/tasks', { params, signal }),
   listOptions: (projectId: string) => api.get('/tasks/options', { params: { projectId } }),
   count: (projectId: string) => api.get('/tasks/count', { params: { projectId } }),
   overdueCount: () => api.get('/tasks/overdue-count'),
+  overdue: (projectId: string) => api.get('/tasks/overdue', { params: { projectId } }),
   listByPhase: (phaseId: string) => api.get('/tasks', { params: { phaseId } }),
   get: (id: string) => api.get(`/tasks/${id}`),
   create: (data: unknown) => api.post('/tasks', data),
@@ -65,7 +66,8 @@ export const tasksApi = {
 };
 
 export const artifactsApi = {
-  list: (params?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number }) => api.get('/artifacts', { params }),
+  list: (params?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number }, signal?: AbortSignal) => api.get('/artifacts', { params, signal }),
+  count: (projectId?: string) => api.get('/artifacts/count', { params: projectId ? { projectId } : {} }),
   get: (id: string) => api.get(`/artifacts/${id}`),
   create: (data: unknown) => api.post('/artifacts', data),
   update: (id: string, data: unknown) => api.patch(`/artifacts/${id}`, data),
@@ -197,7 +199,7 @@ export const authApi = {
 };
 
 export const aiApi = {
-  chat(conversationId: string | null, message: string, projectId?: string, templateIds?: string[]) {
+  chat(conversationId: string | null, message: string, projectId?: string, templateIds?: string[], signal?: AbortSignal) {
     const token = localStorage.getItem('token');
     return fetch(`${baseURL}/ai/chat`, {
       method: 'POST',
@@ -206,6 +208,7 @@ export const aiApi = {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ conversationId, message, projectId, templateIds }),
+      signal,
     });
   },
   listConversations: (projectId?: string) =>

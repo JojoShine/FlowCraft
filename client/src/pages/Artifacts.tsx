@@ -41,7 +41,7 @@ export function Artifacts() {
   const isViewer = user?.role === 'viewer';
   const isCalendar = viewMode === 'calendar';
   const keyword = resolvedKeyword || urlKeyword;
-  const { artifacts, total, initialLoading, error, refetch } = useArtifacts(selectedProjectId ?? undefined, undefined, keyword || undefined, page, isCalendar ? 9999 : pageSize);
+  const { artifacts, total, initialLoading, error } = useArtifacts(selectedProjectId ?? undefined, undefined, keyword || undefined, page, isCalendar ? 9999 : pageSize);
 
   useEffect(() => {
     if (filterId) {
@@ -77,7 +77,6 @@ export function Artifacts() {
     try {
       await artifactsApi.delete(artifact.id);
       toast({ title: '产物已删除', variant: 'success' });
-      refetch();
       notifyDataChange('artifacts');
     } catch (err: any) {
       toast({ title: '删除失败', description: err?.message, variant: 'error' });
@@ -104,7 +103,6 @@ export function Artifacts() {
       await artifactsApi.update(bindTarget.id, { taskId: bindSelected || null });
       toast({ title: bindSelected ? '已绑定任务' : '已解除绑定', variant: 'success' });
       setBindTarget(null);
-      refetch();
       notifyDataChange('artifacts');
     } catch (err: any) {
       toast({ title: '操作失败', description: err?.message, variant: 'error' });

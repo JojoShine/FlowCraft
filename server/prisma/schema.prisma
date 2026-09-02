@@ -91,6 +91,7 @@ model Task {
   @@index([projectId])
   @@index([phaseId])
   @@index([column])
+  @@index([projectId, status, dueDate])
 }
 
 model Artifact {

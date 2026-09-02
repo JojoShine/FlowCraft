@@ -8,21 +8,30 @@ export function useTasks(projectId?: string, column?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const initialLoad = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchTasks = useCallback(async (silent = false) => {
-    if (!projectId) return;
+    if (!projectId) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     if (!silent) setLoading(true);
     try {
       const params: Record<string, string> = { projectId };
       if (column) params.column = column;
-      const response = await tasksApi.list(params);
+      const response = await tasksApi.list(params, controller.signal);
       setTasks(response.data);
     } catch (err) {
+      if (controller.signal.aborted) return;
       const msg = err instanceof Error ? err.message : 'Failed to fetch tasks';
       console.error('[useTasks]', msg);
       setError(msg);
     } finally {
-      if (!silent) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [projectId, column]);
 
@@ -43,6 +52,8 @@ export function useTasks(projectId?: string, column?: string) {
       if (type === 'tasks') fetchTasks(true);
     });
   }, [fetchTasks]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   return { tasks, loading, error, refetch: () => fetchTasks(true) };
 }

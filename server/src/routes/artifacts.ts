@@ -11,69 +11,98 @@ import { logger } from '../lib/logger';
 import path from 'path';
 import { Readable } from 'stream';
 import multer from 'multer';
+import { randomUUID } from 'crypto';
+import { tmpdir } from 'os';
+import { readFile, unlink } from 'fs/promises';
 
 const folderUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024, files: 2000 },
+  storage: multer.diskStorage({
+    destination: tmpdir(),
+    filename: (_req, _file, callback) => callback(null, `flowcraft-${randomUUID()}`),
+  }),
+  limits: { fileSize: 50 * 1024 * 1024, files: 500 },
 });
+
+const MAX_FOLDER_TOTAL_SIZE = 500 * 1024 * 1024;
+const FOLDER_UPLOAD_CONCURRENCY = 3;
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
 
 const router = Router();
 
-router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 2000), asyncHandler(async (req, res) => {
+router.post('/upload-folder', requireRole('admin'), folderUpload.array('files', 500), asyncHandler(async (req, res) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     throw AppError.badRequest('No files uploaded');
   }
 
-  const { projectId, taskId, name, type } = req.body;
-  if (!projectId) throw AppError.badRequest('projectId is required');
-  if (!(await checkProjectOwnership(req.user!, projectId))) {
-    res.status(403).json({ success: false, error: '无权操作该项目' });
-    return;
-  }
+  try {
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > MAX_FOLDER_TOTAL_SIZE) {
+      throw AppError.badRequest('Folder upload exceeds the 500 MB total size limit');
+    }
 
-  const folderName = name || path.basename(files[0].originalname) || 'uploaded-folder';
-  const artifactId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const taskDir = taskId || 'default';
+    const { projectId, taskId, name, type } = req.body;
+    if (!projectId) throw AppError.badRequest('projectId is required');
+    if (!(await checkProjectOwnership(req.user!, projectId))) {
+      res.status(403).json({ success: false, error: '无权操作该项目' });
+      return;
+    }
 
-  const fileTree: { path: string; size: number; mimeType: string }[] = [];
+    const folderName = name || path.basename(files[0].originalname) || 'uploaded-folder';
+    const artifactId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const taskDir = taskId || 'default';
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const relativePath = (req.body as any)[`relativePath_${i}`] || file.originalname;
-    const cleanPath = relativePath.replace(/\\/g, '/');
-    const parts = cleanPath.split('/');
-    const innerPath = parts.length > 1 ? parts.slice(1).join('/') : cleanPath;
-    const objectName = `${projectId}/${taskDir}/${artifactId}/${innerPath}`;
+    const fileTree = await mapWithConcurrency(files, FOLDER_UPLOAD_CONCURRENCY, async (file, index) => {
+      const relativePath = (req.body as any)[`relativePath_${index}`] || file.originalname;
+      const cleanPath = relativePath.replace(/\\/g, '/');
+      const parts = cleanPath.split('/');
+      const innerPath = parts.length > 1 ? parts.slice(1).join('/') : cleanPath;
+      const objectName = `${projectId}/${taskDir}/${artifactId}/${innerPath}`;
 
-    const compressed = await compressImage(file.buffer, file.mimetype);
-    await uploadFile(compressed, objectName, file.mimetype);
+      const buffer = await readFile(file.path);
+      const compressed = await compressImage(buffer, file.mimetype);
+      await uploadFile(compressed, objectName, file.mimetype);
 
-    fileTree.push({
-      path: innerPath,
-      size: compressed.length,
-      mimeType: file.mimetype,
+      return {
+        path: innerPath,
+        size: compressed.length,
+        mimeType: file.mimetype,
+      };
     });
+
+    const artifact = await prisma.artifact.create({
+      data: {
+        id: artifactId,
+        name: folderName,
+        type: type || 'folder',
+        status: 'approved',
+        filePath: `${projectId}/${taskDir}/${artifactId}`,
+        content: JSON.stringify(fileTree),
+        projectId,
+        taskId: taskId || null,
+      },
+      include: {
+        task: { select: { id: true, title: true } },
+        creator: { select: { id: true, name: true } },
+      },
+    });
+
+    res.status(201).json(successResponse(artifact));
+  } finally {
+    await Promise.all(files.map(file => unlink(file.path).catch(() => undefined)));
   }
-
-  const artifact = await prisma.artifact.create({
-    data: {
-      id: artifactId,
-      name: folderName,
-      type: type || 'folder',
-      status: 'approved',
-      filePath: `${projectId}/${taskDir}/${artifactId}`,
-      content: JSON.stringify(fileTree),
-      projectId,
-      taskId: taskId || null,
-    },
-    include: {
-      task: { select: { id: true, title: true } },
-      creator: { select: { id: true, name: true } },
-    },
-  });
-
-  res.status(201).json(successResponse(artifact));
 }));
 
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
@@ -164,6 +193,16 @@ router.get('/', asyncHandler(async (req, res) => {
     ownerId: req.user!.id,
   });
   res.json(successResponse(result.data, { total: result.total, page: result.page, pageSize: result.pageSize }));
+}));
+
+router.get('/count', asyncHandler(async (req, res) => {
+  const projectId = req.query.projectId as string | undefined;
+  if (projectId && !(await checkProjectOwnership(req.user!, projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该项目' });
+    return;
+  }
+  const total = await artifactService.count({ projectId, ownerId: req.user!.id });
+  res.json(successResponse({ total }));
 }));
 
 router.get('/:id', asyncHandler(async (req, res) => {

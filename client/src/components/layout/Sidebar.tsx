@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useArtifacts } from '../../hooks/useArtifacts';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { tasksApi } from '../../services/api';
+import { artifactsApi, tasksApi } from '../../services/api';
 import { onDataChange } from '../../utils/dataEvents';
 import { ProjectDrawer } from '../ui/ProjectDrawer';
 import logoSvg from '../../assets/logo.svg';
@@ -75,7 +74,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
   const [taskCount, setTaskCount] = useState(0);
-  const { total: artifactsTotal } = useArtifacts(selectedProjectId ?? undefined, undefined, undefined, 1, 1);
+  const [artifactsTotal, setArtifactsTotal] = useState(0);
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);
@@ -95,6 +94,22 @@ export function Sidebar() {
       if (type === 'tasks') {
         tasksApi.count(selectedProjectId).then(res => setTaskCount(res.data.total)).catch(() => {});
       }
+    });
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    const fetchArtifactCount = () => {
+      if (!selectedProjectId) {
+        setArtifactsTotal(0);
+        return;
+      }
+      artifactsApi.count(selectedProjectId)
+        .then(res => setArtifactsTotal(res.data.total))
+        .catch(() => setArtifactsTotal(0));
+    };
+    fetchArtifactCount();
+    return onDataChange((type) => {
+      if (type === 'artifacts') fetchArtifactCount();
     });
   }, [selectedProjectId]);
 

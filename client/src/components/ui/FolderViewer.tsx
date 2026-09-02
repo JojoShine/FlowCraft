@@ -257,7 +257,22 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
   useEffect(() => {
     setTextContent(null);
     setLoading(true);
-  }, [filePath]);
+    if (!isText) return;
+
+    const controller = new AbortController();
+    fetch(url, { signal: controller.signal })
+      .then(r => r.text())
+      .then(t => {
+        setTextContent(t);
+        setLoading(false);
+      })
+      .catch(err => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [filePath, isText, url]);
 
   if (isImage) {
     return (
@@ -320,10 +335,6 @@ function FilePreview({ artifactId, filePath, mimeType, scale }: { artifactId: st
 
   if (isText) {
     if (loading && textContent === null) {
-      fetch(url)
-        .then(r => r.text())
-        .then(t => { setTextContent(t); setLoading(false); })
-        .catch(() => setLoading(false));
       return <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>加载中...</div>;
     }
     return (

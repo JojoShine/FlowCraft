@@ -114,6 +114,13 @@ async function tryConvertHtmlToXlsx(
 }
 
 export const artifactService = {
+  async count(filters?: { projectId?: string; ownerId?: string }) {
+    const where: Record<string, unknown> = {};
+    if (filters?.projectId) where.projectId = filters.projectId;
+    if (filters?.ownerId && !filters?.projectId) where.project = { ownerId: filters.ownerId };
+    return prisma.artifact.count({ where });
+  },
+
   async list(filters?: { projectId?: string; type?: string; keyword?: string; page?: number; pageSize?: number; ownerId?: string }) {
     const where: Record<string, unknown> = {};
     if (filters?.projectId) where.projectId = filters.projectId;
@@ -350,4 +357,3 @@ export const artifactService = {
     return 'file';
   },
 };
-

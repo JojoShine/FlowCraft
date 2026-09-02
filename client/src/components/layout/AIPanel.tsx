@@ -7,7 +7,7 @@ import { useProjectContext } from '../../contexts/ProjectContext';
 import { TaskDrawer } from '../ui/TaskDrawer';
 import { Select } from '../ui/Select';
 import { Input } from '../ui/Input';
-import { tasksApi, templatesApi, artifactsApi, projectsApi } from '../../services/api';
+import { tasksApi, templatesApi, artifactsApi } from '../../services/api';
 import { notifyDataChange } from '../../utils/dataEvents';
 
 interface AIPanelProps {
@@ -131,16 +131,10 @@ function SaveArtifactDialog({
 }) {
   const [name, setName] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId || '');
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const { projects } = useProjectContext();
   const [outputFormat, setOutputFormat] = useState('docx');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      setProjects(res.data as { id: string; name: string }[]);
-    }).catch(() => {});
-  }, []);
 
   const handleSave = async () => {
     if (!name.trim() || !projectId) {
@@ -443,6 +437,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [selectedTemplates, setSelectedTemplates] = useState<SelectedTemplate[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -460,10 +456,11 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (!showMentionPicker || templatesLoaded) return;
     templatesApi.list().then(res => {
       setTemplates((res.data as any[]).map(t => ({ id: t.id, name: t.name, category: t.category })));
-    }).catch(() => {});
-  }, []);
+    }).catch(() => {}).finally(() => setTemplatesLoaded(true));
+  }, [showMentionPicker, templatesLoaded]);
 
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(mentionFilter.toLowerCase())
@@ -539,8 +536,9 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   };
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    if (!showHistory || conversationsLoaded) return;
+    loadConversations().finally(() => setConversationsLoaded(true));
+  }, [showHistory, conversationsLoaded, loadConversations]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { aiApi } from '../services/api';
 
 export interface ToolCallInfo {
@@ -27,6 +27,8 @@ export function useAIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -69,6 +71,10 @@ export function useAIChat() {
   const sendMessage = useCallback(async (content: string, projectId?: string, templateIds?: string[]) => {
     if (!content.trim() || loading) return;
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const userMsg: Message = { role: 'user', content };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
@@ -76,14 +82,24 @@ export function useAIChat() {
     const assistantMsg: Message = { role: 'assistant', content: '', streaming: true };
     setMessages(prev => [...prev, assistantMsg]);
 
+    let renderTimer: ReturnType<typeof setTimeout> | null = null;
+    let accumulated = '';
+    const flushAssistantContent = () => {
+      renderTimer = null;
+      setMessages(prev => {
+        const next = [...prev];
+        next[next.length - 1] = { ...next[next.length - 1], content: accumulated };
+        return next;
+      });
+    };
+
     try {
-      const response = await aiApi.chat(currentConvId, content, projectId, templateIds);
+      const response = await aiApi.chat(currentConvId, content, projectId, templateIds, controller.signal);
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let accumulated = '';
       let currentEvent = '';
 
       while (true) {
@@ -115,11 +131,7 @@ export function useAIChat() {
                 });
               } else if (currentEvent === 'token' && data.content) {
                 accumulated += data.content;
-                setMessages(prev => {
-                  const next = [...prev];
-                  next[next.length - 1] = { ...next[next.length - 1], content: accumulated };
-                  return next;
-                });
+                if (renderTimer === null) renderTimer = setTimeout(flushAssistantContent, 32);
               } else if (currentEvent === 'done') {
                 if (data.conversationId && !currentConvId) {
                   setCurrentConvId(data.conversationId);
@@ -131,6 +143,9 @@ export function useAIChat() {
         }
       }
 
+      if (renderTimer !== null) clearTimeout(renderTimer);
+      flushAssistantContent();
+
       setMessages(prev => {
         const next = [...prev];
         next[next.length - 1] = { ...next[next.length - 1], streaming: false };
@@ -139,6 +154,8 @@ export function useAIChat() {
 
       loadConversations();
     } catch {
+      if (renderTimer !== null) clearTimeout(renderTimer);
+      if (controller.signal.aborted) return;
       setMessages(prev => {
         const next = [...prev];
         next[next.length - 1] = {
@@ -149,6 +166,7 @@ export function useAIChat() {
         return next;
       });
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setLoading(false);
     }
   }, [currentConvId, loading, loadConversations]);

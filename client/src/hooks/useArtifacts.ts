@@ -20,6 +20,7 @@ export function useArtifacts(projectId?: string, type?: string, keyword?: string
   }, [projectId, type, keyword]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchArtifacts = async () => {
       setLoading(true);
       try {
@@ -29,19 +30,23 @@ export function useArtifacts(projectId?: string, type?: string, keyword?: string
         if (keyword) params.keyword = keyword;
         params.page = String(page);
         params.pageSize = String(pageSize);
-        const response = await artifactsApi.list(params);
+        const response = await artifactsApi.list(params, controller.signal);
         setArtifacts(response.data as Artifact[]);
         setTotal((response as any).meta?.total || 0);
       } catch (err) {
+        if (controller.signal.aborted) return;
         const msg = err instanceof Error ? err.message : 'Failed to fetch artifacts';
         console.error('[useArtifacts]', msg);
         setError(msg);
       } finally {
-        setLoading(false);
-        setInitialLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setInitialLoading(false);
+        }
       }
     };
     fetchArtifacts();
+    return () => controller.abort();
   }, [projectId, type, keyword, page, pageSize, trigger]);
 
   useEffect(() => {

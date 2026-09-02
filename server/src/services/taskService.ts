@@ -15,19 +15,35 @@ export const taskService = {
   async countOverdueByProject(projectIds: string[]) {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const tasks = await prisma.task.findMany({
+    const grouped = await prisma.task.groupBy({
+      by: ['projectId'],
       where: {
         status: { not: 'completed' },
         dueDate: { not: null, lt: startOfToday },
         projectId: { in: projectIds },
       },
-      select: { projectId: true },
+      _count: { id: true },
     });
-    const map: Record<string, number> = {};
-    for (const t of tasks) {
-      map[t.projectId] = (map[t.projectId] || 0) + 1;
-    }
-    return map;
+    return Object.fromEntries(grouped.map(item => [item.projectId, item._count.id]));
+  },
+
+  async listOverdue(projectId: string) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return prisma.task.findMany({
+      where: {
+        projectId,
+        status: { not: 'completed' },
+        dueDate: { not: null, lt: startOfToday },
+      },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        phase: { select: { id: true, name: true, order: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
   },
 
   async list(filters?: { projectId?: string; column?: string; ownerId?: string }) {

@@ -3,6 +3,7 @@ import { SearchDialog } from '../ui/SearchDialog';
 import { useAuth } from '../../contexts/AuthContext';
 import { tasksApi } from '../../services/api';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { onDataChange } from '../../utils/dataEvents';
 import type { Task } from '../../types';
 
 interface TopbarProps {
@@ -22,28 +23,21 @@ export function Topbar({ title, onAiToggle, aiOpen }: TopbarProps) {
 
   useEffect(() => {
     const fetchOverdue = async () => {
+      if (!selectedProjectId) {
+        setOverdueTasks([]);
+        return;
+      }
       try {
-        const params: { projectId?: string } = {};
-        if (selectedProjectId) params.projectId = selectedProjectId;
-        const res = await tasksApi.list(params);
-        const allTasks = (res.data as any[]) || [];
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const overdue = allTasks.filter((t: any) => {
-          if (t.status === 'completed') return false;
-          if (!t.dueDate) return false;
-          const dueDate = new Date(t.dueDate);
-          return dueDate < startOfToday;
-        });
-        overdue.sort((a: any, b: any) => {
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        });
-        setOverdueTasks(overdue);
+        const res = await tasksApi.overdue(selectedProjectId);
+        setOverdueTasks((res.data as Task[]) || []);
       } catch {
         setOverdueTasks([]);
       }
     };
     fetchOverdue();
+    return onDataChange((type) => {
+      if (type === 'tasks') fetchOverdue();
+    });
   }, [selectedProjectId]);
 
   useEffect(() => {

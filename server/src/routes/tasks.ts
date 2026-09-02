@@ -29,6 +29,20 @@ router.get('/overdue-count', asyncHandler(async (req, res) => {
   res.json(successResponse(map));
 }));
 
+router.get('/overdue', asyncHandler(async (req, res) => {
+  const projectId = req.query.projectId as string;
+  if (!projectId) {
+    res.status(400).json({ error: 'projectId required' });
+    return;
+  }
+  if (!(await checkProjectOwnership(req.user!, projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该项目' });
+    return;
+  }
+  const tasks = await taskService.listOverdue(projectId);
+  res.json(successResponse(tasks));
+}));
+
 router.get('/', asyncHandler(async (req, res) => {
   const { projectId, column, phaseId } = req.query;
   if (phaseId) {
