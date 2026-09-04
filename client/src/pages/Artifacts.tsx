@@ -34,6 +34,7 @@ export function Artifacts() {
   const [bindOpen, setBindOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const bindRef = useRef<HTMLDivElement>(null);
+  const bindDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const confirm = useConfirm();
   const { selectedProjectId, projects, projectsLoading } = useProjectContext();
@@ -117,7 +118,10 @@ export function Artifacts() {
   useEffect(() => {
     if (!bindOpen) return;
     const handler = (e: MouseEvent) => {
-      if (bindRef.current && !bindRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedTrigger = bindRef.current?.contains(target);
+      const clickedDropdown = bindDropdownRef.current?.contains(target);
+      if (!clickedTrigger && !clickedDropdown) {
         setBindOpen(false);
       }
     };
@@ -365,7 +369,7 @@ export function Artifacts() {
                   </svg>
                 </div>
                 {bindOpen && createPortal(
-                  <div style={{
+                  <div ref={bindDropdownRef} style={{
                     position: 'fixed', top: dropdownPos.top, left: dropdownPos.left,
                     width: dropdownPos.width, background: 'var(--surface)',
                     border: '1px solid var(--border-default)', borderRadius: 8,
