@@ -29,7 +29,12 @@ function detectMode(name: string, type: string, filePath?: string | null, conten
   const spreadsheetExts = ['xls', 'xlsx', 'csv', 'ods'];
   const officeExts = ['ppt', 'pptx', 'odt', 'odp'];
 
-  if (content) return 'folder';
+  if (content) {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return 'folder';
+    } catch { /* not JSON, continue */ }
+  }
   if (imageExts.includes(ext) || type === 'image') return 'image';
   if (videoExts.includes(ext)) return 'video';
   if (audioExts.includes(ext)) return 'audio';
@@ -329,7 +334,45 @@ export function SharedArtifact() {
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#18181b' }}>{artifact.name}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: '#18181b', flex: 1 }}>{artifact.name}</span>
+        {mode === 'docx' && artifact.content && (
+          <a
+            href={token ? artifactsApi.getPublicHtmlFileUrl(token) : undefined}
+            download={`${artifact.name}.html`}
+            style={{
+              height: 28, padding: '0 10px', borderRadius: 6,
+              border: '1px solid #e4e4e7', background: 'transparent',
+              fontSize: 12, color: '#71717a', textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            下载 HTML
+          </a>
+        )}
+        {artifact.filePath && (
+          <a
+            href={fileUrl}
+            download={artifact.name}
+            style={{
+              height: 28, padding: '0 10px', borderRadius: 6,
+              border: '1px solid #e4e4e7', background: 'transparent',
+              fontSize: 12, color: '#71717a', textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            下载
+          </a>
+        )}
       </div>
       <div style={{ flex: 1, overflow: 'hidden' }}>
         {renderContent()}

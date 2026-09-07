@@ -109,6 +109,11 @@ export const artifactsApi = {
     const token = localStorage.getItem('token') || '';
     return `${baseURL}/artifacts/${id}/file?token=${encodeURIComponent(token)}`;
   },
+  getHtmlFileUrl: (id: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    const token = localStorage.getItem('token') || '';
+    return `${baseURL}/artifacts/${id}/html-file?token=${encodeURIComponent(token)}`;
+  },
   getPreviewUrl: (id: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     const token = localStorage.getItem('token') || '';
@@ -128,6 +133,10 @@ export const artifactsApi = {
   getPublicFileUrl: (token: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     return `${baseURL}/public/artifacts/${token}/file`;
+  },
+  getPublicHtmlFileUrl: (token: string) => {
+    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    return `${baseURL}/public/artifacts/${token}/html-file`;
   },
   getPublicFolderFileUrl: (token: string, filePath: string) => {
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';

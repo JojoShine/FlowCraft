@@ -36,6 +36,16 @@ router.get('/artifacts/:token/file', asyncHandler(async (req, res) => {
   stream.pipe(res);
 }));
 
+router.get('/artifacts/:token/html-file', asyncHandler(async (req, res) => {
+  const artifact = await getArtifactByToken(req.params.token as string);
+  if (!artifact.content) throw AppError.badRequest('该产物没有 HTML 内容');
+
+  const fileName = `${artifact.name}.html`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+  res.send(artifact.content);
+}));
+
 router.get('/artifacts/:token/download', asyncHandler(async (req, res) => {
   const artifact = await getArtifactByToken(req.params.token as string);
   if (!artifact.content) throw AppError.badRequest('Not a folder artifact');

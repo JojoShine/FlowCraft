@@ -261,7 +261,6 @@ export const artifactService = {
       if (converted) {
         nextFilePath = converted.filePath;
         finalType = newType;
-        finalContent = null;
         if (existing.filePath) {
           try { await deleteFile(existing.filePath); } catch { /* ignore */ }
         }
