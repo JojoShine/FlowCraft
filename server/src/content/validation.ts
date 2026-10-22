@@ -16,7 +16,7 @@ export function normalizeDocument(input:unknown):DocumentBody {
   if(b.type==='heading' && ![1,2,3].includes(b.props?.level ?? 1)) return fail();
   if(b.type==='drawing' && (typeof b.props?.drawingId!=='string'||!['latest','pinned'].includes(b.props?.mode)||b.props.mode==='pinned'&&(!Number.isInteger(b.props.revision)||b.props.revision<1))) return fail('绘图引用无效');
   if(b.type==='documentLink'&&typeof b.props?.documentId!=='string') return fail('文档链接无效');
-  return {...b,children:b.children?blocks(b.children,depth+1):[]};
+  return {...b,id:b.id,type:b.type,children:b.children?blocks(b.children,depth+1):[]};
  });}
  return {formatVersion:1,blocks:blocks(input.blocks)};
 }
