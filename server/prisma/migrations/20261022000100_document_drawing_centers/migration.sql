@@ -2,8 +2,6 @@
 CREATE TABLE "Document" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
-    "parentId" TEXT,
-    "order" INTEGER NOT NULL DEFAULT 0,
     "title" TEXT NOT NULL,
     "searchText" TEXT NOT NULL DEFAULT '',
     "currentVersion" INTEGER NOT NULL DEFAULT 1,
@@ -131,7 +129,7 @@ CREATE TABLE "ContentPreference" (
 );
 
 -- CreateIndex
-CREATE INDEX "Document_projectId_deletedAt_parentId_order_idx" ON "Document"("projectId", "deletedAt", "parentId", "order");
+CREATE INDEX "Document_projectId_deletedAt_updatedAt_idx" ON "Document"("projectId", "deletedAt", "updatedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "DocumentRevision_documentId_version_key" ON "DocumentRevision"("documentId", "version");
@@ -162,9 +160,6 @@ CREATE UNIQUE INDEX "ContentPreference_userId_kind_entityId_key" ON "ContentPref
 
 -- AddForeignKey
 ALTER TABLE "Document" ADD CONSTRAINT "Document_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Document" ADD CONSTRAINT "Document_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Document"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DocumentRevision" ADD CONSTRAINT "DocumentRevision_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "Document"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

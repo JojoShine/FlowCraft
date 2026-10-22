@@ -10,7 +10,7 @@ export interface ContentView<T> {id:string;projectId:string;version:number;title
 export interface DrawingReference {blockId:string;drawingId:string;mode:'latest'|'pinned';revision:number|null}
 export interface ResolvedEmbed {blockId:string;drawingId:string;revision:number;title:string;scene:DrawingScene|null;previewAssetId:string|null;status:'ready'|'preview-pending'|'deleted'|'unavailable'}
 export interface ContentContext {kind:ContentKind;id:string;revision?:number;documentId?:string;blockId?:string}
-export interface CreateContentInput<T> {projectId:string;title:string;payload:T;parentId?:string|null}
+export interface CreateContentInput<T> {projectId:string;title:string;payload:T}
 export interface ContentListQuery {projectId?:string;q?:string;page?:number;favorite?:boolean;recent?:boolean}
 export interface Page<T> {items:T[];total:number;page:number;pageSize:number}
 export interface RevisionSummary {version:number;title:string;savedAt:string;source:'create'|'auto'|'manual'|'restore';restoredFrom:number|null}

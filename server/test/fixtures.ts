@@ -20,7 +20,6 @@ export async function withContentFixture(test:(fx:ContentFixture)=>Promise<void>
   await db.drawingRevisionAsset.deleteMany({where:{drawingRevision:{drawing:{projectId:{in:ids}}}}});
   await db.documentRevision.deleteMany({where:{document:{projectId:{in:ids}}}});
   await db.drawingRevision.deleteMany({where:{drawing:{projectId:{in:ids}}}});
-  await db.document.updateMany({where:{projectId:{in:ids}},data:{parentId:null}});
   await db.document.deleteMany({where:{projectId:{in:ids}}});
   await db.drawing.deleteMany({where:{projectId:{in:ids}}});
   await db.contentAsset.deleteMany({where:{projectId:{in:ids}}});

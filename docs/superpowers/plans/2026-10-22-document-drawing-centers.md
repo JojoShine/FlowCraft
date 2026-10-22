@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19.2.8、Vite 6.4.3、TypeScript 7.0.2、Prisma 6.19.3、MinIO 8.0.7；新增 BlockNote 0.56.0、Excalidraw 0.18.0；测试使用 Vitest 4.0.18、Supertest、Testing Library、Playwright。
 
-**Spec:** [已确认功能设计](../specs/2026-10-22-document-drawing-centers-design.md)。用户已确认设计，尚未评审本计划或选择执行方式。
+**Spec:** [已确认功能设计](../specs/2026-10-22-document-drawing-centers-design.md)。用户已批准当前会话顺序实施、最后统一独立评审；仅本地开发。2026-10-22 补充：文档平铺，一份 Markdown 对应一个页面，标题只生成文内目录，不做父子页面。
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 - 历史文档中的图固定为当次正文保存时的版本；恢复文档不回滚共享原图。
 - 文档正文上限 2 MiB，场景 JSON 10 MiB，单图片 10 MiB，普通附件 20 MiB；图片二进制不计入场景上限。
 - 单次文档 ZIP 导出原始关联资源最多 100 MiB，流式输出并使用受限并发。
-- 页面树最多五层，不允许循环；回收站不自动过期，不提供永久删除。
+- 文档平铺展示，不提供父子页面、页面层级或子树操作；正文标题正常生成目录。回收站不自动过期，不提供永久删除。
 - 既有项目有新文档或画布（含回收站）时，拒绝直接永久删除项目。
 - 保持现有统一响应结构：新接口超限 `413`、未登录 `401`、无写权限 `403`；无权读取按不存在处理。
 - 不恢复旧的待办/文档实现，不改产物与现有搜索接口契约，不进行 Next.js/OSS 迁移。
@@ -35,7 +35,7 @@
 1. 中文输入法组合输入跨过自动保存期限时，不应提交半个组合词；Task 7 的 `composition_defers_server_save` 与 Task 12 的人工输入法检查覆盖。
 2. 上传进行中退出并切换账号，旧请求完成也不能挂到新账号或显示已保存；Task 7 的 `late_upload_after_identity_change_is_ignored` 覆盖。
 3. 原图恢复与正文保存同时发生，历史引用必须落到确实存在的一个不可变版本；Task 4 的 `snapshot_survives_concurrent_drawing_restore` 覆盖。
-4. 并发移动页面时分别合法的操作也可能形成循环或第六层；Task 5 的 `concurrent_moves_cannot_create_cycle_or_depth_six` 覆盖。
+4. 删除与恢复仅影响选中的文档，不影响同项目其他文档；Task 5 生命周期测试覆盖。
 5. 导入的 SVG、外链与中文多字节大内容不能绕过展示隔离或体积限制；Task 6 的 `utf8_bytes_enforce_limits`、Task 11 的 `svg_export_removes_active_and_external_content` 覆盖。
 
 ---
@@ -71,11 +71,11 @@
 | `server/src/content/authorization.ts`, `revisions.ts` | 项目权限、事务重试、摘要与保存回执 |
 | `server/src/content/assetService.ts`, `assetAccess.ts` | 不可变 MinIO 资产、上传及可见引用鉴权 |
 | `server/src/content/drawingService.ts`, `documentService.ts`, `referenceResolver.ts` | 两类内容、版本、恢复及文档嵌图解析 |
-| `server/src/content/documentTree.ts`, `lifecycleService.ts`, `preferences.ts` | 页面树、复制、回收站、个人偏好 |
+| `server/src/content/lifecycleService.ts`, `preferences.ts` | 复制、回收站、个人偏好 |
 | `server/src/content/exportService.ts`, `markdownExport.ts`, `sceneExport.ts`, `sanitizeSvg.ts` | 固定快照、流式 ZIP、源图和安全展示文件 |
 | `server/src/routes/documents.ts`, `drawings.ts`, `contentAssets.ts`, `contentPreferences.ts` | 路由与输入验证；不混入服务端保存算法 |
 | `client/src/features/content/` | DTO/API、保存队列、草稿、保存状态、冲突、历史/回收站界面、资产及个人偏好 hooks |
-| `client/src/features/documents/` | BlockNote 适配、页面树、目录、链接块、模板、Markdown 导入 |
+| `client/src/features/documents/` | BlockNote 适配、文档列表、文内目录、链接块、模板、Markdown 导入 |
 | `client/src/features/drawings/` | Excalidraw 适配、列表卡片、只读查看、选择器、嵌图块、模板及预览生成 |
 | `client/src/pages/{Documents,DocumentPage,Drawings,DrawingPage}.tsx` | 两中心入口与编辑页装配 |
 | `server/test/content/`, `client/test/content/`, `client/e2e/content/` | 服务端、前端状态机与真实浏览器验收 |
@@ -102,7 +102,7 @@
 | `AssetUpload` | `{ projectId: string; category: 'image'\|'attachment'\|'preview'; file: multipartFile }`；返回 `{ id; mimeType; bytes; state:'complete' }` |
 | `DraftKey` | `{ userId; projectId; kind; id; sessionId }`；全部为 string，`kind` 同 ContentKind |
 | `LocalDraft<T>` | `{ key: DraftKey; baseVersion; localSequence; title; payload:T; pendingFiles: BlobDraft[]; updatedAt }` |
-| `CreateContentInput<T>` | `{projectId:string;title:string;payload:T;parentId?:string\|null}`；parentId 仅文档使用 |
+| `CreateContentInput<T>` | `{projectId:string;title:string;payload:T}` |
 | `ContentListQuery` | `{projectId?:string;q?:string;page?:number;favorite?:boolean;recent?:boolean}`；列表每页 50 条，q 只匹配已约定的当前内容 |
 | `Page<T>` | `{items:T[];total:number;page:number;pageSize:number}`；`RevisionPage=Page<RevisionSummary>`，历史固定 pageSize=20 |
 | `RevisionSummary` | `{version:number;title:string;savedAt:string;source:'create'\|'auto'\|'manual'\|'restore';restoredFrom:number\|null}` |
@@ -133,13 +133,11 @@
 | 路径 | 方法与行为 |
 | --- | --- |
 | `/documents`, `/drawings` | GET 权限内列表，POST 创建；省略 projectId 表示汇总权限内项目 |
-| `/documents/tree` | GET 权限内页面树元数据，projectId 可选，静态路由优先 |
 | `/documents/:id`, `/drawings/:id` | GET 当前内容，PATCH SaveEnvelope，DELETE 移入回收站 |
 | `/documents/:id/revisions`, `/drawings/:id/revisions` | GET 所有者历史，固定每页 20 条 |
 | `/documents/:id/revisions/:version`, `/drawings/:id/revisions/:version` | GET 所有者历史详情 |
 | `/documents/:id/restore`, `/drawings/:id/restore` | POST `{baseVersion,requestId,revision}`，恢复为新版本 |
 | `/documents/:id/embeds/:blockId` | GET 从当前正文解析该块；所有者可加 documentVersion 预览历史 |
-| `/documents/:id/move` | POST `{parentId:string\|null,beforeId:string\|null}`，同项目移动及排序 |
 | `/documents/:id/duplicate` | POST `{drawingMode:'reference'\|'duplicate'}`，只复制当前页 |
 | `/drawings/:id/duplicate`, `/drawings/:id/references` | POST 独立副本，GET 当前引用位置 |
 | `/documents/trash`, `/drawings/trash` | GET 所有者回收站，静态路由优先于 `/:id` |
@@ -171,7 +169,7 @@ expect(() => normalizeDocument({formatVersion:99,blocks:[]})).toThrow();
 ```
 
 - [ ] **Step 2 — 运行 RED。** `npm --prefix server test -- test/content/contracts.test.ts`；预期缺少契约/校验函数而失败。测试 fixture 只能使用显式 `TEST_DATABASE_URL` 与 `TEST_MINIO_*`，拒绝非 loopback 地址和不以 `_test` 结尾的数据库名；读取环境前不得加载现有 `.env`。
-- [ ] **Step 3 — 定义模型与最小隔离环境。** 按 §1.2 添加模型、索引、外键和持久化格式；Document 包含 parentId/order，两个资源包含 deletedAt，Asset 包含上传状态和不可变 key。测试 Compose 使用 `postgres:16.6`，绑定 `127.0.0.1:55432`；MinIO 使用 `minio/minio:RELEASE.2025-04-22T22-12-26Z`，绑定 `127.0.0.1:19000`，独立测试账号与 `flowcraft-test-*` 桶。测试数据不连接生产、不复用生产卷。
+- [ ] **Step 3 — 定义模型与最小隔离环境。** 按 §1.2 添加模型、索引、外键和持久化格式；Document 和 Drawing 均为独立资源，包含 deletedAt，Asset 包含上传状态和不可变 key。测试 Compose 使用 `postgres:16.6`，绑定 `127.0.0.1:55432`；MinIO 使用 `minio/minio:RELEASE.2025-04-22T22-12-26Z`，绑定 `127.0.0.1:19000`，独立测试账号与 `flowcraft-test-*` 桶。测试数据不连接生产、不复用生产卷。
 - [ ] **Step 4 — 生成并审阅迁移。** 用 Git `8cde088:server/prisma/schema.prisma` 建立旧模型基线；使用已安装 Prisma 6 的 `migrate diff --from-empty --to-schema-datamodel baseline.prisma --script` 生成 baseline，再用 `--from-schema-datamodel baseline.prisma --to-schema-datamodel server/prisma/schema.prisma --script` 生成增量 SQL。不得生成删除旧表/旧列的 SQL；真实旧库在未来发布时比对后仅标记 baseline 已应用。
 - [ ] **Step 5 — 运行 GREEN。** `docker compose -f compose.content-test.yml up -d --wait`；`npm --prefix server run db:generate`；运行 contracts unit 与 `npm --prefix server run test:integration -- test/content/schema.integration.test.ts`。预期全部通过；integration 验证旧项目记录保留、唯一版本/请求键生效、新外键阻止级联删除。测试 fixture 自动装载本地测试地址，故意传生产形态地址须在任何连接前失败。
 - [ ] **Step 6 — Commit。** `git add compose.content-test.yml server/package.json server/package-lock.json server/prisma server/src/content/contracts.ts server/src/content/validation.ts server/test server/vitest.config.mts server/vitest.integration.config.mts && git commit -m "feat: add versioned content schema and isolated tests"`。
@@ -237,30 +235,24 @@ expect((await drawingService.read(fx.owner,drawing.id)).version).toBe(2);
 - [ ] **Step 4 — GREEN。** 重跑两文件及 Task 3 integration；预期各保存状态和快照一致，跨项目构造引用被拒绝，不能用 blockId 查询其他文档的图。构建通过。
 - [ ] **Step 5 — Commit。** `git add server/src/content/documentService.ts server/src/content/referenceResolver.ts server/test/content/documentVersions.integration.test.ts server/test/content/embedSnapshots.integration.test.ts && git commit -m "feat: add document versions with stable drawing snapshots"`。
 
-### Task 5: 页面树、复制、回收站与个人偏好
+### Task 5: 独立文档的复制、回收站与个人偏好
 
-**Files:** Create `server/src/content/documentTree.ts`, `server/src/content/lifecycleService.ts`, `server/src/content/preferences.ts`, `server/test/content/treeLifecycle.integration.test.ts`; Modify `server/src/services/projectService.ts` delete method only.
+**Files:** Create `server/src/content/lifecycleService.ts`, `server/src/content/preferences.ts`, `server/test/content/lifecycle.integration.test.ts`; Modify `server/src/services/projectService.ts` delete method only.
 
-**Interfaces:** Consumes Tasks 3–4. Produces `getDocumentTree(actor:Actor,projectId?:string):Promise<DocumentTreeNode[]>`, `moveDocument(actor:Actor,id:string,input:{parentId:string|null;beforeId:string|null}):Promise<void>`, `duplicateDocument(actor:Actor,id:string,mode:'reference'|'duplicate'):Promise<ContentView<DocumentBody>>`, `duplicateDrawing(actor:Actor,id:string,revision?:number):Promise<ContentView<DrawingScene>>`, `trashContent(actor:Actor,kind:ContentKind,id:string):Promise<void>`, `listTrashContent(actor:Actor,kind:ContentKind,query:ContentListQuery):Promise<Page<ContentSummary>>`, `undeleteContent(actor:Actor,kind:ContentKind,id:string):Promise<{id:string;restoredAtRoot:boolean}>`, `setContentPreference(actor:Actor,kind:ContentKind,id:string,patch:PreferencePatch):Promise<PreferenceDto>`, `listContentPreferences(actor:Actor,kind:ContentKind,projectId?:string):Promise<PreferenceDto[]>`；DocumentTreeNode 为 ContentSummary 加 parentId、order、children，order 为 number。
+**Interfaces:** Consumes Tasks 3–4. Produces `duplicateDocument(actor,id,mode:'reference'|'duplicate')`, `duplicateDrawing(actor,id,revision?)`, `trashContent(actor,kind,id)`, `listTrashContent(actor,kind,query)`, `undeleteContent(actor,kind,id):Promise<{id:string}>`, `setContentPreference(actor,kind,id,patch)` and `listContentPreferences(actor,kind,projectId?)`. Reuse the content DTOs; there are no page hierarchy or move APIs.
 
-- [ ] **Step 1 — RED。** 测试五层树与子树移动、第六层/循环/跨项目失败、`concurrent_moves_cannot_create_cycle_or_depth_six`；同项目移动不生成内容 revision。复制当前页不复制子树；图独立副本复制操作时的可见版本；删除引用不删原图；图回收站对 viewer 隐藏；恢复父节点仍删除的子页回根目录。
-
-```ts
-await expect(moveDocument(fx.owner, root.id, {parentId:child.id,beforeId:null}))
-  .rejects.toMatchObject({statusCode:409});
-expect((await documentService.read(fx.owner,root.id)).version).toBe(before.version);
-```
-- [ ] **Step 2 — RED。** `npm --prefix server run test:integration -- test/content/treeLifecycle.integration.test.ts`；预期缺少树/生命周期服务而失败。
-- [ ] **Step 3 — 实现。** 树操作在事务内锁定 Project 行，再检查完整子树深度、同项目及环；只对同一父节点排序重编号。回收站删除用 deletedAt，批量删除子树时保留对象 ID/版本。复制按 reference/duplicate 规则处理画布，深复制正文但共享不可变资产。个人偏好只关联本人，不改正文当前版本。
-- [ ] **Step 4 — 加项目删除保护。** projectService.delete 在同一事务中检测任何 Document/Drawing（包括软删除），存在即返回 `409`、提示先归档；新增外键 RESTRICT 作最终兜底。不扩写旧项目归档系统，不影响无新内容项目的既有删除。
-- [ ] **Step 5 — GREEN。** 重跑 integration，验证偏好隔离、删除后旧编辑页不能写回以及项目保护。构建通过。
-- [ ] **Step 6 — Commit。** `git add server/src/content/documentTree.ts server/src/content/lifecycleService.ts server/src/content/preferences.ts server/src/services/projectService.ts server/test/content/treeLifecycle.integration.test.ts && git commit -m "feat: add content tree lifecycle and project deletion guard"`。
+- [ ] **Step 1 — RED。** 测试复制文档和画布、删除与恢复单篇文档不影响其他文档、图独立副本固定操作时的可见版本、偏好隔离、删除后旧编辑页不能写回。
+- [ ] **Step 2 — RED。** `npm --prefix server run test:integration -- test/content/lifecycle.integration.test.ts`；预期缺少服务而失败。
+- [ ] **Step 3 — 实现。** 回收站仅修改选中对象的 deletedAt，保留 ID/版本。复制按 reference/duplicate 规则处理画布，深复制正文但共享不可变资产。个人偏好只关联本人，不改正文当前版本。
+- [ ] **Step 4 — 加项目删除保护。** projectService.delete 在事务中检测任何 Document/Drawing（包括软删除），存在即返回 409；新增外键 RESTRICT 作兜底。
+- [ ] **Step 5 — GREEN。** 重跑 integration 并构建，验证单篇生命周期、偏好隔离及项目保护。
+- [ ] **Step 6 — Commit。** 提交本任务文件和 projectService 的必要修改。
 
 ### Task 6: 装配接口、容量边界与前端客户端
 
 **Files:** Create `server/src/routes/documents.ts`, `server/src/routes/drawings.ts`, `server/src/routes/contentAssets.ts`, `server/src/routes/contentPreferences.ts`, `server/test/content/http.integration.test.ts`, `client/src/features/content/types.ts`, `client/src/features/content/api.ts`, `client/test/content/api.test.ts`, `client/vitest.config.ts`, `client/test/setup.ts`; Modify `server/src/app.ts`, `client/src/services/api.ts`, both package/lock files.
 
-**Interfaces:** Consumes Tasks 1–5 and §1.3. Produces `documentsApi`/`drawingsApi` with list/get/create/save/history/revision/restore/move/duplicate/trash/undelete/resolveEmbed/references as appropriate, `contentAssetsApi.upload(file,projectId,category,signal):Promise<AssetDto>` and `.read(assetId,context,signal):Promise<Blob>`, `contentPreferencesApi`；所有调用返回一次解包后的 DTO。
+**Interfaces:** Consumes Tasks 1–5 and §1.3. Produces `documentsApi`/`drawingsApi` with list/get/create/save/history/revision/restore/duplicate/trash/undelete/resolveEmbed/references as appropriate, `contentAssetsApi.upload(file,projectId,category,signal):Promise<AssetDto>` and `.read(assetId,context,signal):Promise<Blob>`, `contentPreferencesApi`；所有调用返回一次解包后的 DTO。
 
 - [ ] **Step 1 — RED。** Supertest 覆盖接口矩阵、静态 trash 路由先于 id、owner/viewer/其他项目权限、未登录 401、`utf8_bytes_enforce_limits`、错误格式、未来格式不被另存为空白。前端 mock axios 断言 SaveEnvelope/SaveAck 原样往返且只解包一次。
 
@@ -299,9 +291,9 @@ expect(save).toHaveBeenCalledTimes(1);
 
 ### Task 8: BlockNote 编辑器、文档树和阅读体验
 
-**Files:** Create `client/src/features/documents/DocumentEditor.tsx`, `DocumentTree.tsx`, `DocumentOutline.tsx`, `DocumentLinkBlock.tsx`, `DocumentTemplates.ts`, `markdown.ts`, `documentEditor.css`, `client/test/content/documentEditor.test.tsx`, `documentTree.test.tsx`, `markdownImport.test.ts`; Modify `client/package.json`, `client/package-lock.json`.
+**Files:** Create `client/src/features/documents/DocumentEditor.tsx`, `DocumentList.tsx`, `DocumentOutline.tsx`, `DocumentLinkBlock.tsx`, `DocumentTemplates.ts`, `markdown.ts`, `documentEditor.css`, `client/test/content/documentEditor.test.tsx`, `documentList.test.tsx`, `markdownImport.test.ts`; Modify `client/package.json`, `client/package-lock.json`.
 
-**Interfaces:** Consumes Tasks 6–7. Produces `DocumentEditor({view:ContentView<DocumentBody>,onChange:(title:string,payload:DocumentBody)=>void,onComposition:(value:boolean)=>void,renderDrawing:(block:DrawingReference)=>ReactNode}):JSX.Element`；`DocumentTree({nodes:DocumentTreeNode[],onSelect,onMove,canEdit}):JSX.Element`，onSelect:(id:string)=>void、onMove:(id:string,parentId:string|null,beforeId:string|null)=>Promise<void>；`parseMarkdown(markdown:string):Promise<{body:DocumentBody;warnings:string[]}>`；`createDocumentTemplate(kind:'blank'|'servers'|'operations'):DocumentBody`。
+**Interfaces:** Consumes Tasks 6–7. Produces `DocumentEditor({view:ContentView<DocumentBody>,onChange:(title:string,payload:DocumentBody)=>void,onComposition:(value:boolean)=>void,renderDrawing:(block:DrawingReference)=>ReactNode}):JSX.Element`；`DocumentList({items:ContentSummary[],onSelect}):JSX.Element`，onSelect:(id:string)=>void；`parseMarkdown(markdown:string):Promise<{body:DocumentBody;warnings:string[]}>`；`createDocumentTemplate(kind:'blank'|'servers'|'operations'):DocumentBody`。
 
 - [ ] **Step 1 — RED。** 测试 viewer 不能修改复选框/正文，标题目录来自当前块，页面移动不重建正文，Markdown 标题/代码/表格/缺失相对图片保留语义，非法链接不可执行。模板断言服务器七列名称与 spec 一致；复选块不调用 tasksApi。测试端传入 renderDrawing，真实绘图块由 Task 10 装配。
 
@@ -310,11 +302,11 @@ expect(JSON.stringify(createDocumentTemplate('servers'))).toContain('IP/域名')
 const imported = await parseMarkdown('![截图](./missing.png)');
 expect(imported.warnings).toHaveLength(1);
 ```
-- [ ] **Step 2 — RED。** 安装三个固定版本 BlockNote 包；运行 `npm --prefix client test -- test/content/documentEditor.test.tsx test/content/documentTree.test.tsx test/content/markdownImport.test.ts`；预期缺少组件/适配器而失败。
+- [ ] **Step 2 — RED。** 安装三个固定版本 BlockNote 包；运行 `npm --prefix client test -- test/content/documentEditor.test.tsx test/content/documentList.test.tsx test/content/markdownImport.test.ts`；预期缺少组件/适配器而失败。
 - [ ] **Step 3 — 实现。** 使用 Ariakit UI，绑定已有主题变量，完成规定的基础块、`/` 菜单、块拖动、常用 Markdown 输入、中文组合事件、代码复制、表格行列编辑、图片/附件与文档链接。新建先等服务器返回稳定 ID 再挂载可编辑态；upload 回调走 Task 7，不让 BlockNote 的外链/base64 暂存 URL 成为权威文件地址。图块由 renderDrawing 注入，正文只持久化引用；收藏、目录展开不进入 body。
-- [ ] **Step 4 — 组织与导入。** DocumentTree 支持五层、重命名、新建子页、移动和前后排序；服务端仍为最终校验。三种模板按 spec 创建。Markdown 通过 BlockNote 适配器导入新文档，外部图保留外链并标识，缺失相对文件列出警告，不由服务器抓取 URL。前端选择器仅提供同项目文档，稳定 ID 链接卡片随名称更新、删除后显示占位。
+- [ ] **Step 4 — 组织与导入。** DocumentList 平铺展示项目文档，支持新建和重命名；DocumentOutline 根据当前正文标题生成目录并跳转。Markdown 中的标题不拆成子页面。三种模板按 spec 创建。Markdown 通过 BlockNote 适配器导入新文档，外部图保留外链并标识，缺失相对文件列出警告，不由服务器抓取 URL。前端选择器仅提供同项目文档，稳定 ID 链接卡片随名称更新、删除后显示占位。
 - [ ] **Step 5 — GREEN。** 重跑三测试和 client build；阅读模式验证目录跳转、表格横滚、图片放大、代码复制，手机宽度下正文可读。真实拖动和系统输入法留给 Task 12 浏览器/人工检查，不把 jsdom 结果当成全部编辑体验证据。
-- [ ] **Step 6 — Commit。** `git add client/src/features/documents client/test/content/documentEditor.test.tsx client/test/content/documentTree.test.tsx client/test/content/markdownImport.test.ts client/package.json client/package-lock.json && git commit -m "feat: add block document editor and project page tree"`。
+- [ ] **Step 6 — Commit。** `git add client/src/features/documents client/test/content/documentEditor.test.tsx client/test/content/documentList.test.tsx client/test/content/markdownImport.test.ts client/package.json client/package-lock.json && git commit -m "feat: add block document editor and flat document list"`。
 
 ### Task 9: Excalidraw 编辑、可携带图片和版本预览
 
@@ -413,7 +405,7 @@ await expect(page.getByText('固定版本 v1',{exact:true})).toBeVisible();
 | 规格范围 | 负责的任务 |
 | --- | --- |
 | §1–2 目标、项目归属、范围边界 | 1、2、6、10、12 |
-| §3 独立导航、页面树、列表及阅读 | 5、8、10 |
+| §3 独立导航、文档列表、文内目录及阅读 | 5、8、10 |
 | §4 基础块、模板、文档引用与搜索 | 4、6、8、10 |
 | §5 原生场景、图片、导入导出及预览 | 2、3、9、11 |
 | §6 最新/固定嵌图、引用位置与副本 | 4、5、9、10 |
