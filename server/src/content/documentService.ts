@@ -6,6 +6,7 @@ import {validateAssetReferences} from './assetService';
 import {runContentTransaction,replayReceipt,recordReceipt,pageNumber} from './revisions';
 import {normalizeDocument,contentDigest,requestDigest,validateTitle,validateSave,documentAssetIds,documentText,walkBlocks} from './validation';
 import type {Actor,DocumentBody,ContentView,CreateContentInput,ContentListQuery,SaveEnvelope,SaveAck,RestoreInput,DocumentRevisionDto,RevisionPage} from './contracts';
+import {lockContentProject} from './documentTree';
 import {captureDrawingReferences} from './referenceResolver';
 type DB=Prisma.TransactionClient;
 async function document(tx:DB,actor:Actor,id:string,write=false,history=false) {
@@ -48,7 +49,7 @@ export const documentService={
  async create(actor:Actor,input:CreateContentInput<DocumentBody>):Promise<ContentView<DocumentBody>> {
   const title=validateTitle(input.title),payload=normalizeDocument(input.payload);
   return runContentTransaction(async tx=>{
-   await requireContentOwner(actor,input.projectId,tx);
+   await requireContentOwner(actor,input.projectId,tx);await lockContentProject(tx,input.projectId);
    if(input.parentId) {let parent=await tx.document.findUnique({where:{id:input.parentId}}),depth=1;while(parent) {if(parent.projectId!==input.projectId||parent.deletedAt||++depth>5) throw AppError.badRequest('父页面无效或超过五层');parent=parent.parentId?await tx.document.findUnique({where:{id:parent.parentId}}):null;}if(depth===1) throw AppError.badRequest('父页面不存在');}
    await validateDocumentLinks(tx,input.projectId,payload);
    const refs=await captureDrawingReferences(tx,input.projectId,payload);
