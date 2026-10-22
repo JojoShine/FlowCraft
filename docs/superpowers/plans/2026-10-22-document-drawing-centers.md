@@ -289,7 +289,7 @@ expect(save).toHaveBeenCalledTimes(1);
 - [ ] **Step 5 — GREEN。** 本任务三文件测试通过；既有普通登录、登出仍正常；`npm --prefix client run build` 通过。草稿恢复不自动提交到服务器；未来格式进入只读，不能初始化为空白再保存。
 - [ ] **Step 6 — Commit。** `git add client/src/features/content client/src/contexts/AuthContext.tsx client/src/components/layout/Sidebar.tsx client/test/content && git commit -m "feat: add durable autosave drafts and conflict recovery"`。
 
-### Task 8: BlockNote 编辑器、文档树和阅读体验
+### Task 8: BlockNote 编辑器、文档列表和文内目录
 
 **Files:** Create `client/src/features/documents/DocumentEditor.tsx`, `DocumentList.tsx`, `DocumentOutline.tsx`, `DocumentLinkBlock.tsx`, `DocumentTemplates.ts`, `markdown.ts`, `documentEditor.css`, `client/test/content/documentEditor.test.tsx`, `documentList.test.tsx`, `markdownImport.test.ts`; Modify `client/package.json`, `client/package-lock.json`.
 

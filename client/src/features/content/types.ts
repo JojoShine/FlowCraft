@@ -22,3 +22,7 @@ export interface PreferencePatch {favorite?:boolean;lastViewedAt?:string;viewSta
 export type PreferenceDto = PreferencePatch & {kind:ContentKind;entityId:string};
 export interface ContentSummary {id:string;projectId:string;title:string;version:number;updatedAt:string;previewAssetId?:string|null}
 export interface DocumentReferenceDto {documentId:string;title:string;blockId:string}
+
+export interface DraftKey {userId:string;projectId:string;kind:ContentKind;id:string;sessionId:string}
+export interface BlobDraft {localId:string;fileName:string;mimeType:string;blob:Blob;targetId:string}
+export interface LocalDraft<T> {key:DraftKey;baseVersion:number;localSequence:number;title:string;payload:T;pendingFiles:BlobDraft[];updatedAt:number}
