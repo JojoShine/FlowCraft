@@ -340,7 +340,7 @@ expect(await screen.findByText('固定版本 v1')).not.toBeNull();
 expect(screen.queryByRole('button',{name:'恢复到此版本'})).toBeNull(); // viewer fixture
 ```
 - [ ] **Step 2 — RED。** `npm --prefix client test -- test/content/contentCenters.test.tsx test/content/embedsAndHistory.test.tsx`；预期缺少页面装配而失败。
-- [ ] **Step 3 — 装配页面。** lazy routes 接入现有 Layout；为 document/drawing 子路径正确设置顶部名称和面包屑。文档树、目录、editor 与保存状态联合工作；列表请求使用服务端权限范围。深链接读取到真实项目后仅显示该项目上下文，不能因左栏另选项目而将草稿保存到新项目。大画布页面支持收起既有 AI 面板，不能被默认右栏挤到无法编辑。
+- [ ] **Step 3 — 装配页面。** lazy routes 接入现有 Layout；为 document/drawing 子路径正确设置顶部名称和面包屑。文档列表、文内目录、editor 与保存状态联合工作；列表请求使用服务端权限范围。深链接读取到真实项目后仅显示该项目上下文，不能因左栏另选项目而将草稿保存到新项目。大画布页面支持收起既有 AI 面板，不能被默认右栏挤到无法编辑。
 - [ ] **Step 4 — 嵌图与生命周期。** `/绘图` 仅选同项目图，新建先创建独立图再插入。默认显示预览，编辑时才挂载单个大编辑器；保存成功刷新本页预览，显示多处引用影响范围。支持固定/最新、图注和展示高度，固定标识使用“固定版本 v{版本号}”；回到页面检查新版本，脏稿不自动刷新覆盖。历史并排预览、“恢复到此版本”前 flush/草稿处理、回收站恢复和稳定 ID 均按 spec 行为，viewer 不显示写/历史入口。
 - [ ] **Step 5 — GREEN。** 重跑两测试和 client build；手动走一次服务器模板→表格→建图→嵌图→刷新→历史→恢复流程。复制链接为需要登录的系统内链接，不产生公开 token。
 - [ ] **Step 6 — Commit。** `git add client/src/pages/Documents.tsx client/src/pages/DocumentPage.tsx client/src/pages/Drawings.tsx client/src/pages/DrawingPage.tsx client/src/features/drawings/DrawingEmbedBlock.tsx client/src/features/drawings/DrawingPicker.tsx client/src/features/drawings/DrawingCard.tsx client/src/features/content/HistoryPanel.tsx client/src/features/content/TrashPanel.tsx client/src/features/content/useContentPreferences.ts client/src/features/content/useContentScope.ts client/src/App.tsx client/src/components/layout/Sidebar.tsx client/src/components/layout/Layout.tsx client/test/content/contentCenters.test.tsx client/test/content/embedsAndHistory.test.tsx && git commit -m "feat: integrate document and drawing centers with history"`。
@@ -378,7 +378,7 @@ await page.reload();
 await expect(page.getByText('已保存',{exact:true})).toBeVisible();
 await expect(page.getByText('固定版本 v1',{exact:true})).toBeVisible();
 ```
-- [ ] **Step 2 — 隔离浏览器环境。** 安装固定 Playwright 开发依赖。测试后端导入 app，端口 3801，不启动 index/定时器；只在测试 runner 装配 fixture 路由，不能进入生产 app。Vite 仅 `--mode content-test` 时代理到 3801，前端端口 5174，生产配置不变；测试 DB/MinIO 仍使用 Task 1 的显式隔离地址。首次执行 `npm --prefix client exec -- playwright install chromium`，不把安装浏览器混入生产构建。
+- [ ] **Step 2 — 隔离浏览器环境。** 安装固定 Playwright 开发依赖。测试后端导入 app，端口 3801，不启动 index/定时器；只在测试 runner 装配 fixture 路由，不能进入生产 app。Vite 仅 `--mode content-test` 时代理到 3801，前端端口 5179，生产配置不变；测试 DB/MinIO 仍使用 Task 1 的显式隔离地址。首次执行 `npm --prefix client exec -- playwright install chromium`，不把安装浏览器混入生产构建。
 - [ ] **Step 3 — 运行 RED 后修复归属任务。** `npm --prefix client run test:e2e`；预期未覆盖的真实交互或缺失行为明确失败。按失败归属修复相应任务的代码并补最小回归测试，不以降低断言或删掉恢复/权限场景来达成通过。手工补验真实系统输入法、块拖动、表格粘贴和窄屏阅读，截图记录实际页面。
 - [ ] **Step 4 — 性能。** 固定 1,000 文本块+10 图片+3 绘图块的文档，以及 500 元素+10 图片的画布。4 核/8 GB 桌面 Chrome，网络 20 Mbps/50ms；数据就绪后可交互不超过 3 秒，普通保存确认 P95≤2秒，至少采样 30 次；首次图片传输另列。通过组件挂载统计确认正文不同时初始化多套 Excalidraw；模拟资源不可用时仍可读到明确错误，不白屏覆盖原数据。
 - [ ] **Step 5 — 迁移与回退说明。** 记录旧库无 Prisma migration history 的处理：先只读 diff 真实数据库与 `8cde088` 基线，差异未解释前不标记 baseline；核实后才允许 `migrate resolve --applied 00000000000000_baseline`，再 `migrate deploy` 应用新增迁移。发布前备份数据库、MinIO 和部署配置并试恢复；锁文件 npm ci、Node 20 构建、产物校验、进程/公网检查沿用既有方式。回退代码不删除新增表或对象，新数据仍保留。文档列出准备好的包、迁移 SQL 与验证结果，等待单独发布指令。

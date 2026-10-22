@@ -1,0 +1,23 @@
+import {test,expect,API} from './fixtures';
+test('server document, editable embedded drawing, refresh, immutable history and restore',async({page,request,content,token},testInfo)=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.addInitScript(value=>{localStorage.setItem('token',value);localStorage.setItem('theme','light');},token);
+ const headers={Authorization:`Bearer ${token}`};
+ await page.goto('documents');await page.getByRole('button',{name:'新建文档',exact:true}).click();
+ await page.getByLabel('内容名称').fill('E2E 服务器说明');await page.getByLabel('初始模板').selectOption('servers');await page.getByRole('button',{name:'创建并打开',exact:true}).click();
+ await page.waitForURL(/\/documents\/[a-f0-9-]+$/);const documentId=page.url().split('/').pop()!;
+ await expect(page.locator('.bn-editor')).toBeVisible();await expect(page.getByLabel('文章目录')).toContainText('服务器清单');await expect(page.getByRole('columnheader',{name:'IP/域名',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'插入绘图',exact:true}).click();const picker=page.getByRole('dialog',{name:'插入绘图',exact:true});await picker.getByLabel('新图名称').fill('E2E 部署图');await picker.getByRole('button',{name:'新建独立绘图并插入',exact:true}).click();
+ await expect(page.getByText('跟随最新 v1',{exact:true})).toBeVisible();
+ const documentView=await (await request.get(`${API}/documents/${documentId}`,{headers})).json();const drawingBlock=documentView.data.payload.blocks.find((block:any)=>block.type==='drawing');expect(drawingBlock).toBeTruthy();const drawingId=drawingBlock.props.drawingId;
+ await page.getByRole('button',{name:'编辑原图',exact:true}).click();const drawer=page.getByRole('dialog',{name:'编辑原图',exact:true});await expect(drawer.locator('.excalidraw')).toBeVisible();
+ const rectangle=drawer.getByRole('radio',{name:'矩形',exact:true});await drawer.getByTitle('矩形 — R 或 2',{exact:true}).click();await expect(rectangle).toBeChecked();const canvas=drawer.locator('.excalidraw canvas').last();const box=await canvas.boundingBox();expect(box).toBeTruthy();
+ await page.mouse.move(box!.x+box!.width*.42,box!.y+box!.height*.42);await page.mouse.down();await page.mouse.move(box!.x+box!.width*.62,box!.y+box!.height*.62,{steps:8});await page.mouse.up();
+ await expect.poll(async()=>{const value=await(await request.get(`${API}/drawings/${drawingId}`,{headers})).json();return value.data.payload.elements.filter((e:any)=>e.type==='rectangle'&&!e.isDeleted).length;}).toBe(1);
+ const drawingSaved=await(await request.get(`${API}/drawings/${drawingId}`,{headers})).json();const originalElement=drawingSaved.data.payload.elements[0];
+ await drawer.getByRole('button',{name:'关闭绘图',exact:true}).click();await expect(drawer).toBeHidden();await expect(page.getByText('跟随最新 v2',{exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByText('跟随最新 v2',{exact:true})).toBeVisible();await page.screenshot({path:testInfo.outputPath('document-with-drawing.png'),fullPage:true});
+ await page.getByRole('button',{name:'历史版本',exact:true}).click();const history=page.getByRole('dialog',{name:'历史版本',exact:true});await expect(history.getByText('图为该次正文保存时的快照')).toBeVisible();await history.getByRole('button',{name:/^v1 ·/}).click();await expect(history.getByText('所选版本 v1')).toBeVisible();await history.getByRole('button',{name:'恢复到此版本',exact:true}).click();await expect(history).toBeHidden();
+ const after=await(await request.get(`${API}/drawings/${drawingId}`,{headers})).json();expect(after.data.payload.elements[0]).toEqual(originalElement);expect(after.data.version).toBe(2);
+ expect(errors).toEqual([]);
+});

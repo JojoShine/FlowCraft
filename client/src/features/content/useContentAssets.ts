@@ -11,8 +11,8 @@ export function createAssetSession(identity:string,currentIdentity:()=>string,up
   dispose:()=>{disposed=true;for(const controller of controllers) controller.abort();for(const url of urls) URL.revokeObjectURL(url);controllers.clear();urls.clear();},
  };
 }
-export function useContentAssets(identity:DraftKey) {
- const identityKey=JSON.stringify(identity),current=useRef(identityKey);current.current=identityKey;
+export function useContentAssets(identity:DraftKey|string) {
+ const identityKey=typeof identity==='string'?identity:JSON.stringify(identity),current=useRef(identityKey);current.current=identityKey;
  const session=useMemo(()=>createAssetSession(identityKey,()=>current.current),[identityKey]);
  useEffect(()=>()=>session.dispose(),[session]);return session;
 }

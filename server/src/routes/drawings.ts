@@ -1,4 +1,5 @@
 import express,{Router} from 'express';
+import {z} from 'zod';
 import {AppError} from '../middleware/errorHandler';
 import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
@@ -14,7 +15,7 @@ router.get('/:id/revisions',asyncHandler(async(req,res)=>{res.json(successRespon
 router.get('/:id/revisions/:version',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.revision(req.user!,req.params.id as string,parse(versionInput,req.params.version))));}));
 router.post('/:id/restore',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.restore(req.user!,req.params.id as string,parse(restoreInput,req.body))));}));
 router.get('/:id/references',asyncHandler(async(req,res)=>{res.json(successResponse(await listDrawingReferences(req.user!,req.params.id as string)));}));
-router.post('/:id/duplicate',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await duplicateDrawing(req.user!,req.params.id as string)));}));
+router.post('/:id/duplicate',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await duplicateDrawing(req.user!,req.params.id as string,parse(z.object({revision:versionInput.optional()}),req.body||{}).revision)));}));
 router.post('/:id/undelete',asyncHandler(async(req,res)=>{res.json(successResponse(await undeleteContent(req.user!,'drawing',req.params.id as string)));}));
 router.get('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.read(req.user!,req.params.id as string)));}));
 router.patch('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.save(req.user!,req.params.id as string,parse(saveInput,req.body) as any)));}));

@@ -18,7 +18,7 @@ export function normalizeDocument(input:unknown):DocumentBody {
   if(b.type==='documentLink'&&typeof b.props?.documentId!=='string') return fail('文档链接无效');
   return {...b,id:b.id,type:b.type,children:b.children?blocks(b.children,depth+1):[]};
  });}
- return {formatVersion:1,blocks:blocks(input.blocks)};
+ const result:DocumentBody={formatVersion:1,blocks:blocks(input.blocks)};byteLimit(result,DOCUMENT_LIMIT);return result;
 }
 const persistentState=['viewBackgroundColor','gridSize','gridStep','gridModeEnabled'];
 export function normalizeScene(input:unknown):DrawingScene {
@@ -27,7 +27,7 @@ export function normalizeScene(input:unknown):DrawingScene {
  const ids=new Set();
  for(const e of input.elements) {if(!object(e)||typeof e.id!=='string'||ids.has(e.id)||['embeddable','iframe'].includes(e.type)) return fail('画布元素无效');ids.add(e.id);}
  for(const f of Object.values(input.files)) if(!object(f)||typeof f.assetId!=='string'||Object.keys(f).some(k=>k!=='assetId')) return fail('图片必须先完成上传');
- for(const e of input.elements) if(e.type==='image'&&!e.isDeleted&&(!e.fileId||!input.files[e.fileId])) return fail('画布缺少图片');
+ for(const e of input.elements) if(e.type==='image'&&!e.isDeleted&&(!e.fileId||['__proto__','constructor','prototype'].includes(e.fileId)||!Object.prototype.hasOwnProperty.call(input.files,e.fileId))) return fail('画布缺少图片');
  const appState:Record<string,any>={};for(const k of persistentState) if(input.appState[k]!==undefined) appState[k]=input.appState[k];
  return {formatVersion:1,elements:input.elements,appState,files:input.files};
 }
@@ -39,4 +39,7 @@ export function validateSave(input:any) {if(!object(input)||!Number.isInteger(in
 export function walkBlocks(blocks:BlockJSON[],fn:(b:BlockJSON)=>void) {for(const b of blocks) {fn(b);walkBlocks(b.children||[],fn);}}
 export function drawingReferences(body:DocumentBody):DrawingReference[] {const refs:DrawingReference[]=[];walkBlocks(body.blocks,b=>{if(b.type==='drawing') refs.push({blockId:b.id,drawingId:b.props!.drawingId,mode:b.props!.mode,revision:b.props!.mode==='pinned'?b.props!.revision:null});});return refs;}
 export function documentAssetIds(body:DocumentBody):string[] {const ids=new Set<string>();walkBlocks(body.blocks,b=>{if(['image','file'].includes(b.type)&&b.props?.assetId) ids.add(b.props.assetId);});return [...ids];}
-export function documentText(body:DocumentBody):string {const texts:string[]=[];walkBlocks(body.blocks,b=>{if(b.content) texts.push(JSON.stringify(b.content));});return texts.join(' ');}
+export function documentText(body:DocumentBody):string {
+ function text(content:any):string {if(typeof content==='string') return content;if(Array.isArray(content)) return content.map(text).filter(Boolean).join(' ');if(!content||typeof content!=='object') return '';if(typeof content.text==='string') return content.text;if(content.rows) return content.rows.map((row:any)=>text(row.cells)).join(' ');return text(content.content);}
+ const texts:string[]=[];walkBlocks(body.blocks,b=>{const value=text(b.content);if(value) texts.push(value);});return texts.join(' ');
+}

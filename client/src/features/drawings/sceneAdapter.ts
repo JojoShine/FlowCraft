@@ -4,8 +4,8 @@ export interface HydratedScene {elements:Record<string,any>[];appState:Record<st
 const persistentKeys=['viewBackgroundColor','gridSize','gridStep','gridModeEnabled'];
 export function sceneToPayload(elements:readonly Record<string,any>[],appState:Record<string,any>,files:BinaryFileMap,assets:Record<string,string>):DrawingScene {
  if(elements.some(e=>['embeddable','iframe'].includes(e.type))) throw new Error('暂不支持嵌入外部网页');
- const persistedFiles:DrawingScene['files']={};
- for(const element of elements) if(element.type==='image'&&!element.isDeleted) {const id=element.fileId;if(!id||!files[id]||!assets[id]) throw new Error('画布图片缺失或未上传完成');persistedFiles[id]={assetId:assets[id]};}
+ const persistedFiles:DrawingScene['files']=Object.create(null);
+ for(const element of elements) if(element.type==='image'&&!element.isDeleted) {const id=element.fileId;if(!id||['__proto__','constructor','prototype'].includes(id)||!Object.prototype.hasOwnProperty.call(files,id)||typeof assets[id]!=='string') throw new Error('画布图片缺失或未上传完成');persistedFiles[id]={assetId:assets[id]};}
  const persistedState=Object.fromEntries(persistentKeys.filter(k=>appState[k]!==undefined).map(k=>[k,appState[k]]));
  const scene:DrawingScene={formatVersion:1,elements:[...elements],appState:persistedState,files:persistedFiles};
  if(new TextEncoder().encode(JSON.stringify(scene)).byteLength>10*1024*1024) throw new Error('画布场景超过 10 MiB');return scene;
@@ -33,6 +33,10 @@ export async function importExcalidraw(file:File):Promise<{scene:DrawingScene;pe
 }
 export async function exportDrawing(scene:HydratedScene,format:'excalidraw'|'png'|'svg'):Promise<Blob> {
  if(format==='excalidraw') return new Blob([JSON.stringify({type:'excalidraw',version:2,source:'FlowCraft',elements:scene.elements,appState:scene.appState,files:scene.files},null,2)],{type:'application/json'});
+ if(!scene.elements.some(element=>!element.isDeleted)&&format==='svg') {
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width','1000');svg.setAttribute('height','600');
+  const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');rect.setAttribute('width','1000');rect.setAttribute('height','600');rect.setAttribute('fill',scene.appState.viewBackgroundColor||'#ffffff');svg.appendChild(rect);return new Blob([svg.outerHTML],{type:'image/svg+xml'});
+ }
  const {exportToBlob,exportToSvg}=await import('@excalidraw/excalidraw');
  const options={elements:scene.elements as any,appState:{...scene.appState,exportBackground:true,exportEmbedScene:false},files:scene.files as any};
  if(format==='png') return exportToBlob({...options,mimeType:'image/png'});

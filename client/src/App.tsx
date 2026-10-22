@@ -17,6 +17,11 @@ const Templates = lazy(() => import('./pages/Templates').then(module => ({ defau
 const Reports = lazy(() => import('./pages/Reports').then(module => ({ default: module.Reports })));
 const SharedArtifact = lazy(() => import('./pages/SharedArtifact').then(module => ({ default: module.SharedArtifact })));
 
+const Documents = lazy(() => import('./pages/Documents').then(m => ({default:m.Documents})));
+const DocumentPage = lazy(() => import('./pages/DocumentPage').then(m => ({default:m.DocumentPage})));
+const Drawings = lazy(() => import('./pages/Drawings').then(m => ({default:m.Drawings})));
+const DrawingPage = lazy(() => import('./pages/DrawingPage').then(m => ({default:m.DrawingPage})));
+
 function PageFallback() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: 'var(--ink-3)', fontSize: 13 }}>
@@ -49,6 +54,10 @@ function App() {
                     <Route path="kanban" element={<Kanban />} />
                     <Route path="templates" element={<Templates />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="documents" element={<Documents />} />
+                    <Route path="documents/:id" element={<DocumentPage />} />
+                    <Route path="drawings" element={<Drawings />} />
+                    <Route path="drawings/:id" element={<DrawingPage />} />
                   </Route>
                   </Routes>
                 </Suspense>

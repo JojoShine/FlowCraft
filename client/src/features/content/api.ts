@@ -20,7 +20,7 @@ export const documentsApi={...resource<DocumentBody,DocumentRevisionDto>('/docum
 };
 export const drawingsApi={...resource<DrawingScene,DrawingRevisionDto>('/drawings'),
  putPreview:async(id:string,version:number,digest:string,svg:Blob):Promise<AssetDto>=>(await api.put(`/drawings/${id}/revisions/${version}/preview`,svg,{headers:{'Content-Type':'image/svg+xml','X-Content-Digest':digest}})).data,
- duplicate:async(id:string):Promise<ContentView<DrawingScene>>=>(await api.post(`/drawings/${id}/duplicate`)).data,
+ duplicate:async(id:string,revision?:number):Promise<ContentView<DrawingScene>>=>(await api.post(`/drawings/${id}/duplicate`,{revision})).data,
  references:async(id:string):Promise<DocumentReferenceDto[]>=>(await api.get(`/drawings/${id}/references`)).data,
 };
 export const contentAssetsApi={

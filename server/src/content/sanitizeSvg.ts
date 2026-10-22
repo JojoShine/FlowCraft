@@ -9,12 +9,13 @@ export function sanitizeSvg(input:Buffer):Buffer {
   const parsed=new window.DOMParser().parseFromString(source,'image/svg+xml');const svg=parsed.documentElement;
   if(svg.localName!=='svg'||parsed.querySelector('parsererror')) throw AppError.badRequest('SVG 格式无效');
   const purifier=createDOMPurify(window as any);
-  const cleaned=purifier.sanitize(svg.outerHTML,{USE_PROFILES:{svg:true,svgFilters:true},FORBID_TAGS:['script','foreignObject','style','iframe','object','embed','animate','animateMotion','animateTransform','set','feImage','a'],FORBID_ATTR:['onload','onclick'],ADD_DATA_URI_TAGS:['image']});
+  const cleaned=purifier.sanitize(svg.outerHTML,{USE_PROFILES:{svg:true,svgFilters:true},FORBID_TAGS:['script','foreignObject','style','iframe','object','embed','animate','animateMotion','animateTransform','set','feImage','a'],FORBID_ATTR:['style','onload','onclick'],ADD_DATA_URI_TAGS:['image']});
   const doc=new window.DOMParser().parseFromString(cleaned,'image/svg+xml');const root=doc.documentElement;
   for(const element of [root,...Array.from(root.querySelectorAll('*'))]) {
    for(const attr of Array.from(element.attributes)) {
     const name=attr.localName.toLowerCase(),value=attr.value;
-    if(name.startsWith('on')||/@import|expression\s*\(|url\s*\(/i.test(value)) {element.removeAttributeNode(attr);continue;}
+    const externalUrl=[...value.matchAll(/url\s*\(([^)]*)\)/gi)].some(match=>!/^['"]?#[a-zA-Z0-9_.:-]+['"]?$/.test(match[1].trim()));
+    if(name.startsWith('on')||/@import|expression\s*\(/i.test(value)||externalUrl||['fill','stroke','filter','mask','clip-path','cursor'].includes(name)&&value.includes('\\')) {element.removeAttributeNode(attr);continue;}
     if(name==='href') {
      if(value.startsWith('#')) continue;
      if(element.localName!=='image'||!safeRasterData(value)) element.removeAttributeNode(attr);

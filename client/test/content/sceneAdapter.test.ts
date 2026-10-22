@@ -15,3 +15,7 @@ it('native import keeps binary images pending for a new drawing and rejects miss
  await expect(importExcalidraw(new File([JSON.stringify({...source,files:{}})],'bad.excalidraw'))).rejects.toThrow(/图片/);
  await expect(importExcalidraw(new File([JSON.stringify({...source,files:{file:{dataURL:'data:image/svg+xml;base64,PHN2Zz4=',mimeType:'image/svg+xml'}}})],'bad.excalidraw'))).rejects.toThrow();
 });
+
+it('blank drawings export a usable SVG preview',async()=>{
+ const blob=await exportDrawing({elements:[],appState:{viewBackgroundColor:'#ffffff'},files:{}},'svg');expect(await blob.text()).toContain('<svg');expect(blob.type).toBe('image/svg+xml');
+});

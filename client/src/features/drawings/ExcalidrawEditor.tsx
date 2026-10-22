@@ -1,3 +1,4 @@
+import {useContentTheme} from '../content/useContentTheme';
 import {useEffect,useRef,useState} from 'react';
 import {Excalidraw} from '@excalidraw/excalidraw';
 import type {ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types';
@@ -8,6 +9,7 @@ import '@excalidraw/excalidraw/index.css';
 (window as any).EXCALIDRAW_ASSET_PATH=`${import.meta.env.BASE_URL}excalidraw/`;
 interface Props {view:ContentView<DrawingScene>;onChange:(title:string,payload:DrawingScene)=>void;onComposition:(value:boolean)=>void;readAsset?:(id:string)=>Promise<Blob>;upload?:(file:File,fileId:string)=>Promise<AssetDto>}
 export function ExcalidrawEditor(props:Props) {
+ const theme=useContentTheme();
  const current=useRef(props);current.current=props;
  const [initial,setInitial]=useState<HydratedScene|null>(null),[error,setError]=useState('');
  const stencilsLoaded=useRef(false);
@@ -21,7 +23,7 @@ export function ExcalidrawEditor(props:Props) {
   for(const [id,ref] of Object.entries(props.view.payload.files)) if(!ref.assetId.startsWith('pending:')) assets.current[id]=ref.assetId;
   hydrateScene(props.view.payload,id=>current.current.readAsset?current.current.readAsset(id):Promise.reject(new Error('图片无法读取'))).then(scene=>{
    if(!active) return;latest.current=scene;lastPublished.current=JSON.stringify(props.view.payload);
-   if(api.current) {api.current.addFiles(Object.values(scene.files) as any);api.current.updateScene({elements:scene.elements as any,appState:scene.appState as any});}else setInitial(scene);
+   if(api.current) {initialized.current=false;api.current.addFiles(Object.values(scene.files) as any);api.current.updateScene({elements:scene.elements as any,appState:scene.appState as any});}else setInitial(scene);
    hydrating.current=false;
   }).catch(e=>{if(active) {setError(e.message);hydrating.current=false;}});
   return ()=>{active=false;};
@@ -48,6 +50,6 @@ export function ExcalidrawEditor(props:Props) {
  }
  return <div className="flowcraft-drawing-editor" style={{height:'100%',minHeight:500,position:'relative'}} onCompositionStart={()=>props.onComposition(true)} onCompositionEnd={()=>props.onComposition(false)}>
   {error&&<p className="content-warning" role="alert">{error}</p>}
-  {initial?<Excalidraw initialData={initial as any} excalidrawAPI={value=>{api.current=value;if(current.current.view.canEdit&&!stencilsLoaded.current) {stencilsLoaded.current=true;void drawingStencils().then(items=>{if(mounted.current) return value.updateLibrary({libraryItems:items as any});}).catch(error=>setError(error.message));}}} onChange={change as any} langCode="zh-CN" theme="light" viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
+  {initial?<Excalidraw initialData={initial as any} excalidrawAPI={value=>{api.current=value;if(current.current.view.canEdit&&!stencilsLoaded.current) {stencilsLoaded.current=true;void drawingStencils().then(items=>{if(mounted.current) return value.updateLibrary({libraryItems:items as any});}).catch(error=>setError(error.message));}}} onChange={change as any} langCode="zh-CN" theme={theme} viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
  </div>;
 }

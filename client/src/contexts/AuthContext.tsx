@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authApi.getMe()
       .then((res) => { if (localStorage.getItem('token') === token) setUser(res.data); })
       .catch(() => {
-        localStorage.removeItem('token');
+        if (localStorage.getItem('token') === token) localStorage.removeItem('token');
       })
       .finally(() => setLoading(false));
   }, []);

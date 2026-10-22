@@ -18,3 +18,8 @@ it('svg_export_removes_active_and_external_content without executing or fetching
  const safe=sanitizeSvg(dirty).toString();expect(safe).not.toMatch(/script|foreignObject|onload|onclick|evil\.example|@import/);expect(safe).toContain('<svg');
  expect(()=>sanitizeSvg(Buffer.from('<!DOCTYPE svg [<!ENTITY a "bad">]><svg/>'))).toThrow();
 });
+
+it('SVG CSS escapes cannot hide external resource references',()=>{
+ const dirty=Buffer.from(String.raw`<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:u\72l(https://evil.example/x)" width="10" height="10"/></svg>`);
+ expect(sanitizeSvg(dirty).toString()).not.toMatch(/evil\.example|style=/);
+});

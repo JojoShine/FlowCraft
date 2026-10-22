@@ -30,8 +30,12 @@ api.interceptors.response.use(
       : serverError?.message;
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.dispatchEvent(new Event('auth:logout'));
+      const currentToken = localStorage.getItem('token');
+      const requestToken = error.config?.headers?.get?.('Authorization') || error.config?.headers?.Authorization;
+      if (!currentToken || requestToken === `Bearer ${currentToken}`) {
+        localStorage.removeItem('token');
+        window.dispatchEvent(new Event('auth:logout'));
+      }
       return Promise.reject(error);
     }
 

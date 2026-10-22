@@ -19,3 +19,5 @@ server/scripts/sync-task-status.ts
 
 # Generated local Excalidraw font assets
 client/public/excalidraw/
+client/test-results/
+client/playwright-report/
