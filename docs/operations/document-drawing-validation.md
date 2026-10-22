@@ -39,6 +39,8 @@ Node 20.19.5：服务端 9 个单元测试、26 个数据库/MinIO 集成测试�
 - Final: Ruling: exact four-core/eight-GB hardware certification set aside by reviewer — actual M2/24GiB measurements and CDP settings are disclosed — target-machine performance remains unverified.
 - Final: Ruling: pre-existing authentication fallback secret set aside by reviewer — not changed in this scoped feature patch; new export signing refuses missing JWT_SECRET and release guidance requires preserving configured secret — legacy authentication risk when misconfigured remains outside this patch.
 
+- Final: Ruling: automatic approval rejected recursive removal of this plan workspace as destructive cleanup without explicit authorization — preserve the directory and complete all non-destructive archiving — only generated local scratch storage remains; no feature or verification is blocked.
+
 ## 独立评审
 
 独立评审：gpt-6-astra / high，审阅基线 c0108d4..ab1caf3，结论 With fixes；未发现确认的 Critical，提出 3 个 Important 和 1 个 Minor。按约定完成一次修复，不另派第二轮审阅。
@@ -58,3 +60,5 @@ Node 20.19.5：服务端 9 个单元测试、26 个数据库/MinIO 集成测试�
 被忽略的 deploy/local-review/ 内包含两个构建归档、SHA256SUMS、manifest.json、evidence/verification.log、browser-results.json、performance-baseline.json 和桌面/窄屏截图。它们不包含 .env 或 node_modules；构建包不能替代目标环境的 npm ci、prisma generate、备份和迁移审阅。
 
 迁移与回退步骤见 [发布准备](document-drawing-release.md)。没有执行任何生产预检、备份、迁移或发布；发布须另行指示。
+
+自动审批拒绝删除执行记录目录，理由为未经明确授权的递归清理；已保留整个目录，并完成其余归档，无需为完成本地功能清理它。
