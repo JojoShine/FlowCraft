@@ -1,5 +1,5 @@
 import {randomUUID,createHash} from 'crypto';
-import {Transform} from 'stream';
+import {Transform,Readable} from 'stream';
 import {pipeline} from 'stream/promises';
 import {Prisma} from '@prisma/client';
 import {prisma} from '../lib/prisma';
@@ -36,4 +36,13 @@ export async function uploadContentAsset(actor:Actor,input:AssetUploadInput):Pro
   await prisma.contentAsset.update({where:{id},data:{state:'failed'}});
   throw error;
  }
+}
+
+export async function storeDrawingPreviewAsset(actor:Actor,projectId:string,svg:Buffer):Promise<AssetDto> {
+ await requireContentOwner(actor,projectId);
+ const id=randomUUID(),objectKey=`content/${projectId}/${id}`;
+ const data={id,projectId,creatorId:actor.id,objectKey,category:'preview',originalName:'preview.svg',mimeType:'image/svg+xml',bytes:svg.length,digest:createHash('sha256').update(svg).digest('hex'),state:'uploading'};
+ await prisma.contentAsset.create({data});
+ try {await uploadFileStream(Readable.from(svg),objectKey,data.mimeType,svg.length);await prisma.contentAsset.update({where:{id},data:{state:'complete'}});return {id,mimeType:data.mimeType,bytes:svg.length,state:'complete'};}
+ catch(error) {await deleteFile(objectKey).catch(()=>{});await prisma.contentAsset.update({where:{id},data:{state:'failed'}});throw error;}
 }

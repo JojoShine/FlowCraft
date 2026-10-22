@@ -2,6 +2,8 @@ import {Prisma} from '@prisma/client';
 import {prisma} from '../lib/prisma';
 import {AppError} from '../middleware/errorHandler';
 import {requireContentRead,requireContentOwner,readableProjectWhere} from './authorization';
+import {sanitizeSvg} from './sanitizeSvg';
+import {storeDrawingPreviewAsset} from './assetService';
 import {validateAssetReferences} from './assetService';
 import {runContentTransaction,replayReceipt,recordReceipt,pageNumber} from './revisions';
 import {normalizeScene,contentDigest,requestDigest,validateTitle,validateSave} from './validation';
@@ -66,3 +68,16 @@ export const drawingService={
   const r=await prisma.drawingRevision.findUnique({where:{drawingId_version:{drawingId:id,version}}});if(!r) throw AppError.notFound('版本不存在');return {...view(d,r,actor),digest:r.digest,source:r.source,restoredFrom:r.restoredFrom};
  }
 };
+
+export async function saveDrawingPreview(actor:Actor,id:string,version:number,digest:string,svg:Buffer) {
+ const d=await drawing(prisma,actor,id,true);
+ const revision=await prisma.drawingRevision.findUnique({where:{drawingId_version:{drawingId:id,version}},include:{previewAsset:true}});
+ if(!revision) throw AppError.notFound('版本不存在');if(revision.digest!==digest) throw AppError.conflict('预览与场景版本不一致');
+ if(revision.previewAsset?.state==='complete') return {id:revision.previewAsset.id,mimeType:revision.previewAsset.mimeType,bytes:revision.previewAsset.bytes,state:'complete' as const};
+ const asset=await storeDrawingPreviewAsset(actor,d.projectId,sanitizeSvg(svg));
+ return runContentTransaction(async tx=>{
+  await drawing(tx,actor,id,true);const current=await tx.drawingRevision.findUniqueOrThrow({where:{drawingId_version:{drawingId:id,version}}});
+  if(current.digest!==digest) throw AppError.conflict('预览与场景版本不一致');
+  await tx.drawingRevision.update({where:{id:current.id},data:{previewAssetId:asset.id}});return asset;
+ });
+}

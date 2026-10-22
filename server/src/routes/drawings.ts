@@ -1,7 +1,8 @@
-import {Router} from 'express';
+import express,{Router} from 'express';
+import {AppError} from '../middleware/errorHandler';
 import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
-import {drawingService} from '../content/drawingService';
+import {drawingService,saveDrawingPreview} from '../content/drawingService';
 import {listDrawingReferences} from '../content/referenceResolver';
 import {duplicateDrawing,trashContent,listTrashContent,undeleteContent} from '../content/lifecycleService';
 import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from './contentHttp';
@@ -18,4 +19,9 @@ router.post('/:id/undelete',asyncHandler(async(req,res)=>{res.json(successRespon
 router.get('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.read(req.user!,req.params.id as string)));}));
 router.patch('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.save(req.user!,req.params.id as string,parse(saveInput,req.body) as any)));}));
 router.delete('/:id',asyncHandler(async(req,res)=>{await trashContent(req.user!,'drawing',req.params.id as string);res.json(successResponse(null));}));
+router.put('/:id/revisions/:version/preview',express.raw({type:'image/svg+xml',limit:10*1024*1024}),asyncHandler(async(req,res)=>{
+ const digest=req.headers['x-content-digest'];if(typeof digest!=='string'||!Buffer.isBuffer(req.body)) throw AppError.badRequest('缺少场景摘要或 SVG');
+ res.json(successResponse(await saveDrawingPreview(req.user!,req.params.id as string,parse(versionInput,req.params.version),digest,req.body)));
+}));
+router.use((error:any,_req:express.Request,_res:express.Response,next:express.NextFunction)=>{next(error?.type==='entity.too.large'?new AppError('预览容量过大',413):error);});
 export default router;

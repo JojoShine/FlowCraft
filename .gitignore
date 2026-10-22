@@ -16,3 +16,6 @@ deploy/
 
 # One-off maintenance scripts (not part of product runtime)
 server/scripts/sync-task-status.ts
+
+# Generated local Excalidraw font assets
+client/public/excalidraw/

@@ -19,6 +19,7 @@ export const documentsApi={...resource<DocumentBody,DocumentRevisionDto>('/docum
  resolveEmbed:async(id:string,blockId:string,documentVersion?:number):Promise<ResolvedEmbed>=>(await api.get(`/documents/${id}/embeds/${blockId}`,{params:{documentVersion}})).data,
 };
 export const drawingsApi={...resource<DrawingScene,DrawingRevisionDto>('/drawings'),
+ putPreview:async(id:string,version:number,digest:string,svg:Blob):Promise<AssetDto>=>(await api.put(`/drawings/${id}/revisions/${version}/preview`,svg,{headers:{'Content-Type':'image/svg+xml','X-Content-Digest':digest}})).data,
  duplicate:async(id:string):Promise<ContentView<DrawingScene>>=>(await api.post(`/drawings/${id}/duplicate`)).data,
  references:async(id:string):Promise<DocumentReferenceDto[]>=>(await api.get(`/drawings/${id}/references`)).data,
 };
