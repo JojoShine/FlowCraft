@@ -26,3 +26,7 @@ test('expired login preserves owner draft and another account cannot recover it'
 test('deleted content cannot be resurrected by an old editor',async({page,request,content,token})=>{
  const doc=await create(request,token,content.project.id,content.body);await open(page,token,doc.id);expect((await request.delete(`${API}/documents/${doc.id}`,{headers:{Authorization:`Bearer ${token}`}})).status()).toBe(200);await page.getByLabel('文档标题').fill('旧编辑页更新');await save(page);await expect(page.getByText('内容已移入回收站',{exact:true})).toBeVisible();expect((await request.get(`${API}/documents/${doc.id}`,{headers:{Authorization:`Bearer ${token}`}})).status()).toBe(404);
 });
+
+test('a corrected blank title saves after the server rejects its earlier value',async({page,request,content,token})=>{
+ const doc=await create(request,token,content.project.id,content.body);await open(page,token,doc.id);await page.getByLabel('文档标题').fill('');await save(page);await expect(page.getByText('保存失败',{exact:true})).toBeVisible();await page.getByLabel('文档标题').fill('已修正的合法标题');await save(page);await expect(page.getByText('已保存到服务器',{exact:true})).toBeVisible();expect((await(await request.get(`${API}/documents/${doc.id}`,{headers:{Authorization:`Bearer ${token}`}})).json()).data.title).toBe('已修正的合法标题');
+});

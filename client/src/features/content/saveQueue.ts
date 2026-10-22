@@ -42,20 +42,23 @@ export function createSaveQueue<T>(options:SaveQueueOptions<T>) {
   if(!attempt) attempt={envelope:{baseVersion:state.version,requestId:crypto.randomUUID(),source,title:latest.title,payload:latest.payload},sequence:state.localSequence,controller:new AbortController()};
   const request=attempt,capturedEpoch=epoch;emit({phase:'saving',error:undefined});
   inFlight=(async()=>{
+   let confirmed=false;
    try {
     const ack=await options.save(request.envelope,request.controller.signal);
     if(disposed||capturedEpoch!==epoch) return null;
     if(ack.requestId!==request.envelope.requestId||!Number.isInteger(ack.version)||ack.version<request.envelope.baseVersion) throw new Error('服务器保存确认无效');
     attempt=null;
     emit({ackedSequence:request.sequence,version:ack.version,savedAt:ack.savedAt,lastAck:ack,phase:state.localSequence===request.sequence?'saved':'dirty'});
+    confirmed=true;
     if(state.localSequence===request.sequence) await removeDraft();else await persist();
     return ack;
    } catch(error:any) {
     if(disposed||capturedEpoch!==epoch) return null;
     const status=error.response?.status;
+    if([400,413].includes(status)) attempt=null;
     emit({phase:status===409?'conflict':status===401?'auth-paused':status===410||status===404?'deleted':navigator.onLine?'error':'offline',error:error.message||'保存失败，请重试'});
     await persist();return null;
-   } finally {inFlight=null;}
+   } finally {inFlight=null;if(confirmed&&!disposed&&!paused()&&state.localSequence!==state.ackedSequence) {emit({phase:'dirty'});schedule();}}
   })();return inFlight;
  }
  function pause(reason:'auth'|'conflict'|'deleted') {epoch++;stopTimers();attempt?.controller.abort();emit({phase:reason==='auth'?'auth-paused':reason});void persist();}
