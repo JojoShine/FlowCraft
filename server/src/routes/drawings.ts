@@ -1,5 +1,6 @@
 import express,{Router} from 'express';
 import {z} from 'zod';
+import {streamDrawingExport} from '../content/exportService';
 import {AppError} from '../middleware/errorHandler';
 import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
@@ -25,4 +26,5 @@ router.put('/:id/revisions/:version/preview',express.raw({type:'image/svg+xml',l
  res.json(successResponse(await saveDrawingPreview(req.user!,req.params.id as string,parse(versionInput,req.params.version),digest,req.body)));
 }));
 router.use((error:any,_req:express.Request,_res:express.Response,next:express.NextFunction)=>{next(error?.type==='entity.too.large'?new AppError('预览容量过大',413):error);});
+router.get('/:id/export',asyncHandler(async(req,res)=>{const version=req.query.version===undefined?undefined:parse(versionInput,req.query.version);res.set({'Content-Type':'application/json','Content-Disposition':'attachment; filename="drawing.excalidraw"','Cache-Control':'no-store'});try {await streamDrawingExport(req.user!,req.params.id as string,version,res);}catch(error){if(res.headersSent) res.destroy();else throw error;}}));
 export default router;

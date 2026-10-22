@@ -1,4 +1,5 @@
 import {Router} from 'express';
+import {createExportManifest,streamDocumentExport,streamMarkdownExport} from '../content/exportService';
 import {z} from 'zod';
 import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
@@ -19,4 +20,7 @@ router.post('/:id/undelete',asyncHandler(async(req,res)=>{res.json(successRespon
 router.get('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.read(req.user!,req.params.id as string)));}));
 router.patch('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.save(req.user!,req.params.id as string,parse(saveInput,req.body) as any)));}));
 router.delete('/:id',asyncHandler(async(req,res)=>{await trashContent(req.user!,'document',req.params.id as string);res.json(successResponse(null));}));
+router.post('/:id/export-manifest',asyncHandler(async(req,res)=>{const input=parse(z.object({version:versionInput.optional()}),req.body||{});res.json(successResponse(await createExportManifest(req.user!,req.params.id as string,input.version)));}));
+router.post('/:id/export',asyncHandler(async(req,res)=>{const {snapshotToken}=parse(z.object({snapshotToken:z.string()}),req.body);res.set({'Content-Type':'application/zip','Content-Disposition':'attachment; filename="document.zip"','Cache-Control':'no-store'});try {await streamDocumentExport(req.user!,req.params.id as string,snapshotToken,res);}catch(error){if(res.headersSent) res.destroy();else throw error;}}));
+router.get('/:id/export-markdown',asyncHandler(async(req,res)=>{const version=req.query.version===undefined?undefined:parse(versionInput,req.query.version);res.set({'Content-Type':'text/markdown; charset=utf-8','Content-Disposition':'attachment; filename="document.md"','Cache-Control':'no-store'});try {await streamMarkdownExport(req.user!,req.params.id as string,version,res);}catch(error){if(res.headersSent) res.destroy();else throw error;}}));
 export default router;

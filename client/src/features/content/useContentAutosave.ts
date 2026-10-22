@@ -3,7 +3,7 @@ import {createSaveQueue} from './saveQueue';
 import {draftStore} from './draftStore';
 import type {ContentView,DraftKey,LocalDraft,SaveAck,SaveEnvelope} from './types';
 export function contentDraftIdentity(userId:string,projectId:string,kind:DraftKey['kind'],id:string):DraftKey {
- let sessionId=sessionStorage.getItem('flowcraft-content-session');if(!sessionId) {sessionId=crypto.randomUUID();sessionStorage.setItem('flowcraft-content-session',sessionId);}return {userId,projectId,kind,id,sessionId};
+ return {userId,projectId,kind,id,sessionId:crypto.randomUUID()};
 }
 export function useContentAutosave<T>(identity:DraftKey,view:ContentView<T>,save:(input:SaveEnvelope<T>,signal:AbortSignal)=>Promise<SaveAck>) {
  const identityKey=JSON.stringify(identity),saveRef=useRef(save);saveRef.current=save;

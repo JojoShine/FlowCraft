@@ -7,7 +7,7 @@ function resource<T,R>(path:string) {
   create:async(input:CreateContentInput<T>):Promise<ContentView<T>>=>(await api.post(path,input)).data,
   save:async(id:string,input:SaveEnvelope<T>,signal?:AbortSignal):Promise<SaveAck>=>(await api.patch(`${path}/${id}`,input,{signal})).data,
   history:async(id:string,page=1):Promise<RevisionPage>=>(await api.get(`${path}/${id}/revisions`,{params:{page}})).data,
-  revision:async(id:string,version:number):Promise<R>=>(await api.get(`${path}/${id}/revisions/${version}`)).data,
+  revision:async(id:string,version:number,signal?:AbortSignal):Promise<R>=>(await api.get(`${path}/${id}/revisions/${version}`,{signal})).data,
   restore:async(id:string,input:RestoreInput):Promise<SaveAck>=>(await api.post(`${path}/${id}/restore`,input)).data,
   trash:async(id:string):Promise<void>=>{await api.delete(`${path}/${id}`);},
   trashList:async(params:ContentListQuery={}):Promise<Page<ContentSummary>>=>(await api.get(`${path}/trash`,{params})).data,
@@ -15,11 +15,15 @@ function resource<T,R>(path:string) {
  };
 }
 export const documentsApi={...resource<DocumentBody,DocumentRevisionDto>('/documents'),
+ exportManifest:async(id:string,version?:number,signal?:AbortSignal):Promise<{snapshotToken:string;documentVersion:number;resourceBytes:number;missingPreviews:{drawingId:string;version:number}[]}>=>(await api.post(`/documents/${id}/export-manifest`,{version},{signal})).data,
+ exportZip:async(id:string,snapshotToken:string,signal?:AbortSignal):Promise<Blob>=>(await api.post(`/documents/${id}/export`,{snapshotToken},{responseType:'blob',signal})).data,
+ exportMarkdown:async(id:string,version?:number,signal?:AbortSignal):Promise<Blob>=>(await api.get(`/documents/${id}/export-markdown`,{params:{version},responseType:'blob',signal})).data,
  duplicate:async(id:string,drawingMode:'reference'|'duplicate'='reference'):Promise<ContentView<DocumentBody>>=>(await api.post(`/documents/${id}/duplicate`,{drawingMode})).data,
  resolveEmbed:async(id:string,blockId:string,documentVersion?:number):Promise<ResolvedEmbed>=>(await api.get(`/documents/${id}/embeds/${blockId}`,{params:{documentVersion}})).data,
 };
 export const drawingsApi={...resource<DrawingScene,DrawingRevisionDto>('/drawings'),
- putPreview:async(id:string,version:number,digest:string,svg:Blob):Promise<AssetDto>=>(await api.put(`/drawings/${id}/revisions/${version}/preview`,svg,{headers:{'Content-Type':'image/svg+xml','X-Content-Digest':digest}})).data,
+ exportNative:async(id:string,version?:number,signal?:AbortSignal):Promise<Blob>=>(await api.get(`/drawings/${id}/export`,{params:{version},responseType:'blob',signal})).data,
+ putPreview:async(id:string,version:number,digest:string,svg:Blob,signal?:AbortSignal):Promise<AssetDto>=>(await api.put(`/drawings/${id}/revisions/${version}/preview`,svg,{headers:{'Content-Type':'image/svg+xml','X-Content-Digest':digest},signal})).data,
  duplicate:async(id:string,revision?:number):Promise<ContentView<DrawingScene>>=>(await api.post(`/drawings/${id}/duplicate`,{revision})).data,
  references:async(id:string):Promise<DocumentReferenceDto[]>=>(await api.get(`/drawings/${id}/references`)).data,
 };
