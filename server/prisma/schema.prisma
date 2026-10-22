@@ -21,6 +21,8 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  contentPreferences ContentPreference[]
+
   ownedProjects  Project[]      @relation("ProjectOwner")
   assignedTasks  Task[]         @relation("TaskAssignee")
   createdArtifacts Artifact[]   @relation("ArtifactCreator")
@@ -40,6 +42,10 @@ model Project {
   owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  documents Document[]
+  drawings Drawing[]
+  contentAssets ContentAsset[]
 
   phases    Phase[]
   tasks     Task[]
@@ -174,4 +180,132 @@ model Message {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId])
+}
+
+model Document {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Restrict)
+  parentId String?
+  parent Document? @relation("DocumentTree", fields:[parentId], references:[id], onDelete:Restrict)
+  children Document[] @relation("DocumentTree")
+  order Int @default(0)
+  title String
+  searchText String @default("")
+  currentVersion Int @default(1)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  revisions DocumentRevision[]
+  @@index([projectId,deletedAt,parentId,order])
+}
+model DocumentRevision {
+  id String @id @default(uuid())
+  documentId String
+  document Document @relation(fields:[documentId],references:[id],onDelete:Restrict)
+  version Int
+  title String
+  payload Json
+  digest String
+  source String
+  restoredFrom Int?
+  savedAt DateTime @default(now())
+  drawingReferences DocumentDrawingReference[]
+  assets DocumentRevisionAsset[]
+  @@unique([documentId,version])
+}
+model Drawing {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields:[projectId],references:[id],onDelete:Restrict)
+  title String
+  currentVersion Int @default(1)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  revisions DrawingRevision[]
+  @@index([projectId,deletedAt,updatedAt])
+}
+model DrawingRevision {
+  id String @id @default(uuid())
+  drawingId String
+  drawing Drawing @relation(fields:[drawingId],references:[id],onDelete:Restrict)
+  version Int
+  title String
+  payload Json
+  digest String
+  source String
+  restoredFrom Int?
+  savedAt DateTime @default(now())
+  previewAssetId String?
+  previewAsset ContentAsset? @relation("DrawingPreview",fields:[previewAssetId],references:[id],onDelete:Restrict)
+  references DocumentDrawingReference[]
+  assets DrawingRevisionAsset[]
+  @@unique([drawingId,version])
+}
+model DocumentDrawingReference {
+  id String @id @default(uuid())
+  documentRevisionId String
+  documentRevision DocumentRevision @relation(fields:[documentRevisionId],references:[id],onDelete:Restrict)
+  blockId String
+  drawingId String
+  mode String
+  revision Int
+  drawingRevision DrawingRevision @relation(fields:[drawingId,revision],references:[drawingId,version],onDelete:Restrict)
+  @@unique([documentRevisionId,blockId])
+  @@index([drawingId,revision])
+}
+model ContentAsset {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields:[projectId],references:[id],onDelete:Restrict)
+  creatorId String
+  objectKey String @unique
+  category String
+  originalName String
+  mimeType String
+  bytes Int
+  digest String
+  state String
+  createdAt DateTime @default(now())
+  documentRevisions DocumentRevisionAsset[]
+  drawingRevisions DrawingRevisionAsset[]
+  previews DrawingRevision[] @relation("DrawingPreview")
+  @@index([projectId,state])
+}
+model DocumentRevisionAsset {
+  documentRevisionId String
+  assetId String
+  documentRevision DocumentRevision @relation(fields:[documentRevisionId],references:[id],onDelete:Restrict)
+  asset ContentAsset @relation(fields:[assetId],references:[id],onDelete:Restrict)
+  @@id([documentRevisionId,assetId])
+}
+model DrawingRevisionAsset {
+  drawingRevisionId String
+  assetId String
+  drawingRevision DrawingRevision @relation(fields:[drawingRevisionId],references:[id],onDelete:Restrict)
+  asset ContentAsset @relation(fields:[assetId],references:[id],onDelete:Restrict)
+  @@id([drawingRevisionId,assetId])
+}
+model ContentSaveReceipt {
+  id String @id @default(uuid())
+  kind String
+  entityId String
+  requestId String
+  actorId String
+  requestDigest String
+  result Json
+  createdAt DateTime @default(now())
+  @@unique([kind,entityId,requestId])
+}
+model ContentPreference {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  kind String
+  entityId String
+  favorite Boolean @default(false)
+  lastViewedAt DateTime?
+  viewState Json @default("{}")
+  @@unique([userId,kind,entityId])
 }
