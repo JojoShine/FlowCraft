@@ -17,9 +17,20 @@ import searchRoutes from './routes/search';
 import aiRoutes from './routes/ai';
 import publicRoutes from './routes/public';
 
+import documentRoutes from './routes/documents';
+import drawingRoutes from './routes/drawings';
+import contentAssetRoutes from './routes/contentAssets';
+import contentPreferenceRoutes from './routes/contentPreferences';
+import {contentAuthenticate,contentParserError} from './routes/contentHttp';
 const app = express();
 
 app.use(cors());
+const contentPaths=['/api/v1/documents','/api/v1/drawings','/api/v1/content-assets','/api/v1/content-preferences'];
+app.use(contentPaths,contentAuthenticate);
+app.use('/api/v1/documents',express.json({limit:2*1024*1024+64*1024}));
+app.use('/api/v1/drawings',express.json({limit:10*1024*1024+64*1024}));
+app.use(['/api/v1/content-assets','/api/v1/content-preferences'],express.json());
+app.use(contentPaths,contentParserError);
 app.use(express.json());
 app.use(requestLogger);
 app.use(dateTransformMiddleware);
@@ -38,6 +49,10 @@ app.use('/api/v1/search', authenticate, searchRoutes);
 app.use('/api/v1/ai', authenticate, aiRoutes);
 app.use('/api/v1/public', publicRoutes);
 
+app.use('/api/v1/documents',documentRoutes);
+app.use('/api/v1/drawings',drawingRoutes);
+app.use('/api/v1/content-assets',contentAssetRoutes);
+app.use('/api/v1/content-preferences',contentPreferenceRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
