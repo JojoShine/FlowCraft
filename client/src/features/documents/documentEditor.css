@@ -1,0 +1,12 @@
+ .document-editor{min-width:0;max-width:960px;margin:auto;color:var(--text-primary,#252525)}
+.document-title,.document-editor>h1{font-family:inherit;font-size:32px;font-weight:600;line-height:1.4;margin:12px 0 24px;width:100%;border:0;outline:0;background:transparent;color:inherit;padding:0}
+.document-insert-tools{display:flex;gap:12px;align-items:center;margin:0 0 20px;font-size:12px;color:var(--text-secondary,#777)}
+.document-insert-tools button,.document-download,.document-copy-code{background:var(--canvas,#fafafa);border:1px solid var(--border,#ddd);border-radius:5px;padding:5px 9px;color:inherit;cursor:pointer}
+.document-editor .bn-container{font-family:inherit;--bn-colors-editor-background:var(--surface,#fff);--bn-colors-editor-text:var(--text-primary,#252525)}
+.document-editor .bn-editor{padding:0 36px 80px 18px}.document-editor [data-content-type="table"]{overflow:auto;max-width:100%}.document-editor table{min-width:600px}
+.document-editor [data-id]{scroll-margin-top:24px}.document-editor pre{overflow:auto}.document-copy-code{font-size:11px;margin-top:5px}
+.document-callout{display:flex;gap:12px;padding:16px;background:var(--canvas,#f7f7f7);border-radius:6px;width:100%}.document-link-block{padding:12px 16px;border:1px solid var(--border,#ddd);border-radius:6px;width:100%}.document-link-block a{color:inherit;text-decoration:none}
+.document-outline{width:210px;flex-shrink:0;font-size:12px;color:var(--text-secondary,#777);position:sticky;top:0;max-height:70vh;overflow:auto}.document-outline ol{list-style:none;padding:0}.document-outline li{margin:8px 0}.document-outline a{color:inherit;text-decoration:none}.document-outline a:hover{color:var(--text-primary,#222)}
+.document-list{list-style:none;margin:0;padding:0}.document-list li{border-bottom:1px solid var(--border,#eee)}.document-list button{width:100%;display:flex;gap:12px;align-items:center;padding:17px 12px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.document-list button:hover{background:var(--canvas,#fafafa)}.document-list time{margin-left:auto;color:var(--text-secondary,#888);font-size:12px}
+.document-zoom{max-width:90vw;max-height:88vh;object-fit:contain}.document-close-image{position:absolute;top:16px;right:20px}
+@media(max-width:900px){.document-outline{width:100%;position:static;max-height:240px}.document-editor .bn-editor{padding-left:0;padding-right:0}.document-title{font-size:26px}.document-insert-tools{flex-wrap:wrap}}

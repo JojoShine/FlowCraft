@@ -295,7 +295,7 @@ expect(save).toHaveBeenCalledTimes(1);
 
 **Interfaces:** Consumes Tasks 6–7. Produces `DocumentEditor({view:ContentView<DocumentBody>,onChange:(title:string,payload:DocumentBody)=>void,onComposition:(value:boolean)=>void,renderDrawing:(block:DrawingReference)=>ReactNode}):JSX.Element`；`DocumentList({items:ContentSummary[],onSelect}):JSX.Element`，onSelect:(id:string)=>void；`parseMarkdown(markdown:string):Promise<{body:DocumentBody;warnings:string[]}>`；`createDocumentTemplate(kind:'blank'|'servers'|'operations'):DocumentBody`。
 
-- [ ] **Step 1 — RED。** 测试 viewer 不能修改复选框/正文，标题目录来自当前块，页面移动不重建正文，Markdown 标题/代码/表格/缺失相对图片保留语义，非法链接不可执行。模板断言服务器七列名称与 spec 一致；复选块不调用 tasksApi。测试端传入 renderDrawing，真实绘图块由 Task 10 装配。
+- [ ] **Step 1 — RED。** 测试 viewer 不能修改复选框/正文，标题目录来自当前块，标题目录不拆分成其他文档，Markdown 标题/代码/表格/缺失相对图片保留语义，非法链接不可执行。模板断言服务器七列名称与 spec 一致；复选块不调用 tasksApi。测试端传入 renderDrawing，真实绘图块由 Task 10 装配。
 
 ```ts
 expect(JSON.stringify(createDocumentTemplate('servers'))).toContain('IP/域名');
