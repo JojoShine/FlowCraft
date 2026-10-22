@@ -12,7 +12,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.mts",
-    "dev:content-test": "tsx test/runtime.ts"
+    "dev:content-test": "tsx test/runtime.ts",
+    "content:schema-preflight": "tsx scripts/content-schema-preflight.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

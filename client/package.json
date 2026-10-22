@@ -10,7 +10,8 @@
     "test": "vitest run",
     "prebuild": "node scripts/copy-excalidraw-assets.mjs",
     "predev": "node scripts/copy-excalidraw-assets.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:performance": "playwright test performance.spec.ts"
   },
   "dependencies": {
     "@blocknote/ariakit": "0.56.0",
