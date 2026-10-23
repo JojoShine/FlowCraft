@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState,useCallback } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import {DocumentAssistantProvider} from '../../features/documents/DocumentAssistantContext';
 import { AIPanel } from './AIPanel';
 import { useProjectContext } from '../../contexts/ProjectContext';
 
@@ -30,10 +31,11 @@ export function Layout() {
   }
 
   const [aiOpen, setAiOpen] = useState(true);
+  const openDocumentAssistant=useCallback(()=>setAiOpen(true),[]);
   const contentRoute = /^\/(documents|drawings)(\/|$)/.test(location.pathname);
 
   return (
-    <div className={contentRoute ? "content-layout" : undefined} style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
+    <DocumentAssistantProvider onOpen={openDocumentAssistant}><div className={contentRoute ? "content-layout" : undefined} style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <Sidebar />
       <div className="flowcraft-main" style={{
         flex: 1,
@@ -51,6 +53,6 @@ export function Layout() {
         </main>
       </div>
       <AIPanel isOpen={aiOpen} onClose={() => setAiOpen(false)} />
-    </div>
+    </div></DocumentAssistantProvider>
   );
 }

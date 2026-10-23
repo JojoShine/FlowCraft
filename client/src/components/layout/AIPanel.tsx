@@ -4,6 +4,8 @@ import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
 import { useAIChat, type ToolCallInfo } from '../../hooks/useAIChat';
 import {useAuth} from '../../contexts/AuthContext';
+import {DocumentExpansionPanel} from '../../features/documents/DocumentExpansionPanel';
+import {useDocumentAssistant} from '../../features/documents/DocumentAssistantContext';
 import {TaskBreakdownPanel} from '../../features/tasks/TaskBreakdownPanel';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { TaskDrawer } from '../ui/TaskDrawer';
@@ -432,7 +434,10 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
 
   const { selectedProjectId,projects } = useProjectContext();
   const {user}=useAuth();
-  const [mode,setMode]=useState<'chat'|'tasks'>('chat');
+  const [mode,setMode]=useState<'chat'|'tasks'|'document'>('chat');
+  const documentAssistant=useDocumentAssistant();
+  useEffect(()=>{if(documentAssistant.request&&documentAssistant.target?.canEdit) setMode('document');},[documentAssistant.request]);
+  useEffect(()=>{if(!documentAssistant.target?.canEdit&&mode==='document') setMode('chat');},[documentAssistant.target,mode]);
   const [addedTasks,setAddedTasks]=useState<number|null>(null);
   const navigate = useNavigate();
 
@@ -684,8 +689,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
         </div>
       </div>
 
-      {mode==='tasks'?<TaskBreakdownPanel projects={projects.filter(project=>project.ownerId===user?.id)} initialProjectId={selectedProjectId||undefined} onClose={()=>{setMode('chat');notifyDataChange('tasks');}} onCreated={count=>{notifyDataChange('tasks');setAddedTasks(count);setMode('chat');}}/>:<>
-      {user?.role==='admin'&&<div style={{padding:'12px 18px',borderBottom:'1px solid var(--border-subtle)'}}><button onClick={()=>{setShowHistory(false);setAddedTasks(null);setMode('tasks');}} style={{height:32,padding:'0 12px',border:'1px solid var(--border-default)',borderRadius:6,background:'var(--surface)',color:'var(--ink)',font:'inherit',fontSize:13,cursor:'pointer'}}>拆任务</button>{addedTasks!==null&&<p role="status" style={{fontSize:12,color:'var(--ink-3)',margin:'8px 0 0'}}>已加入 {addedTasks} 项任务</p>}</div>}
+      {mode==='document'&&documentAssistant.target?<DocumentExpansionPanel key={`${user?.id}:${documentAssistant.target.id}`} target={documentAssistant.target} onClose={()=>setMode('chat')}/>:mode==='tasks'?<TaskBreakdownPanel projects={projects.filter(project=>project.ownerId===user?.id)} initialProjectId={selectedProjectId||undefined} onClose={()=>{setMode('chat');notifyDataChange('tasks');}} onCreated={count=>{notifyDataChange('tasks');setAddedTasks(count);setMode('chat');}}/>:<>
+      {user?.role==='admin'&&<div style={{padding:'12px 18px',borderBottom:'1px solid var(--border-subtle)'}}><button onClick={()=>{setShowHistory(false);setAddedTasks(null);setMode('tasks');}} style={{height:32,padding:'0 12px',border:'1px solid var(--border-default)',borderRadius:6,background:'var(--surface)',color:'var(--ink)',font:'inherit',fontSize:13,cursor:'pointer'}}>拆任务</button>{documentAssistant.target?.canEdit&&<button onClick={()=>{setShowHistory(false);setMode('document');}} style={{height:32,marginLeft:8,padding:'0 12px',border:'1px solid var(--border-default)',borderRadius:6,background:'var(--surface)',color:'var(--ink)',font:'inherit',fontSize:13,cursor:'pointer'}}>扩写文档</button>}{addedTasks!==null&&<p role="status" style={{fontSize:12,color:'var(--ink-3)',margin:'8px 0 0'}}>已加入 {addedTasks} 项任务</p>}</div>}
       {/* History dropdown */}
       {showHistory && (
         <div style={{

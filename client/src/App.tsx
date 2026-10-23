@@ -13,7 +13,6 @@ const Workbench = lazy(() => import('./pages/Workbench').then(module => ({ defau
 const ProjectPage = lazy(() => import('./pages/ProjectPage').then(module => ({ default: module.ProjectPage })));
 const Artifacts = lazy(() => import('./pages/Artifacts').then(module => ({ default: module.Artifacts })));
 const Kanban = lazy(() => import('./pages/Kanban').then(module => ({ default: module.Kanban })));
-const Templates = lazy(() => import('./pages/Templates').then(module => ({ default: module.Templates })));
 const Reports = lazy(() => import('./pages/Reports').then(module => ({ default: module.Reports })));
 const SharedArtifact = lazy(() => import('./pages/SharedArtifact').then(module => ({ default: module.SharedArtifact })));
 
@@ -53,7 +52,7 @@ function App() {
                     <Route path="projects" element={<ProjectPage />} />
                     <Route path="artifacts" element={<Artifacts />} />
                     <Route path="kanban" element={<Kanban />} />
-                    <Route path="templates" element={<Templates />} />
+                    <Route path="templates" element={<Navigate to="/documents?tab=templates" replace />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="documents" element={<Documents />} />
                     <Route path="documents/sample" element={<DocumentSample />} />
