@@ -211,7 +211,16 @@ export const authApi = {
   getMe: () => api.get('/auth/me'),
 };
 
+export interface TaskProposal {title:string;description:string;type:string;priority:'high'|'med'|'low';dueDate:string|null}
+export interface TaskPreview {summary:string;tasks:TaskProposal[];sourceTitle:string}
 export const aiApi = {
+  previewTasks:(input:{projectId:string;text?:string;documentId?:string;instructions?:string},signal?:AbortSignal,files:File[]=[])=>{
+    if(!files.length) return api.post<TaskPreview>('/ai/task-breakdown',input,{signal,timeout:70000});
+    const form=new FormData();Object.entries(input).forEach(([key,value])=>{if(value) form.append(key,value);});files.forEach(file=>form.append('files',file));
+    return api.post<TaskPreview>('/ai/task-breakdown',form,{signal,timeout:70000});
+  },
+  importTasks:(input:{projectId:string;requestId:string;tasks:TaskProposal[]})=>api.post<{count:number;taskIds:string[]}>('/ai/task-breakdown/import',input),
+
   chat(conversationId: string | null, message: string, projectId?: string, templateIds?: string[], signal?: AbortSignal) {
     const token = localStorage.getItem('token');
     return fetch(`${baseURL}/ai/chat`, {

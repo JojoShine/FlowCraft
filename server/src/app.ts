@@ -31,6 +31,7 @@ app.use('/api/v1/documents',express.json({limit:2*1024*1024+64*1024}));
 app.use('/api/v1/drawings',express.json({limit:10*1024*1024+64*1024}));
 app.use(['/api/v1/content-assets','/api/v1/content-preferences'],express.json());
 app.use(contentPaths,contentParserError);
+app.use('/api/v1/ai/task-breakdown',express.json({limit:1024*1024}),contentParserError);
 app.use(express.json());
 app.use(requestLogger);
 app.use(dateTransformMiddleware);

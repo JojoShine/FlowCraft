@@ -4,6 +4,7 @@ import {Excalidraw} from '@excalidraw/excalidraw';
 import type {ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types';
 import type {AssetDto,ContentView,DrawingScene} from '../content/types';
 import {loadDrawingLibrary,saveDrawingLibrary} from './DrawingLibrary';
+import {DrawingLibraryPicker} from './DrawingLibraryPicker';
 import {hydrateScene,sceneToPayload,rasterDataBlob,type BinaryFileMap,type HydratedScene} from './sceneAdapter';
 import '@excalidraw/excalidraw/index.css';
 (window as any).EXCALIDRAW_ASSET_PATH=`${import.meta.env.BASE_URL}excalidraw/`;
@@ -12,7 +13,7 @@ export function ExcalidrawEditor(props:Props) {
  const theme=useContentTheme();
  const current=useRef(props);current.current=props;
  const [initial,setInitial]=useState<HydratedScene|null>(null),[error,setError]=useState('');
- const [libraryItems]=useState(()=>loadDrawingLibrary(props.libraryScope));
+ const [libraryItems]=useState(()=>loadDrawingLibrary(props.libraryScope));const [libraryPicker,setLibraryPicker]=useState(false);
  const api=useRef<ExcalidrawImperativeAPI|null>(null),mounted=useRef(true),hydrating=useRef(true),initialized=useRef(false);
  const assets=useRef<Record<string,string>>({}),uploads=useRef(new Map<string,Promise<void>>()),lastPublished=useRef(''),lastInput=useRef('');
  const latest=useRef<{elements:readonly Record<string,any>[];appState:Record<string,any>;files:BinaryFileMap}|null>(null);
@@ -50,6 +51,7 @@ export function ExcalidrawEditor(props:Props) {
  }
  return <div className="flowcraft-drawing-editor" style={{height:'100%',minHeight:500,position:'relative'}} onCompositionStart={()=>props.onComposition(true)} onCompositionEnd={()=>props.onComposition(false)}>
   {error&&<p className="content-warning" role="alert">{error}</p>}
-  {initial?<Excalidraw initialData={{...initial,libraryItems} as any} excalidrawAPI={value=>{api.current=value;}} onLibraryChange={items=>{try {saveDrawingLibrary(current.current.libraryScope,items);}catch(e:any){setError(e.message);}}} onChange={change as any} langCode="zh-CN" theme={theme} viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
+  {initial?<Excalidraw initialData={{...initial,libraryItems} as any} excalidrawAPI={value=>{api.current=value;}} onLibraryChange={items=>{try {saveDrawingLibrary(current.current.libraryScope,items);}catch(e:any){setError(e.message);}}} renderTopRightUI={()=>props.view.canEdit?<button className="drawing-library-trigger" onClick={()=>setLibraryPicker(true)}>常用素材库</button>:null} onChange={change as any} langCode="zh-CN" theme={theme} viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
+  {libraryPicker&&<DrawingLibraryPicker onClose={()=>setLibraryPicker(false)} onLoad={async items=>{if(!api.current) throw new Error('画布尚未加载');await api.current.updateLibrary({libraryItems:items,merge:true});api.current.updateScene({appState:{openSidebar:{name:'default',tab:'library'}}});}}/>}
  </div>;
 }

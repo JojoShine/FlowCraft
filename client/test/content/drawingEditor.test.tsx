@@ -18,10 +18,19 @@ it('loads useful defaults and remembers library changes independently of the dra
  const change=vi.fn(),scope='library-owner';localStorage.removeItem(`flowcraft:drawing-library:${scope}`);
  render(<ExcalidrawEditor libraryScope={scope} view={view} onChange={change} onComposition={()=>{}}/>);await screen.findByTestId('canvas');
  const items=await shared.props.initialData.libraryItems;expect(items.length).toBeGreaterThanOrEqual(17);expect(new Set(items.map((item:any)=>item.id)).size).toBe(items.length);
- act(()=>shared.props.onLibraryChange([items[0]]));expect(JSON.parse(localStorage.getItem(`flowcraft:drawing-library:${scope}`)!)).toHaveLength(1);expect(change).not.toHaveBeenCalled();
+ act(()=>shared.props.onLibraryChange([items[0]]));expect(JSON.parse(localStorage.getItem(`flowcraft:drawing-library:${scope}`)!).items).toHaveLength(1);expect(change).not.toHaveBeenCalled();
 });
 it('keeps custom libraries and removals per account after reopening',async()=>{
  const {loadDrawingLibrary,saveDrawingLibrary}=await import('../../src/features/drawings/DrawingLibrary');
- saveDrawingLibrary('alice',[]);expect(loadDrawingLibrary('alice')).toEqual([]);expect(loadDrawingLibrary('bob').length).toBe(17);
- const first=loadDrawingLibrary('bob')[0];saveDrawingLibrary('bob',[first]);expect(loadDrawingLibrary('bob')).toEqual([first]);
+ saveDrawingLibrary('alice',[]);expect(await loadDrawingLibrary('alice')).toEqual([]);expect((await loadDrawingLibrary('bob')).length).toBe(82);
+ const first=(await loadDrawingLibrary('bob'))[0];saveDrawingLibrary('bob',[first]);expect(await loadDrawingLibrary('bob')).toEqual([first]);
+});
+it('offers complete common packs rather than sampling icons, with lazy cloud collections',async()=>{
+ const {drawingLibraryPacks,loadDrawingPack,loadDrawingLibrary}=await import('../../src/features/drawings/DrawingLibrary');expect(drawingLibraryPacks.reduce((sum,pack)=>sum+pack.count,0)).toBe(676);expect((await loadDrawingLibrary('new-owner')).length).toBe(82);expect((await loadDrawingPack('kubernetes')).length).toBe(74);expect((await loadDrawingPack('aws')).length).toBe(249);
+});
+it('upgrades old nonempty libraries with new common packs while retaining custom items and old removals',async()=>{
+ const {loadDrawingLibrary}=await import('../../src/features/drawings/DrawingLibrary');localStorage.setItem('flowcraft:drawing-library:upgrade:version','2');localStorage.setItem('flowcraft:drawing-library:upgrade',JSON.stringify([{id:'my-custom',elements:[],created:1,status:'unpublished'}]));const upgraded=await loadDrawingLibrary('upgrade');expect(upgraded.some(item=>item.id==='my-custom')).toBe(true);expect(upgraded).toHaveLength(66);expect(upgraded.some(item=>item.id==='flowcraft-architecture-0')).toBe(false);expect(await loadDrawingLibrary('upgrade')).toEqual(upgraded);
+});
+it('stores complete bundled libraries as compact references so loading every pack survives browser quota limits',async()=>{
+ const {drawingLibraryPacks,loadDrawingPack,loadDrawingLibrary,saveDrawingLibrary}=await import('../../src/features/drawings/DrawingLibrary');const all=(await Promise.all(drawingLibraryPacks.map(pack=>loadDrawingPack(pack.id)))).flat();saveDrawingLibrary('all-packs',all);expect(localStorage.getItem('flowcraft:drawing-library:all-packs')!.length).toBeLessThan(200000);expect(await loadDrawingLibrary('all-packs')).toEqual(all);
 });

@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
 import { useAIChat, type ToolCallInfo } from '../../hooks/useAIChat';
+import {useAuth} from '../../contexts/AuthContext';
+import {TaskBreakdownPanel} from '../../features/tasks/TaskBreakdownPanel';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { TaskDrawer } from '../ui/TaskDrawer';
 import { Select } from '../ui/Select';
@@ -428,7 +430,10 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
     newConversation, loadConversations, clearAllConversations,
   } = useAIChat();
 
-  const { selectedProjectId } = useProjectContext();
+  const { selectedProjectId,projects } = useProjectContext();
+  const {user}=useAuth();
+  const [mode,setMode]=useState<'chat'|'tasks'>('chat');
+  const [addedTasks,setAddedTasks]=useState<number|null>(null);
   const navigate = useNavigate();
 
   const [input, setInput] = useState('');
@@ -574,7 +579,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const isEmpty = messages.length === 0;
 
   return (
-    <aside
+    <aside aria-label="FlowCraft助手"
       style={{
         width: 420,
         height: '100dvh',
@@ -613,7 +618,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
+          {mode==='chat'&&<><button
             onClick={() => { newConversation(); setShowHistory(false); }}
             title="新对话"
             style={{
@@ -653,6 +658,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               <polyline points="12 6 12 12 16 14"/>
             </svg>
           </button>
+          </>}
           <button
             onClick={onClose}
             style={{
@@ -678,6 +684,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
         </div>
       </div>
 
+      {mode==='tasks'?<TaskBreakdownPanel projects={projects.filter(project=>project.ownerId===user?.id)} initialProjectId={selectedProjectId||undefined} onClose={()=>{setMode('chat');notifyDataChange('tasks');}} onCreated={count=>{notifyDataChange('tasks');setAddedTasks(count);setMode('chat');}}/>:<>
+      {user?.role==='admin'&&<div style={{padding:'12px 18px',borderBottom:'1px solid var(--border-subtle)'}}><button onClick={()=>{setShowHistory(false);setAddedTasks(null);setMode('tasks');}} style={{height:32,padding:'0 12px',border:'1px solid var(--border-default)',borderRadius:6,background:'var(--surface)',color:'var(--ink)',font:'inherit',fontSize:13,cursor:'pointer'}}>拆任务</button>{addedTasks!==null&&<p role="status" style={{fontSize:12,color:'var(--ink-3)',margin:'8px 0 0'}}>已加入 {addedTasks} 项任务</p>}</div>}
       {/* History dropdown */}
       {showHistory && (
         <div style={{
@@ -1013,6 +1021,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
           </button>
         </div>
       </div>
+
+      </>}
 
       {/* Save artifact dialog */}
       {saveDialogHtml && (
