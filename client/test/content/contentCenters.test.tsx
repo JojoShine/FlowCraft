@@ -1,6 +1,7 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
+Element.prototype.scrollIntoView=vi.fn();
 const shared=vi.hoisted(()=>({user:{id:'u',role:'admin',projectId:null as string|null},projects:[{id:'p',name:'项目 A'}]}));
 vi.mock('../../src/contexts/AuthContext',()=>({useAuth:()=>({user:shared.user})}));
 vi.mock('../../src/contexts/ProjectContext',()=>({useProjectContext:()=>({selectedProjectId:'p',projects:shared.projects,projectsLoading:false})}));
@@ -10,7 +11,7 @@ vi.mock('../../src/features/content/api',()=>({documentsApi:apis,drawingsApi:api
 import {Documents} from '../../src/pages/Documents';
 import {Drawings} from '../../src/pages/Drawings';
 it('flat document center can explicitly select all projects without changing global selection',async()=>{
- shared.user={id:'u',role:'admin',projectId:null};render(<MemoryRouter><Documents/></MemoryRouter>);expect(screen.getByRole('heading',{name:'文档中心'})).toBeTruthy();fireEvent.change(screen.getByLabelText('项目范围'),{target:{value:'all'}});await waitFor(()=>expect(apis.list).toHaveBeenLastCalledWith(expect.objectContaining({projectId:undefined}),expect.anything()));expect(screen.queryByRole('tree')).toBeNull();
+ shared.user={id:'u',role:'admin',projectId:null};render(<MemoryRouter><Documents/></MemoryRouter>);expect(screen.getByRole('heading',{name:'文档中心'})).toBeTruthy();fireEvent.keyDown(screen.getByRole('combobox',{name:'项目范围'}),{key:'ArrowDown'});fireEvent.click(await screen.findByRole('option',{name:'全部项目'}));await waitFor(()=>expect(apis.list).toHaveBeenLastCalledWith(expect.objectContaining({projectId:undefined}),expect.anything()));expect(screen.queryByRole('tree')).toBeNull();
 });
 it('viewer has no creation, upload, trash, or history controls',async()=>{
  shared.user={id:'v',role:'viewer',projectId:'p'};render(<MemoryRouter><Drawings/></MemoryRouter>);await screen.findByRole('heading',{name:'绘图中心'});expect(screen.queryByRole('button',{name:'新建绘图'})).toBeNull();expect(screen.queryByRole('button',{name:'回收站'})).toBeNull();expect(screen.queryByText('导入 Excalidraw')).toBeNull();
