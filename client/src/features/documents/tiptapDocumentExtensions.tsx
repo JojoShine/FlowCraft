@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import {Table,TableRow,TableCell,TableHeader} from '@tiptap/extension-table';
 import {DocumentLinkBlock} from './DocumentLinkBlock';
 import {safeLinkUrl} from './linkSafety';
+import {changeListIndent} from './tiptapListEditing';
 import type {DrawingReference} from '../content/types';
 export interface DocumentNodeServices {renderDrawing:(ref:DrawingReference)=>ReactNode;resolveMedia:(id:string,props:Record<string,any>)=>Promise<string>;onError:(message:string)=>void}
 export function selectedFlowBlock(editor:Editor,selection=editor.state.selection) {
@@ -34,11 +35,11 @@ function applyMarkdownBlock(editor:Editor,tr:Transaction,from:number,to:number,k
 }
 export function createDocumentExtensions(services:MutableRefObject<DocumentNodeServices>) {
  const FlowBlock=Node.create({name:'flowBlock',priority:1000,group:'block',content:'(paragraph|heading|codeBlock|blockquote|flowCallout|table|flowImage|flowFile|flowDrawing|flowDocumentLink|horizontalRule) flowChildren?',draggable:true,defining:true,
-  addAttributes(){return {id:{default:null,rendered:false},source:{default:{},rendered:false},hasContent:{default:true,rendered:false},hasChildren:{default:false,rendered:false},contentShape:{default:'array',rendered:false},originalContent:{default:null,rendered:false}};},
+  addAttributes(){return {id:{default:null,rendered:false},listNumber:{default:0,rendered:false},source:{default:{},rendered:false},hasContent:{default:true,rendered:false},hasChildren:{default:false,rendered:false},contentShape:{default:'array',rendered:false},originalContent:{default:null,rendered:false}};},
   parseHTML(){return [{tag:'div[data-flow-block]',contentElement:element=>element.querySelector('.flow-block-body')||element,getAttrs:element=>readJSON(element as HTMLElement,'data-flow-block')}];},renderHTML({node}){return ['div',{'data-flow-block':JSON.stringify(node.attrs),'data-id':node.attrs.id},0];},
   addNodeView(){return ReactNodeViewRenderer(function FlowBlockView({node,editor,updateAttributes}:NodeViewProps){
    const [copied,setCopied]=useState(false);const source=node.attrs.source||{},props=source.props||{},kind=source.type||'paragraph';
-   return <NodeViewWrapper className="flow-block" data-flow-block={JSON.stringify(node.attrs)} data-id={node.attrs.id} data-kind={kind} style={{color:flowColor(props.textColor),backgroundColor:flowColor(props.backgroundColor,true),textAlign:props.textAlignment||undefined}}>
+   return <NodeViewWrapper className="flow-block" data-flow-block={JSON.stringify(node.attrs)} data-id={node.attrs.id} data-kind={kind} data-list-number={node.attrs.listNumber} style={{color:flowColor(props.textColor),backgroundColor:flowColor(props.backgroundColor,true),textAlign:props.textAlignment||undefined}}>
     {editor.isEditable&&<span className="flow-drag-handle" data-drag-handle draggable contentEditable={false} aria-label="拖动段落">⠿</span>}
     {kind==='checkListItem'&&<input className="flow-check" type="checkbox" aria-label="完成事项" contentEditable={false} checked={!!props.checked} disabled={!editor.isEditable} onChange={event=>{if(editor.isEditable) updateAttributes({source:{...source,props:{...props,checked:event.target.checked}}});}}/>}
     <NodeViewContent className="flow-block-body"/>{node.firstChild?.type.name==='codeBlock'&&<button type="button" className="document-copy-code" contentEditable={false} onClick={()=>void navigator.clipboard.writeText(node.firstChild!.textContent).then(()=>setCopied(true)).catch(e=>services.current.onError(e.message))}>{copied?'已复制':'复制代码'}</button>}
@@ -54,6 +55,8 @@ export function createDocumentExtensions(services:MutableRefObject<DocumentNodeS
    ];
   },
   addKeyboardShortcuts(){return {
+   Tab:()=>changeListIndent(this.editor,false),
+   'Shift-Tab':()=>changeListIndent(this.editor,true),
    Enter:()=>{
     const editor=this.editor,tr=editor.state.tr.deleteSelection(),selected=selectedFlowBlock(editor,tr.selection);if(!selected) return false;
     const {node,pos,depth}=selected,first=node.firstChild;
@@ -63,16 +66,16 @@ export function createDocumentExtensions(services:MutableRefObject<DocumentNodeS
     }
     if(!first?.isTextblock||tr.selection.$from.depth!==depth+1||first.type.name==='codeBlock') return false;
     const source=node.attrs.source||{},kind=source.type||'paragraph';
-    if(!first.textContent&&['bulletListItem','numberedListItem','checkListItem'].includes(kind)) {tr.setNodeMarkup(pos,undefined,{...node.attrs,source:{...source,type:'paragraph'}});editor.view.dispatch(tr);return true;}
+    if(!first.textContent&&['bulletListItem','numberedListItem','checkListItem'].includes(kind)) return changeListIndent(editor,true,tr);
     const nextKind=['bulletListItem','numberedListItem','checkListItem'].includes(kind)?kind:'paragraph',attrs={id:crypto.randomUUID(),source:{type:nextKind,...(nextKind==='checkListItem'?{props:{checked:false}}:{})},hasContent:true,hasChildren:false,contentShape:'array'};
     if(node.childCount>1&&tr.selection.$from.parentOffset===first.content.size) {const next=editor.schema.nodes.flowBlock.create(attrs,editor.schema.nodes.paragraph.create());tr.insert(pos+node.nodeSize,next);tr.setSelection(TextSelection.create(tr.doc,pos+node.nodeSize+2));editor.view.dispatch(tr);return true;}
     tr.split(tr.selection.from,2,[{type:editor.schema.nodes.flowBlock,attrs},{type:editor.schema.nodes.paragraph}]);editor.view.dispatch(tr.scrollIntoView());return true;
    },
-   Backspace:()=>{const editor=this.editor;if(editor.commands.undoInputRule()) return true;const selected=selectedFlowBlock(editor);if(!selected||!editor.state.selection.empty||editor.state.selection.$from.parentOffset!==0||selected.node.childCount>1) return false;const $pos=editor.state.doc.resolve(selected.pos),prev=$pos.nodeBefore;if(!prev||prev.type.name!=='flowBlock'||prev.childCount>1||!['paragraph','heading'].includes(prev.firstChild!.type.name)||!['paragraph','heading'].includes(selected.node.firstChild!.type.name)) return false;const end=selected.pos-2;const tr=editor.state.tr.delete(selected.pos,selected.pos+selected.node.nodeSize).insert(end,selected.node.firstChild!.content);tr.setSelection(TextSelection.create(tr.doc,end));editor.view.dispatch(tr);return true;},
+   Backspace:()=>{const editor=this.editor;if(editor.commands.undoInputRule()) return true;const selected=selectedFlowBlock(editor);if(!selected||!editor.state.selection.empty||editor.state.selection.$from.parentOffset!==0||selected.node.childCount>1) return false;if(['bulletListItem','numberedListItem','checkListItem'].includes(selected.node.attrs.source?.type)) return changeListIndent(editor,true);const $pos=editor.state.doc.resolve(selected.pos),prev=$pos.nodeBefore;if(!prev||prev.type.name!=='flowBlock'||prev.childCount>1||!['paragraph','heading'].includes(prev.firstChild!.type.name)||!['paragraph','heading'].includes(selected.node.firstChild!.type.name)) return false;const end=selected.pos-2;const tr=editor.state.tr.delete(selected.pos,selected.pos+selected.node.nodeSize).insert(end,selected.node.firstChild!.content);tr.setSelection(TextSelection.create(tr.doc,end));editor.view.dispatch(tr);return true;},
   };},
   addProseMirrorPlugins(){return [new Plugin({appendTransaction(transactions,_,state){
-   if(!transactions.some(tr=>tr.docChanged)) return null;const ids=new Set<string>(),tr=state.tr;
-   state.doc.descendants((node,pos)=>{if(node.type.name!=='flowBlock') return;let id=node.attrs.id;if(!id||ids.has(id)) {id=crypto.randomUUID();tr.setNodeMarkup(pos,undefined,{...node.attrs,id});}ids.add(id);if(node.firstChild&&['flowImage','flowFile','flowDrawing','flowDocumentLink'].includes(node.firstChild.type.name)&&node.firstChild.attrs.blockId!==id) tr.setNodeMarkup(pos+1,undefined,{...node.firstChild.attrs,blockId:id});});return tr.docChanged?tr:null;
+   if(!transactions.some(tr=>tr.docChanged)) return null;const ids=new Set<string>(),numbers=new Map<unknown,number>(),tr=state.tr;
+   state.doc.descendants((node,pos,parent)=>{if(node.type.name!=='flowBlock') return;let id=node.attrs.id;if(!id||ids.has(id)) id=crypto.randomUUID();ids.add(id);const listNumber=node.attrs.source?.type==='numberedListItem'&&node.firstChild?.type.name==='paragraph'?(numbers.get(parent)||0)+1:0;numbers.set(parent,listNumber);if(id!==node.attrs.id||listNumber!==node.attrs.listNumber) tr.setNodeMarkup(pos,undefined,{...node.attrs,id,listNumber});if(node.firstChild&&['flowImage','flowFile','flowDrawing','flowDocumentLink'].includes(node.firstChild.type.name)&&node.firstChild.attrs.blockId!==id) tr.setNodeMarkup(pos+1,undefined,{...node.firstChild.attrs,blockId:id});});return tr.docChanged?tr:null;
   }})];},
  });
  const FlowChildren=Node.create({name:'flowChildren',content:'flowBlock+',parseHTML(){return [{tag:'div[data-flow-children]'}];},renderHTML(){return ['div',{'data-flow-children':'',class:'flow-children'},0];}});

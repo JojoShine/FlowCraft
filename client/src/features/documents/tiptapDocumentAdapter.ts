@@ -55,9 +55,10 @@ export function documentToTiptap(body:DocumentBody):JSONContent {
   else if(block.type==='codeBlock') child={type:'codeBlock',attrs:{language:block.props?.language||null},content:plain(content)?[{type:'text',text:plain(content)}]:[]};
   else if(block.type==='quote') child={type:'blockquote',content:[{type:'paragraph',content:inlineToTiptap(content)}]};
   else child={type:block.type==='heading'?'heading':block.type==='callout'?'flowCallout':'paragraph',attrs:block.type==='heading'?{level:block.props?.level||1}:undefined,content:inlineToTiptap(content)};
-  return {type:'flowBlock',attrs,content:[child,...(children?.length?[{type:'flowChildren',content:children.map(blockToNode)}]:[])]};
+  return {type:'flowBlock',attrs,content:[child,...(children?.length?[{type:'flowChildren',content:blocksToNodes(children)}]:[])]};
  }
- return {type:'doc',content:body.blocks.map(blockToNode)};
+ function blocksToNodes(blocks:BlockJSON[]):JSONContent[] {let number=0;return blocks.map(block=>{const node=blockToNode(block);node.attrs!.listNumber=block.type==='numberedListItem'?++number:(number=0);return node;});}
+ return {type:'doc',content:blocksToNodes(body.blocks)};
 }
 export function documentFromTiptap(doc:JSONContent):DocumentBody {
  function nodeToBlock(node:JSONContent):BlockJSON {
