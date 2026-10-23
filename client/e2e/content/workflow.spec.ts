@@ -6,7 +6,7 @@ test('server document, editable embedded drawing, refresh, immutable history and
  await page.goto('documents');await page.getByRole('button',{name:'新建文档',exact:true}).click();
  await page.getByLabel('内容名称').fill('E2E 服务器说明');await page.getByRole('combobox',{name:'初始模板',exact:true}).click();await page.getByRole('option',{name:'服务器与部署说明',exact:true}).click();await page.getByRole('button',{name:'创建并打开',exact:true}).click();
  await page.waitForURL(/\/documents\/[a-f0-9-]+$/);const documentId=page.url().split('/').pop()!;
- await expect(page.locator('.bn-editor')).toBeVisible();await expect(page.getByLabel('文章目录')).toContainText('服务器清单');await expect(page.getByRole('columnheader',{name:'IP/域名',exact:true})).toBeVisible();
+ await expect(page.locator('.flow-document-content')).toBeVisible();await expect(page.getByLabel('文章目录')).toContainText('服务器清单');await expect(page.getByRole('columnheader',{name:'IP/域名',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'插入绘图',exact:true}).click();const picker=page.getByRole('dialog',{name:'插入绘图',exact:true});await picker.getByLabel('新图名称').fill('E2E 部署图');await picker.getByRole('button',{name:'新建独立绘图并插入',exact:true}).click();
  await expect(page.getByText('跟随最新 v1',{exact:true})).toBeVisible();
  const documentView=await (await request.get(`${API}/documents/${documentId}`,{headers})).json();const drawingBlock=documentView.data.payload.blocks.find((block:any)=>block.type==='drawing');expect(drawingBlock).toBeTruthy();const drawingId=drawingBlock.props.drawingId;

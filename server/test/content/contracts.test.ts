@@ -25,3 +25,8 @@ it('enforces persisted document byte size after normalization adds missing struc
 it('image references must be own entries instead of inherited object properties',()=>{
  expect(()=>normalizeScene({formatVersion:1,elements:[{id:'i',type:'image',fileId:'constructor'}],appState:{},files:{}})).toThrow(/图片/);
 });
+
+it('does not persist temporary or pending document media URLs',()=>{
+ for(const type of ['image','file']) for(const url of ['pending:clipboard','blob:preview','data:image/png;base64,abc']) expect(()=>normalizeDocument({formatVersion:1,blocks:[{id:'media',type,props:{url}}]})).toThrow(/上传/);
+ expect(normalizeDocument({formatVersion:1,blocks:[{id:'image',type:'image',props:{assetId:'image-1',url:'asset:image-1'}}]}).blocks[0].props?.assetId).toBe('image-1');
+});

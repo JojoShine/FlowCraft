@@ -16,6 +16,7 @@ export function normalizeDocument(input:unknown):DocumentBody {
   if(b.type==='heading' && ![1,2,3].includes(b.props?.level ?? 1)) return fail();
   if(b.type==='drawing' && (typeof b.props?.drawingId!=='string'||!['latest','pinned'].includes(b.props?.mode)||b.props.mode==='pinned'&&(!Number.isInteger(b.props.revision)||b.props.revision<1))) return fail('绘图引用无效');
   if(b.type==='documentLink'&&typeof b.props?.documentId!=='string') return fail('文档链接无效');
+  if(['image','file'].includes(b.type)&&typeof b.props?.url==='string'&&/^(pending:|blob:|data:)/i.test(b.props.url)) return fail('文件必须先上传完成后再保存');
   return {...b,id:b.id,type:b.type,children:b.children?blocks(b.children,depth+1):[]};
  });}
  const result:DocumentBody={formatVersion:1,blocks:blocks(input.blocks)};byteLimit(result,DOCUMENT_LIMIT);return result;

@@ -12,3 +12,30 @@
 @media(max-width:900px){.document-outline{width:100%;position:static;max-height:240px}.document-editor .bn-editor{padding-left:0;padding-right:0}.document-title{font-size:24px}.document-insert-tools{flex-wrap:wrap}}
 
 .document-editor .bn-editor h1{font-size:24px}.document-editor .bn-editor h2{font-size:20px}.document-editor .bn-editor h3{font-size:17px}
+
+/* Tiptap uses the same application controls and spacing as the rest of FlowCraft. */
+.tiptap-document{width:100%;position:relative}
+.document-formatbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;margin-bottom:24px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
+.document-style-select{width:144px}.document-format-hint{font-size:12px;color:var(--ink-3);line-height:1.5}
+.document-formatbar button[aria-pressed=true]{background:var(--surface-raised)!important;color:var(--ink)!important}
+.flow-document-content{outline:none;min-height:320px;padding:0 0 64px;color:var(--ink-1);font-size:15px;line-height:1.85;overflow-wrap:anywhere;counter-reset:flow-list}
+.flow-block{position:relative;margin:0 0 12px;min-width:0;scroll-margin-top:24px}
+.flow-block-body{min-width:0}.flow-block p{margin:0;min-height:1.85em}.flow-block h1,.flow-block h2,.flow-block h3{font-weight:600;line-height:1.5;letter-spacing:-.02em;color:var(--ink);margin:24px 0 8px}.flow-block h1{font-size:24px}.flow-block h2{font-size:20px}.flow-block h3{font-size:17px}.flow-document-content>.flow-block:first-child :is(h1,h2,h3){margin-top:0}
+.flow-children{margin:8px 0 0 24px;counter-reset:flow-list}.flow-children .flow-block:last-child{margin-bottom:0}
+.flow-drag-handle{position:absolute;left:-22px;top:3px;width:18px;font-size:16px;color:var(--ink-3);cursor:grab;opacity:0;user-select:none}.flow-block:hover>.flow-drag-handle,.flow-drag-handle:focus{opacity:1}
+.flow-block[data-kind=bulletListItem],.flow-block[data-kind=numberedListItem],.flow-block[data-kind=checkListItem]{padding-left:24px}
+.flow-block[data-kind=bulletListItem]::before{content:'•';position:absolute;left:6px;top:0;color:var(--ink-2)}
+.flow-block[data-kind=numberedListItem]{counter-increment:flow-list}.flow-block[data-kind=numberedListItem]::before{content:counter(flow-list) '.';position:absolute;left:0;top:0;color:var(--ink-2)}
+.flow-block:not([data-kind=numberedListItem]){counter-reset:flow-list}
+.content-workspace .flow-check,.content-history-modal .flow-check{position:absolute;left:2px;top:7px;appearance:auto;width:14px;height:14px;padding:0;margin:0;accent-color:var(--ink)}
+.flow-document-content blockquote{border-left:3px solid var(--border-strong);padding:4px 0 4px 16px;color:var(--ink-2)}
+.flow-callout{background:var(--surface-raised);border-radius:8px;padding:12px 16px;min-height:48px}
+.flow-document-content pre{white-space:pre;overflow:auto;max-width:100%;background:var(--surface-raised);padding:16px;border-radius:8px;font-size:13px;line-height:1.7}
+.flow-document-content code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;background:var(--surface-raised);border-radius:4px;padding:2px 4px}.flow-document-content pre code{font-size:inherit;padding:0;background:transparent}
+.flow-document-content a{color:var(--blue);text-decoration:underline;text-underline-offset:3px}.flow-document-content hr{border:0;border-top:1px solid var(--border-default);margin:20px 0}
+.flow-document-content .tableWrapper{overflow-x:auto;max-width:100%}.flow-document-content table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:480px;font-size:13px;line-height:1.6;margin:0}.flow-document-content td,.flow-document-content th{border:1px solid var(--border-default);padding:10px 12px;min-width:100px;vertical-align:top;position:relative}.flow-document-content th{background:var(--surface-raised);font-weight:500}.flow-document-content .selectedCell{background:var(--surface-sunken)}
+.flow-image{margin:16px 0}.flow-image img{display:block;max-width:100%;height:auto;border-radius:6px}.flow-image figcaption,.flow-image small{font-size:12px;color:var(--ink-3);display:block;margin-top:8px}.flow-file{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;font-size:13px}
+.content-workspace .document-download,.content-workspace .document-copy-code,.content-modal .document-download,.content-modal .document-copy-code{height:28px;min-height:28px;padding:0 10px;font-size:11px;border-radius:6px;line-height:1}
+.flow-block.ProseMirror-selectednode{outline:1px solid var(--border-strong);outline-offset:4px;border-radius:4px}
+.document-slash-menu{position:absolute;z-index:50;width:240px;max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-md);padding:4px;font-size:13px}.content-workspace .document-slash-menu button{display:block;width:100%;text-align:left;border:0;padding:0 12px;font-weight:400}.document-slash-menu button[aria-selected=true]{background:var(--surface-raised)}
+@media(max-width:900px){.flow-drag-handle{left:-16px}.document-formatbar{gap:8px}.document-format-hint{width:100%}.flow-document-content{padding-bottom:40px}}

@@ -1,8 +1,7 @@
 import {BlockNoteEditor} from '@blocknote/core';
 import type {BlockJSON,DocumentBody} from '../content/types';
-export function safeLinkUrl(href:string):boolean {
- try {const url=new URL(href,'https://flowcraft.invalid/');return ['https:','http:','mailto:','tel:'].includes(url.protocol);}catch {return false;}
-}
+import {safeLinkUrl} from './linkSafety';
+export {safeLinkUrl} from './linkSafety';
 export async function parseMarkdown(markdown:string):Promise<{body:DocumentBody;warnings:string[]}> {
  if(new TextEncoder().encode(markdown).byteLength>2*1024*1024) throw new Error('Markdown 超过 2 MiB');
  const editor=BlockNoteEditor.create({links:{isValidLink:safeLinkUrl}});
