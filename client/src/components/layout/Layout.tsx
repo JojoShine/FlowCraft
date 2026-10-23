@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -31,7 +31,6 @@ export function Layout() {
 
   const [aiOpen, setAiOpen] = useState(true);
   const contentRoute = /^\/(documents|drawings)(\/|$)/.test(location.pathname);
-  useEffect(() => { if (contentRoute) setAiOpen(false); }, [location.pathname]);
 
   return (
     <div className={contentRoute ? "content-layout" : undefined} style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
