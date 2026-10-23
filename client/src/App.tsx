@@ -18,6 +18,7 @@ const Reports = lazy(() => import('./pages/Reports').then(module => ({ default: 
 const SharedArtifact = lazy(() => import('./pages/SharedArtifact').then(module => ({ default: module.SharedArtifact })));
 
 const Documents = lazy(() => import('./pages/Documents').then(m => ({default:m.Documents})));
+const DocumentSample = lazy(() => import('./pages/DocumentSample').then(m => ({default:m.DocumentSample})));
 const DocumentPage = lazy(() => import('./pages/DocumentPage').then(m => ({default:m.DocumentPage})));
 const Drawings = lazy(() => import('./pages/Drawings').then(m => ({default:m.Drawings})));
 const DrawingPage = lazy(() => import('./pages/DrawingPage').then(m => ({default:m.DrawingPage})));
@@ -55,6 +56,8 @@ function App() {
                     <Route path="templates" element={<Templates />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="documents" element={<Documents />} />
+                    <Route path="documents/sample" element={<DocumentSample />} />
+                    <Route path="documents/:id/sample" element={<DocumentSample />} />
                     <Route path="documents/:id" element={<DocumentPage />} />
                     <Route path="drawings" element={<Drawings />} />
                     <Route path="drawings/:id" element={<DrawingPage />} />
