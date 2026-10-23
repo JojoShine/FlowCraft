@@ -1,8 +1,8 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,waitFor,act} from '@testing-library/react';
 import {useEffect} from 'react';
-const shared=vi.hoisted(()=>({props:null as any}));
-vi.mock('@excalidraw/excalidraw',()=>({restoreLibraryItems:(items:any[])=>items.map((item,index)=>Array.isArray(item)?{id:String(index),elements:item,status:'published',created:1}:item),Excalidraw:(props:any)=>{shared.props=props;useEffect(()=>{props.onChange(props.initialData.elements,props.initialData.appState,props.initialData.files);},[]);return <div data-testid="canvas"/>;}}));
+const shared=vi.hoisted(()=>({props:null as any,fit:vi.fn()}));
+vi.mock('@excalidraw/excalidraw',()=>({restoreLibraryItems:(items:any[])=>items.map((item,index)=>Array.isArray(item)?{id:String(index),elements:item,status:'published',created:1}:item),Excalidraw:(props:any)=>{shared.props=props;useEffect(()=>{props.excalidrawAPI({scrollToContent:shared.fit});props.onChange(props.initialData.elements,props.initialData.appState,props.initialData.files);},[]);return <div data-testid="canvas"/>;}}));
 import {ExcalidrawEditor} from '../../src/features/drawings/ExcalidrawEditor';
 const payload={formatVersion:1 as const,elements:[{id:'server',type:'rectangle',x:1.23456,y:2}],appState:{viewBackgroundColor:'#fff'},files:{}};
 const view={id:'d',projectId:'p',version:1,title:'图',payload,canEdit:true,savedAt:'2026-10-22T00:00:00Z',deletedAt:null};
@@ -33,4 +33,8 @@ it('upgrades old nonempty libraries with new common packs while retaining custom
 });
 it('stores complete bundled libraries as compact references so loading every pack survives browser quota limits',async()=>{
  const {drawingLibraryPacks,loadDrawingPack,loadDrawingLibrary,saveDrawingLibrary}=await import('../../src/features/drawings/DrawingLibrary');const all=(await Promise.all(drawingLibraryPacks.map(pack=>loadDrawingPack(pack.id)))).flat();saveDrawingLibrary('all-packs',all);expect(localStorage.getItem('flowcraft:drawing-library:all-packs')!.length).toBeLessThan(200000);expect(await loadDrawingLibrary('all-packs')).toEqual(all);
+});
+
+it('fits the initial diagram to the canvas once without saving view-only changes',async()=>{
+ shared.fit.mockClear();const change=vi.fn();render(<ExcalidrawEditor view={view} onChange={change} onComposition={()=>{}}/>);await screen.findByTestId('canvas');expect(shared.fit).toHaveBeenCalledWith(payload.elements,{fitToViewport:true,maxZoom:1});act(()=>shared.props.onChange(payload.elements,{...payload.appState,scrollX:40,zoom:{value:0.5}},{}));expect(shared.fit).toHaveBeenCalledTimes(1);expect(change).not.toHaveBeenCalled();
 });

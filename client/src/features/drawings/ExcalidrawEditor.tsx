@@ -37,7 +37,7 @@ export function ExcalidrawEditor(props:Props) {
   }catch(e:any){setError(e.message);}
  }
  function change(elements:readonly Record<string,any>[],appState:Record<string,any>,files:BinaryFileMap) {
-  latest.current={elements,appState,files};if(!initialized.current) {initialized.current=true;try {lastPublished.current=JSON.stringify(sceneToPayload(elements,appState,files,assets.current));}catch {}return;}
+  latest.current={elements,appState,files};if(!initialized.current) {initialized.current=true;try {lastPublished.current=JSON.stringify(sceneToPayload(elements,appState,files,assets.current));}catch {}if(elements.length) api.current?.scrollToContent(elements as any,{fitToViewport:true,maxZoom:1});return;}
   if(!current.current.view.canEdit||hydrating.current) return;
   for(const element of elements) if(element.type==='image'&&!element.isDeleted&&!assets.current[element.fileId]&&!uploads.current.has(element.fileId)) {
    const fileId=element.fileId,binary=files[fileId];
