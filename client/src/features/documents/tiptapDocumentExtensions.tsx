@@ -1,6 +1,6 @@
 import {useEffect,useState,type ReactNode,type MutableRefObject} from 'react';
-import {Node,Mark,type Editor} from '@tiptap/core';
-import {Plugin,TextSelection} from '@tiptap/pm/state';
+import {Node,Mark,InputRule,type Editor} from '@tiptap/core';
+import {Plugin,TextSelection,type Transaction} from '@tiptap/pm/state';
 import {NodeViewWrapper,NodeViewContent,ReactNodeViewRenderer,type NodeViewProps} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {Table,TableRow,TableCell,TableHeader} from '@tiptap/extension-table';
@@ -18,8 +18,22 @@ export function flowColor(value:string|undefined,background=false) {
 }
 function readJSON(element:HTMLElement,name:string,fallback:any={}) {try{const value=JSON.parse(element.getAttribute(name)||'null');return value&&typeof value==='object'&&!Array.isArray(value)?value:fallback;}catch{return fallback;}}
 function jsonAttribute(name:string,fallback:any={}) {return {default:fallback,parseHTML:(element:HTMLElement)=>readJSON(element,name,fallback),renderHTML:(attrs:any)=>({[name]:JSON.stringify(attrs[name==='data-flow-table'?'flowTable':name==='data-flow-row'?'flowRow':'flowCell'])})};}
+function applyMarkdownBlock(editor:Editor,tr:Transaction,from:number,to:number,kind:string,attributes:Record<string,any>) {
+    const selected=selectedFlowBlock(editor,tr.selection);if(!selected||tr.selection.$from.depth!==selected.depth+1||selected.node.firstChild?.type.name!=='paragraph') return false;
+    const {node,pos}=selected,props={...node.attrs.source?.props,...attributes};tr.delete(from,to);
+    tr.setNodeMarkup(pos,undefined,{...node.attrs,source:{...node.attrs.source,type:kind,props}});
+    if(['bulletListItem','numberedListItem','checkListItem'].includes(kind)) return true;
+    const first=tr.doc.nodeAt(pos+1)!;let child;
+    if(kind==='quote') child=editor.schema.nodes.blockquote.create(null,editor.schema.nodes.paragraph.create(null,first.content));
+    else if(kind==='divider') child=editor.schema.nodes.horizontalRule.create();
+    else child=editor.schema.nodes[kind].create(kind==='heading'?{level:props.level}:{language:props.language||null},first.content);
+    tr.replaceWith(pos+1,pos+1+first.nodeSize,child);
+    if(kind==='divider') {const next=editor.schema.nodes.flowBlock.create({id:crypto.randomUUID(),source:{type:'paragraph',props:node.attrs.source?.props||{}}},editor.schema.nodes.paragraph.create(null,first.content));const after=pos+tr.doc.nodeAt(pos)!.nodeSize;tr.insert(after,next);tr.setSelection(TextSelection.create(tr.doc,after+2));}
+    else tr.setSelection(TextSelection.create(tr.doc,pos+(kind==='quote'?3:2)));
+ return true;
+}
 export function createDocumentExtensions(services:MutableRefObject<DocumentNodeServices>) {
- const FlowBlock=Node.create({name:'flowBlock',group:'block',content:'(paragraph|heading|codeBlock|blockquote|flowCallout|table|flowImage|flowFile|flowDrawing|flowDocumentLink|horizontalRule) flowChildren?',draggable:true,defining:true,
+ const FlowBlock=Node.create({name:'flowBlock',priority:1000,group:'block',content:'(paragraph|heading|codeBlock|blockquote|flowCallout|table|flowImage|flowFile|flowDrawing|flowDocumentLink|horizontalRule) flowChildren?',draggable:true,defining:true,
   addAttributes(){return {id:{default:null,rendered:false},source:{default:{},rendered:false},hasContent:{default:true,rendered:false},hasChildren:{default:false,rendered:false},contentShape:{default:'array',rendered:false},originalContent:{default:null,rendered:false}};},
   parseHTML(){return [{tag:'div[data-flow-block]',contentElement:element=>element.querySelector('.flow-block-body')||element,getAttrs:element=>readJSON(element as HTMLElement,'data-flow-block')}];},renderHTML({node}){return ['div',{'data-flow-block':JSON.stringify(node.attrs),'data-id':node.attrs.id},0];},
   addNodeView(){return ReactNodeViewRenderer(function FlowBlockView({node,editor,updateAttributes}:NodeViewProps){
@@ -30,17 +44,31 @@ export function createDocumentExtensions(services:MutableRefObject<DocumentNodeS
     <NodeViewContent className="flow-block-body"/>{node.firstChild?.type.name==='codeBlock'&&<button type="button" className="document-copy-code" contentEditable={false} onClick={()=>void navigator.clipboard.writeText(node.firstChild!.textContent).then(()=>setCopied(true)).catch(e=>services.current.onError(e.message))}>{copied?'已复制':'复制代码'}</button>}
    </NodeViewWrapper>;
   },{stopEvent:({event})=>{const target=event.target as HTMLElement;return !!target.closest?.('button,input,select,textarea');}});},
+  addInputRules(){
+   const transform=(find:RegExp,kind:string,attributes:(match:RegExpMatchArray)=>Record<string,any>=()=>({}))=>new InputRule({find,handler:({state,range,match})=>{if(!applyMarkdownBlock(this.editor,state.tr,range.from,range.to,kind,attributes(match))) return null;}});
+   return [
+    transform(/^(#{1,3}) $/,'heading',match=>({level:match[1].length})),
+    transform(/^(?:[-+*] )?\[([ xX])\] $/,'checkListItem',match=>({checked:match[1].toLowerCase()==='x'})),
+    transform(/^[-+*] $/,'bulletListItem'),transform(/^\d+\. $/,'numberedListItem'),transform(/^> $/,'quote'),
+    transform(/^```([\w+-]*)[ \n]$/,'codeBlock',match=>({language:match[1]||'text'})),transform(/^(?:---|\*\*\*|___)[ \n]$/,'divider'),
+   ];
+  },
   addKeyboardShortcuts(){return {
    Enter:()=>{
     const editor=this.editor,tr=editor.state.tr.deleteSelection(),selected=selectedFlowBlock(editor,tr.selection);if(!selected) return false;
-    const {node,pos,depth}=selected,first=node.firstChild;if(!first?.isTextblock||tr.selection.$from.depth!==depth+1||first.type.name==='codeBlock') return false;
+    const {node,pos,depth}=selected,first=node.firstChild;
+    if(first?.type.name==='paragraph'&&editor.state.selection.empty&&tr.selection.$from.parentOffset===first.content.size) {
+     const fence=first.textContent.match(/^```([\w+-]*)$/),divider=/^(---|\*\*\*|___)$/.test(first.textContent);
+     if((fence||divider)&&applyMarkdownBlock(editor,tr,pos+2,pos+2+first.content.size,fence?'codeBlock':'divider',fence?{language:fence[1]||'text'}:{})) {editor.view.dispatch(tr.scrollIntoView());return true;}
+    }
+    if(!first?.isTextblock||tr.selection.$from.depth!==depth+1||first.type.name==='codeBlock') return false;
     const source=node.attrs.source||{},kind=source.type||'paragraph';
     if(!first.textContent&&['bulletListItem','numberedListItem','checkListItem'].includes(kind)) {tr.setNodeMarkup(pos,undefined,{...node.attrs,source:{...source,type:'paragraph'}});editor.view.dispatch(tr);return true;}
     const nextKind=['bulletListItem','numberedListItem','checkListItem'].includes(kind)?kind:'paragraph',attrs={id:crypto.randomUUID(),source:{type:nextKind,...(nextKind==='checkListItem'?{props:{checked:false}}:{})},hasContent:true,hasChildren:false,contentShape:'array'};
     if(node.childCount>1&&tr.selection.$from.parentOffset===first.content.size) {const next=editor.schema.nodes.flowBlock.create(attrs,editor.schema.nodes.paragraph.create());tr.insert(pos+node.nodeSize,next);tr.setSelection(TextSelection.create(tr.doc,pos+node.nodeSize+2));editor.view.dispatch(tr);return true;}
     tr.split(tr.selection.from,2,[{type:editor.schema.nodes.flowBlock,attrs},{type:editor.schema.nodes.paragraph}]);editor.view.dispatch(tr.scrollIntoView());return true;
    },
-   Backspace:()=>{const editor=this.editor,selected=selectedFlowBlock(editor);if(!selected||!editor.state.selection.empty||editor.state.selection.$from.parentOffset!==0||selected.node.childCount>1) return false;const $pos=editor.state.doc.resolve(selected.pos),prev=$pos.nodeBefore;if(!prev||prev.type.name!=='flowBlock'||prev.childCount>1||!['paragraph','heading'].includes(prev.firstChild!.type.name)||!['paragraph','heading'].includes(selected.node.firstChild!.type.name)) return false;const end=selected.pos-2;const tr=editor.state.tr.delete(selected.pos,selected.pos+selected.node.nodeSize).insert(end,selected.node.firstChild!.content);tr.setSelection(TextSelection.create(tr.doc,end));editor.view.dispatch(tr);return true;},
+   Backspace:()=>{const editor=this.editor;if(editor.commands.undoInputRule()) return true;const selected=selectedFlowBlock(editor);if(!selected||!editor.state.selection.empty||editor.state.selection.$from.parentOffset!==0||selected.node.childCount>1) return false;const $pos=editor.state.doc.resolve(selected.pos),prev=$pos.nodeBefore;if(!prev||prev.type.name!=='flowBlock'||prev.childCount>1||!['paragraph','heading'].includes(prev.firstChild!.type.name)||!['paragraph','heading'].includes(selected.node.firstChild!.type.name)) return false;const end=selected.pos-2;const tr=editor.state.tr.delete(selected.pos,selected.pos+selected.node.nodeSize).insert(end,selected.node.firstChild!.content);tr.setSelection(TextSelection.create(tr.doc,end));editor.view.dispatch(tr);return true;},
   };},
   addProseMirrorPlugins(){return [new Plugin({appendTransaction(transactions,_,state){
    if(!transactions.some(tr=>tr.docChanged)) return null;const ids=new Set<string>(),tr=state.tr;

@@ -29,6 +29,25 @@ describe('formal Tiptap document compatibility',()=>{
   const editor=new Editor({extensions:createDocumentExtensions({current:{renderDrawing:()=>null,resolveMedia:async()=>'',onError:()=>{}}}),content:documentToTiptap({formatVersion:1,blocks:[{id:'p',type:'paragraph',content:text('ABCDEF')}]})});
   try{editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc,4,6)));editor.view.someProp('handleKeyDown',handler=>handler(editor.view,new KeyboardEvent('keydown',{key:'Enter'})));expect(documentFromTiptap(editor.getJSON()).blocks.map(block=>block.content.map((part:any)=>part.text).join(''))).toEqual(['AB','EF']);}finally{editor.destroy();}
  });
+ it.each([
+  ['# ', 'heading', {level:1}], ['## ', 'heading', {level:2}], ['### ', 'heading', {level:3}],
+  ['- ', 'bulletListItem', {}], ['* ', 'bulletListItem', {}], ['1. ', 'numberedListItem', {}],
+  ['[ ] ', 'checkListItem', {checked:false}], ['- [x] ', 'checkListItem', {checked:true}],
+  ['> ', 'quote', {}], ['```bash ', 'codeBlock', {language:'bash'}], ['--- ', 'divider', {}],
+ ])('converts typed %s into %s while preserving the block identity', (marker,type,props)=>{
+  const editor=new Editor({extensions:createDocumentExtensions({current:{renderDrawing:()=>null,resolveMedia:async()=>'',onError:()=>{}}}),content:documentToTiptap({formatVersion:1,blocks:[{id:'typed',type:'paragraph',props:{textColor:'blue'},content:[]}]})});
+  try{
+   for(const char of marker){const {from,to}=editor.state.selection;const handled=editor.view.someProp('handleTextInput',handler=>handler(editor.view,from,to,char,()=>editor.state.tr.insertText(char,from,to)));if(!handled) editor.view.dispatch(editor.state.tr.insertText(char,from,to));}
+   const block=documentFromTiptap(editor.getJSON()).blocks[0];expect(block).toMatchObject({id:'typed',type,props:{textColor:'blue',...props}});
+   expect(editor.state.doc.firstChild!.firstChild!.textContent).toBe('');
+  }finally{editor.destroy();}
+ });
+ it('keeps existing text and marks after a divider typed at the start of a paragraph',()=>{
+  const editor=new Editor({extensions:createDocumentExtensions({current:{renderDrawing:()=>null,resolveMedia:async()=>'',onError:()=>{}}}),content:documentToTiptap({formatVersion:1,blocks:[{id:'existing',type:'paragraph',content:[{type:'text',text:'important text',styles:{bold:true}}]}]})});
+  try{editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc,2)));for(const char of '___ '){const {from,to}=editor.state.selection;const handled=editor.view.someProp('handleTextInput',handler=>handler(editor.view,from,to,char,()=>editor.state.tr.insertText(char,from,to)));if(!handled) editor.view.dispatch(editor.state.tr.insertText(char,from,to));}
+   const body=documentFromTiptap(editor.getJSON());expect(body.blocks[0].type).toBe('divider');expect(body.blocks[1].content).toEqual([{type:'text',text:'important text',styles:{bold:true}}]);editor.state.doc.check();
+  }finally{editor.destroy();}
+ });
  it('never persists temporary image URLs and keeps pending identity',()=>{
   const body={formatVersion:1 as const,blocks:[{id:'paste',type:'image',props:{url:'pending:paste',name:'截图.png'}}]};
   const json=documentToTiptap(body);const image=json.content![0].content![0];image.attrs!.props={...image.attrs!.props,assetId:'asset-1',url:'blob:preview'};

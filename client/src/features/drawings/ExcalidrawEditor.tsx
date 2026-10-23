@@ -3,16 +3,16 @@ import {useEffect,useRef,useState} from 'react';
 import {Excalidraw} from '@excalidraw/excalidraw';
 import type {ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types';
 import type {AssetDto,ContentView,DrawingScene} from '../content/types';
-import {drawingStencils} from './DrawingTemplates';
+import {loadDrawingLibrary,saveDrawingLibrary} from './DrawingLibrary';
 import {hydrateScene,sceneToPayload,rasterDataBlob,type BinaryFileMap,type HydratedScene} from './sceneAdapter';
 import '@excalidraw/excalidraw/index.css';
 (window as any).EXCALIDRAW_ASSET_PATH=`${import.meta.env.BASE_URL}excalidraw/`;
-interface Props {view:ContentView<DrawingScene>;onChange:(title:string,payload:DrawingScene)=>void;onComposition:(value:boolean)=>void;readAsset?:(id:string)=>Promise<Blob>;upload?:(file:File,fileId:string)=>Promise<AssetDto>}
+interface Props {libraryScope?:string;view:ContentView<DrawingScene>;onChange:(title:string,payload:DrawingScene)=>void;onComposition:(value:boolean)=>void;readAsset?:(id:string)=>Promise<Blob>;upload?:(file:File,fileId:string)=>Promise<AssetDto>}
 export function ExcalidrawEditor(props:Props) {
  const theme=useContentTheme();
  const current=useRef(props);current.current=props;
  const [initial,setInitial]=useState<HydratedScene|null>(null),[error,setError]=useState('');
- const stencilsLoaded=useRef(false);
+ const [libraryItems]=useState(()=>loadDrawingLibrary(props.libraryScope));
  const api=useRef<ExcalidrawImperativeAPI|null>(null),mounted=useRef(true),hydrating=useRef(true),initialized=useRef(false);
  const assets=useRef<Record<string,string>>({}),uploads=useRef(new Map<string,Promise<void>>()),lastPublished=useRef(''),lastInput=useRef('');
  const latest=useRef<{elements:readonly Record<string,any>[];appState:Record<string,any>;files:BinaryFileMap}|null>(null);
@@ -50,6 +50,6 @@ export function ExcalidrawEditor(props:Props) {
  }
  return <div className="flowcraft-drawing-editor" style={{height:'100%',minHeight:500,position:'relative'}} onCompositionStart={()=>props.onComposition(true)} onCompositionEnd={()=>props.onComposition(false)}>
   {error&&<p className="content-warning" role="alert">{error}</p>}
-  {initial?<Excalidraw initialData={initial as any} excalidrawAPI={value=>{api.current=value;if(current.current.view.canEdit&&!stencilsLoaded.current) {stencilsLoaded.current=true;void drawingStencils().then(items=>{if(mounted.current) return value.updateLibrary({libraryItems:items as any});}).catch(error=>setError(error.message));}}} onChange={change as any} langCode="zh-CN" theme={theme} viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
+  {initial?<Excalidraw initialData={{...initial,libraryItems} as any} excalidrawAPI={value=>{api.current=value;}} onLibraryChange={items=>{try {saveDrawingLibrary(current.current.libraryScope,items);}catch(e:any){setError(e.message);}}} onChange={change as any} langCode="zh-CN" theme={theme} viewModeEnabled={!props.view.canEdit} validateEmbeddable={()=>false} UIOptions={{canvasActions:{loadScene:false,saveToActiveFile:false,export:false,saveAsImage:false,toggleTheme:false}}}/>:<p role="status">正在读取画布和图片…</p>}
  </div>;
 }
