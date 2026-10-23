@@ -1,16 +1,19 @@
 import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 
-interface FileUploadProps {
-  onUpload: (file: File) => void | Promise<void>;
+type FileUploadProps = {
   accept?: string;
   multiple?: boolean;
   label?: string;
   hint?: string;
   disabled?: boolean;
-}
+} & (
+  | { onUpload: (file: File) => void | Promise<void>; onSelectFiles?: never }
+  | { onUpload?: never; onSelectFiles: (files: File[]) => void }
+);
 
 export function FileUpload({
   onUpload,
+  onSelectFiles,
   accept,
   multiple = false,
   label,
@@ -43,8 +46,7 @@ export function FileUpload({
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      const file = multiple ? files[0] : files[0];
-      await handleFile(file);
+      await handleFiles(Array.from(files));
     }
   };
 
@@ -57,15 +59,22 @@ export function FileUpload({
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      await handleFile(files[0]);
+      await handleFiles(Array.from(files));
     }
   };
 
-  const handleFile = async (file: File) => {
+  const handleFiles = async (files: File[]) => {
+    if (disabled || uploading || !files.length) return;
+    const selected = multiple ? files : files.slice(0, 1);
+    if (onSelectFiles) {
+      onSelectFiles(selected);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     setUploading(true);
-    setFileName(file.name);
+    setFileName(selected[0].name);
     try {
-      await onUpload(file);
+      await onUpload(selected[0]);
     } catch (error) {
       console.error('[FileUpload] Upload failed:', error);
       setFileName(null);
@@ -126,6 +135,7 @@ export function FileUpload({
         <input
           ref={inputRef}
           type="file"
+          aria-label={label || '选择文件'}
           accept={accept}
           multiple={multiple}
           onChange={handleFileChange}
