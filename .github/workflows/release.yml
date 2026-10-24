@@ -64,13 +64,13 @@ jobs:
           python3 - <<'PY'
           import json,os,pathlib
           root=pathlib.Path('release-files'); ref=os.environ['IMAGE_REF']
-          example=root/'.env.prod.example';example.write_text(example.read_text().replace('ghcr.io/jojoshine/flowcraft@sha256:REPLACE_WITH_RELEASE_DIGEST',ref))
+          example=root/'env.prod.example';example.write_text(example.read_text().replace('ghcr.io/jojoshine/flowcraft@sha256:REPLACE_WITH_RELEASE_DIGEST',ref))
           meta=json.loads((root/'candidate.json').read_text());meta['version']=os.environ['VERSION'];meta['files']={p.name:__import__('hashlib').sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file() and p.name!='candidate.json'};(root/'release.json').write_text(json.dumps(meta,indent=2)+'\n')
           (root/'RELEASE_NOTES.md').write_text('Commit: '+os.environ['SOURCE_SHA']+'\n\nImage: `'+ref+'`\n\nFrontend and deployment files come from the same accepted CI run '+os.environ['CI_RUN_ID']+'. Verify SHA256SUMS, back up, migrate, then deploy.\n')
           PY
           rm release-files/candidate.json
           cd release-files
-          sha256sum .env.prod.example .env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md > SHA256SUMS
+          sha256sum env.prod.example env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md > SHA256SUMS
           if metadata=$(gh release view "$VERSION" --repo "$REPOSITORY" --json isDraft,targetCommitish 2>/dev/null); then
             if test "$(jq -r .isDraft <<< "$metadata")" = false; then
               mkdir published
@@ -82,5 +82,10 @@ jobs:
           else
             gh release create "$VERSION" --repo "$REPOSITORY" --verify-tag --target "$SOURCE_SHA" --draft --title "FlowCraft $VERSION" --notes-file RELEASE_NOTES.md
           fi
-          gh release upload "$VERSION" --repo "$REPOSITORY" --clobber .env.prod.example .env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md SHA256SUMS
+          gh release upload "$VERSION" --repo "$REPOSITORY" --clobber env.prod.example env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md SHA256SUMS
+          # GitHub may normalize asset names. Re-download the draft and verify the
+          # actual published filenames and bytes before making it a public release.
+          mkdir downloaded
+          gh release download "$VERSION" --repo "$REPOSITORY" --dir downloaded
+          (cd downloaded && sha256sum -c SHA256SUMS)
           gh release edit "$VERSION" --repo "$REPOSITORY" --draft=false

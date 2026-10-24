@@ -17,7 +17,7 @@
 
 数据库和 MinIO 沿用现有外部服务，不纳入生产 Compose。容器地址不能直接照抄旧进程的 localhost，须使用可达主机名/网络；采用 host.docker.internal 时已配置 host-gateway，仍须核对数据库监听、pg_hba、Docker 子网与实际角色权限。保留现有数据库、MinIO 桶/密钥、JWT_SECRET 和 AI 配置；既有 AI 客户端启动要求 API key，因此 Compose 要求保留该值，隔离验收使用仅连接回环拒绝端口的假 key。初始化秘密不传给 app。
 
-将匹配版本的文件放入 `/opt/flowcraft`。由 .env.prod.example 创建 .env.prod，设置真实 digest 和现有运行配置；单独的迁移角色提供所需 DDL 权限。环境文件 chmod 600，按数据读取，不 source/eval。首次需要初始化空库时才填写 .env.bootstrap（chmod 600），显式执行 bootstrap 服务。已有任意账号时初始化无操作，不新增账号或改密码；空库要求指定用户名与至少 12 字符密码。bootstrap 不创建演示项目。
+将匹配版本的文件放入 `/opt/flowcraft`。Release 示例使用不带前导点的 env.prod.example / env.bootstrap.example，避免 GitHub 自动重命名附件；发布前重新下载草稿附件并验证 SHA256SUMS。由 Release 的 env.prod.example 创建 .env.prod（仓库源文件为 .env.prod.example），设置真实 digest 和现有运行配置；单独的迁移角色提供所需 DDL 权限。环境文件 chmod 600，按数据读取，不 source/eval。首次需要初始化空库时才填写 .env.bootstrap（chmod 600），显式执行 bootstrap 服务。已有任意账号时初始化无操作，不新增账号或改密码；空库要求指定用户名与至少 12 字符密码。bootstrap 不创建演示项目。
 
 私有 GHCR 镜像需只读拉取凭据，公开镜像可匿名。发布后核对实际可见性，不在文档/命令行放真实 token。
 
