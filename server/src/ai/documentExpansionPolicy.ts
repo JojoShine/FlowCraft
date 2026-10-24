@@ -41,3 +41,36 @@ export function reviewedUnsupportedLines(markdown:string,checks:{line:number;evi
  for(const check of checks){if(!Number.isInteger(check.line)||check.line<1||check.line>lines.length||!lines[check.line-1].trim()||seen.has(check.line)) throw new Error('无效的逐行材料核对');seen.add(check.line);if(!required.includes(check.line)) continue;if(!check.unsupported&&check.evidence.length&&check.evidence.every(quote=>quote.trim()&&source.includes(quote))) unsupported.delete(check.line);}
  if(required.length&&!checks.length) throw new Error('材料核对为空');return [...unsupported];
 }
+const purposeStart='(?:(?:目标|目的|预期(?:输出|成果|结果)|期望(?:输出|成果|结果))\\s*(?:[:：是为|]|\\r?\\n)|旨在)\\s*';
+function purposeText(value:string){return value.replace(/\*\*|__|`/g,'').replace(/^\s*(?:[-*+]|\d+[.)])\s+/,'').replace(/\s/g,'').replace(/^[|]+|[|。．.!！?？；;，,]+$/g,'');}
+function purposeKind(value:string):'goal'|'output' {return /预期|期望/.test(value)?'output':'goal';}
+export function enforceExplicitPurposes(markdown:string,material:string):{markdown:string;unsupportedLines:number[]} {
+ const declared={goal:new Set<string>(),output:new Set<string>()},cleanMaterial=material.replace(/\*\*|__|`/g,''),invalidDeclaration=/建议|提议|拟议|设想|假设|示例|例如|模板|填写|说明|写作要求|未明确|未确认|尚未|未确定|未提供|不要|不得|不能/;
+ const sourceHeadings=[...cleanMaterial.matchAll(/^ {0,3}(#{1,6})[ \t]+(.+)$/gm)],sourceScopes:{level:number;title:string}[]=[];let sourceHeading=0;
+ for(const match of cleanMaterial.matchAll(new RegExp(purposeStart+'([^\\r\\n。！？!?；;]+)','g'))) {
+  while(sourceHeading<sourceHeadings.length&&sourceHeadings[sourceHeading].index!<=match.index!) {
+   const heading=sourceHeadings[sourceHeading++],level=heading[1].length;while(sourceScopes.length&&sourceScopes[sourceScopes.length-1].level>=level) sourceScopes.pop();sourceScopes.push({level,title:heading[2]});
+  }
+  const before=cleanMaterial.slice(0,match.index).split(/[\r\n。！？!?；;]/).pop()||'',value=match[1];
+  if(invalidDeclaration.test(before)||sourceScopes.some(scope=>invalidDeclaration.test(scope.title))||/尚未(?:确认|确定|批准)|未(?:确认|确定|批准)|待(?:确认|确定|批准)/.test(value)) continue;
+  const kind=purposeKind(match[0].slice(0,match[0].length-value.length));
+  for(const part of [value,...value.split(/[，,]/)]) {const text=purposeText(part);if(text) declared[kind].add(text);}
+ }
+ const lines=markdown.split('\n'),bodyUnsupported:number[]=[],unsupportedLines:number[]=[],sections:{level:number;kind:'goal'|'output'|null}[]=[];let purposeSection:'goal'|'output'|null=null;
+ for(let index=0;index<lines.length;index++) {
+  const clean=lines[index].replace(/\*\*|__|`/g,''),heading=/^\s*(#{1,6})\s+(.+)/.exec(clean),match=new RegExp(purposeStart+'([\\s\\S]*)$').exec(clean);
+  if(heading) {
+   const level=heading[1].length;while(sections.length&&sections[sections.length-1].level>=level) sections.pop();
+   purposeSection=/(?:目标|目的)(?=$|[\s与和:：])|预期(?:输出|成果|结果)|期望(?:输出|成果|结果)/.test(heading[2])?purposeKind(heading[2]):sections[sections.length-1]?.kind||null;sections.push({level,kind:purposeSection});
+  }
+  if(!clean.trim()||separator(clean)||(lines[index+1]&&separator(lines[index+1]))||placeholder(clean)) continue;
+  if(heading&&!match) continue;
+  if(!match&&!purposeSection) continue;
+  if(!match&&/^\s*(?:[-*+]|\d+[.)])?\s*(?:背景|主题|会议主题|议题|时间|地点|主持(?:人)?|记录(?:人)?|参会(?:人员)?|缺席(?:人员)?|项目名(?:称)?|部署环境|涉及环境|权限)\s*[:：]/.test(clean)) continue;
+  const value=match?match[1]:clean.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/,''),kind=match?purposeKind(match[0].slice(0,match[0].length-value.length)):purposeSection!;
+  if(purposeText(value)==='待补充'||value.split(/[，,]/).every(part=>declared[kind].has(purposeText(part)))) continue;
+  unsupportedLines.push(index+1);
+  if(heading) lines[index]=clean.slice(0,match!.index+match![0].length-match![1].length)+'待补充';else bodyUnsupported.push(index+1);
+ }
+ return {markdown:markUnsupportedLines(lines.join('\n'),bodyUnsupported),unsupportedLines};
+}

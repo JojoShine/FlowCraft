@@ -28,3 +28,32 @@ it('marks unchecked or ungrounded substantive lines as pending',async()=>{const 
 it('never exempts numeric facts or IP addresses and recognizes punctuated placeholders',async()=>{const {reviewedUnsupportedLines}=await import('../../src/ai/documentExpansionPolicy');for(const markdown of ['# 资源\n\n| 服务器数 | 预算 |\n| --- | --- |\n| 12 | 500000 |','# 资源\n\n192.168.1.20']) expect(()=>reviewedUnsupportedLines(markdown,[],'服务器数量待定')).toThrow();expect(reviewedUnsupportedLines('# 方案\n\n- 待补充。\n\n| 项目 | 信息 |\n| --- | --- |\n| 待补充 | 待补充 |',[],'')).toEqual([]);});
 
 it('ignores redundant structural checks without exempting substantive data',async()=>{const {reviewedUnsupportedLines}=await import('../../src/ai/documentExpansionPolicy');expect(reviewedUnsupportedLines('# 方案\n\n备份数据库。',[{line:1,evidence:[],unsupported:false},{line:3,evidence:['备份数据库'],unsupported:false}],'备份数据库')).toEqual([]);});
+it.each([
+ ['主题不是目标','# 会议纪要\n\n### 背景与会议目标\n\n会议目标：形成结论或决策。','会议主题：形成结论或决策。','# 会议纪要\n\n### 背景与会议目标\n\n待补充'],
+ ['没有标签的推断','# 会议纪要\n\n### 背景与会议目标\n\n评审范围并形成决策。','会议主题：范围评审。','# 会议纪要\n\n### 背景与会议目标\n\n待补充'],
+ ['明确提供的目标','# 纪要\n\n### 会议目标\n\n- 会议目标：核对验收范围。','会议目标：核对验收范围。','# 纪要\n\n### 会议目标\n\n- 会议目标：核对验收范围。'],
+ ['不得删除否定词','会议目标：形成决议。','会议目标：不形成决议，只整理反馈。','待补充'],
+ ['不得添加尾部目的','会议目标：核对验收范围，形成决策。','会议目标：核对验收范围。','待补充'],
+ ['明确提供的多个目标','会议目标：核对范围，明确行动。','会议目标：核对范围，明确行动。','会议目标：核对范围，明确行动。'],
+ ['标题内的无据值','### 会议目标：形成决策\n\n## 讨论记录\n\n已确认只读下载。','已确认只读下载。','### 会议目标：待补充\n\n## 讨论记录\n\n已确认只读下载。'],
+ ['预期输出缺失','### 议题与预期输出\n\n- 预期输出：决策清单。','会议主题：范围评审。','### 议题与预期输出\n\n- 待补充'],
+ ['Markdown材料明确目标','会议目标：核对验收范围。','## 会议目标\n\n核对验收范围。','会议目标：核对验收范围。'],
+ ['非目标字段保持原有核对','### 背景与会议目标\n\n背景：模拟项目材料。\n\n### 目标用户\n\n其他人员只读。','模拟项目材料；其他人员只读。','### 背景与会议目标\n\n背景：模拟项目材料。\n\n### 目标用户\n\n其他人员只读。'],
+] as const)('requires explicit purpose declarations: %s',async(_name,markdown,material,want)=>{const {enforceExplicitPurposes}=await import('../../src/ai/documentExpansionPolicy');expect(enforceExplicitPurposes(markdown,material).markdown).toBe(want);});
+it.each([
+ ['预期输出：核对范围。','会议目标：核对范围。','待补充'],
+ ['会议目标：决议清单。','预期输出：决议清单。','待补充'],
+ ['预期输出：决议清单。','预期输出：决议清单。','预期输出：决议清单。'],
+ ['会议目标：形成决策。','程璐建议会议目标：形成决策，尚未确认。','待补充'],
+ ['会议目标：形成决策。','模板示例：会议目标：形成决策。','待补充'],
+ ['会议目标：不形成决议，只整理反馈。','会议目标：不形成决议，只整理反馈。','会议目标：不形成决议，只整理反馈。'],
+] as const)('does not use another field, a suggestion or an example as an explicit purpose: %s',async(markdown,material,want)=>{const {enforceExplicitPurposes}=await import('../../src/ai/documentExpansionPolicy');expect(enforceExplicitPurposes(markdown,material).markdown).toBe(want);});
+
+it.each([
+ ['示例标题不能声明目标','会议目标：形成决策。','## 模板示例\n会议目标：形成决策。','待补充'],
+ ['示例子标题不能声明目标','会议目标：形成决策。','## 模板示例\n### 本次会议\n会议目标：形成决策。','待补充'],
+ ['目标子标题继承作用域','### 会议目标\n\n#### 本次会议\n\n形成决策。','会议主题：范围评审。','### 会议目标\n\n#### 本次会议\n\n待补充'],
+ ['带值目标标题继承作用域','### 会议目标：形成决策\n\n形成决策。','会议主题：范围评审。','### 会议目标：待补充\n\n待补充'],
+ ['明确目标支持列表标记','### 会议目标\n\n- 核对范围。','## 会议目标\n- 核对范围。','### 会议目标\n\n- 核对范围。'],
+ ['示例作用域在同级标题结束','会议目标：核对范围。','## 模板示例\n会议目标：形成决策。\n## 实际材料\n会议目标：核对范围。','会议目标：核对范围。'],
+] as const)('respects purpose heading scopes: %s',async(_name,markdown,material,want)=>{const {enforceExplicitPurposes}=await import('../../src/ai/documentExpansionPolicy');expect(enforceExplicitPurposes(markdown,material).markdown).toBe(want);});
