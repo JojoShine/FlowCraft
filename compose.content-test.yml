@@ -9,7 +9,7 @@ services:
     ports: ["127.0.0.1:55439:5432"]
     tmpfs: [/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U flowcraft_test -d flowcraft_test"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U flowcraft_test -d flowcraft_test"]
       interval: 2s
       retries: 30
   minio:

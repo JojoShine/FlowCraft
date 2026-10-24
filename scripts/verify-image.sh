@@ -8,8 +8,8 @@ trap cleanup EXIT
 trap 'echo "Image acceptance failed at line $LINENO" >&2; docker logs "$app" --tail 30 2>/dev/null || true' ERR
 docker network create "$network" >/dev/null
 docker run -d --name "$db" --network "$network" -e POSTGRES_USER=flowcraft_test -e POSTGRES_PASSWORD=image-test-only -e POSTGRES_DB=flowcraft_test postgres:16.15-alpine >/dev/null
-for attempt in {1..45}; do if docker exec "$db" pg_isready -U flowcraft_test -d flowcraft_test >/dev/null 2>&1; then break; fi; sleep 1; done
-docker exec "$db" psql -U flowcraft_test -d flowcraft_test -v ON_ERROR_STOP=1 <<<'SELECT 1' >/dev/null
+for attempt in {1..45}; do if docker exec "$db" pg_isready -h 127.0.0.1 -U flowcraft_test -d flowcraft_test >/dev/null 2>&1; then break; fi; sleep 1; done
+docker exec "$db" psql -U flowcraft_test -d flowcraft_test -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null
 migration_url="postgresql://flowcraft_test:image-test-only@$db:5432/flowcraft_test"
 runtime_url="postgresql://flowcraft_runtime:image-test-runtime@$db:5432/flowcraft_test"
 docker exec -i "$db" psql -U flowcraft_test -d flowcraft_test -v ON_ERROR_STOP=1 <<'SQL'
