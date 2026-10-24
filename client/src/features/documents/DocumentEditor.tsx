@@ -10,7 +10,7 @@ import {documentFromTiptap,documentToTiptap} from './tiptapDocumentAdapter';
 import {createDocumentExtensions,selectedFlowBlock,type DocumentNodeServices} from './tiptapDocumentExtensions';
 import type {AssetDto,BlockJSON,ContentView,DocumentBody,DrawingReference} from '../content/types';
 import './documentEditor.css';
-interface Props {view:ContentView<DocumentBody>;onChange:(title:string,payload:DocumentBody)=>void;onComposition:(value:boolean)=>void;renderDrawing:(reference:DrawingReference)=>ReactNode;chooseDrawing?:()=>Promise<DrawingReference|null>;chooseDocument?:()=>Promise<string|null>;upload?:(file:File,blockId:string)=>Promise<AssetDto>;resolveAsset?:(assetId:string)=>Promise<string>;resolvePending?:(id:string)=>Promise<Blob>}
+interface Props {view:ContentView<DocumentBody>;onChange:(title:string,payload:DocumentBody)=>void;onComposition:(value:boolean)=>void;renderDrawing:(reference:DrawingReference)=>ReactNode;renderDocumentLink?:(documentId:string)=>ReactNode;chooseDrawing?:()=>Promise<DrawingReference|null>;chooseDocument?:()=>Promise<string|null>;upload?:(file:File,blockId:string)=>Promise<AssetDto>;resolveAsset?:(assetId:string)=>Promise<string>;resolvePending?:(id:string)=>Promise<Blob>}
 const textKinds=['paragraph','heading','bulletListItem','numberedListItem','checkListItem','quote','callout','codeBlock'];
 function walk(blocks:BlockJSON[],fn:(block:BlockJSON)=>void){for(const block of blocks){fn(block);walk(block.children||[],fn);}}
 function blankBody():DocumentBody{return {formatVersion:1,blocks:[{id:crypto.randomUUID(),type:'paragraph',content:[]}]};}
@@ -32,7 +32,7 @@ function TiptapDocument(props:Props&{initial:JSONContent;invalid:string;onInvali
   if(file.url&&safeLinkUrl(file.url)&&/^https?:/i.test(new URL(file.url,location.origin).protocol)) return file.url;
   throw new Error('资源链接不可用');
  }
- const services=useRef<DocumentNodeServices>({renderDrawing:props.renderDrawing,resolveMedia,onError:setError});services.current={renderDrawing:props.renderDrawing,resolveMedia,onError:setError};
+ const services=useRef<DocumentNodeServices>({renderDrawing:props.renderDrawing,renderDocumentLink:props.renderDocumentLink,resolveMedia,onError:setError});services.current={renderDrawing:props.renderDrawing,renderDocumentLink:props.renderDocumentLink,resolveMedia,onError:setError};
  const extensions=useMemo(()=>createDocumentExtensions(services),[props.view.id]);
  function repairUploaded(editor:Editor) {
   const tr=editor.state.tr;editor.state.doc.descendants((node,pos)=>{if(!['flowImage','flowFile'].includes(node.type.name)) return;const asset=uploaded.current.get(node.attrs.blockId)||(node.attrs.props.url?.startsWith('pending:')?uploaded.current.get(node.attrs.props.url.slice(8)):undefined);if(asset&&!node.attrs.props.assetId) tr.setNodeMarkup(pos,undefined,{...node.attrs,props:{...node.attrs.props,assetId:asset.id,url:`asset:${asset.id}`}});});

@@ -188,6 +188,7 @@ model Document {
   project Project @relation(fields:[projectId], references:[id], onDelete:Restrict)
   title String
   searchText String @default("")
+  shareToken String? @unique
   currentVersion Int @default(1)
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -216,6 +217,7 @@ model Drawing {
   projectId String
   project Project @relation(fields:[projectId],references:[id],onDelete:Restrict)
   title String
+  shareToken String? @unique
   currentVersion Int @default(1)
   deletedAt DateTime?
   createdAt DateTime @default(now())

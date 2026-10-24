@@ -14,7 +14,7 @@ async function owned(tx:Prisma.TransactionClient,actor:Actor,kind:ContentKind,id
 export async function trashContent(actor:Actor,kind:ContentKind,id:string):Promise<void> {
  await runContentTransaction(async tx=>{
   await owned(tx,actor,kind,id,true);
-  const data={deletedAt:new Date()};
+  const data={deletedAt:new Date(),shareToken:null};
   if(kind==='document') await tx.document.update({where:{id},data});
   else await tx.drawing.update({where:{id},data});
  });

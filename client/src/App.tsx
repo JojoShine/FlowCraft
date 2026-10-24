@@ -16,6 +16,7 @@ const Kanban = lazy(() => import('./pages/Kanban').then(module => ({ default: mo
 const Reports = lazy(() => import('./pages/Reports').then(module => ({ default: module.Reports })));
 const SharedArtifact = lazy(() => import('./pages/SharedArtifact').then(module => ({ default: module.SharedArtifact })));
 
+const SharedContent = lazy(() => import('./pages/SharedContent').then(m => ({default:m.SharedContent})));
 const Documents = lazy(() => import('./pages/Documents').then(m => ({default:m.Documents})));
 const DocumentSample = lazy(() => import('./pages/DocumentSample').then(m => ({default:m.DocumentSample})));
 const DocumentPage = lazy(() => import('./pages/DocumentPage').then(m => ({default:m.DocumentPage})));
@@ -42,6 +43,7 @@ function App() {
                   <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/share/:token" element={<SharedArtifact />} />
+                  <Route path="/share/:kind/:token" element={<SharedContent />} />
                   <Route path="/*" element={
                     <ProtectedRoute>
                       <Layout />
