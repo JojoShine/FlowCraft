@@ -5,6 +5,6 @@ import {successResponse} from '../lib/response';
 import {setContentPreference,listContentPreferences} from '../content/preferences';
 import {parse,kindInput} from './contentHttp';
 const router=Router();
-router.get('/:kind',asyncHandler(async(req,res)=>{const kind=parse(kindInput,req.params.kind);const projectId=parse(z.string().uuid().optional(),req.query.projectId);res.json(successResponse(await listContentPreferences(req.user!,kind,projectId)));}));
+router.get('/:kind',asyncHandler(async(req,res)=>{const kind=parse(kindInput,req.params.kind);const projectId=parse(z.string().min(1).max(255).optional(),req.query.projectId);res.json(successResponse(await listContentPreferences(req.user!,kind,projectId)));}));
 router.put('/:kind/:id',asyncHandler(async(req,res)=>{const patch=parse(z.object({favorite:z.boolean().optional(),lastViewedAt:z.string().optional(),viewState:z.record(z.string(),z.unknown()).optional()}).strict(),req.body);res.json(successResponse(await setContentPreference(req.user!,parse(kindInput,req.params.kind),req.params.id as string,patch)));}));
 export default router;

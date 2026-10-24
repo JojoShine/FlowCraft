@@ -2,10 +2,10 @@ import {randomUUID} from 'crypto';
 import {prisma as db} from '../src/lib/prisma';
 import {minioClient,BUCKET_NAME,uploadFile} from '../src/lib/minio';
 import type {Actor,DocumentBody,DrawingScene} from '../src/content/contracts';
-export async function withContentFixture(test:(fx:ContentFixture)=>Promise<void>):Promise<void> {
+export async function withContentFixture(test:(fx:ContentFixture)=>Promise<void>,projectId?:string):Promise<void> {
  const owner=await db.user.create({data:{role:'admin',name:'content test'}});
  const otherOwner=await db.user.create({data:{role:'admin',name:'other test'}});
- const project=await db.project.create({data:{name:'content test',type:'software',ownerId:owner.id}});
+ const project=await db.project.create({data:{id:projectId,name:'content test',type:'software',ownerId:owner.id}});
  const otherProject=await db.project.create({data:{name:'other test',type:'software',ownerId:otherOwner.id}});
  const viewer=await db.user.create({data:{role:'viewer',projectId:project.id}});
  const ids=[project.id,otherProject.id],users=[owner.id,otherOwner.id,viewer.id];

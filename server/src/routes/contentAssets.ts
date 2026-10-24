@@ -15,7 +15,7 @@ const upload=multer({dest:tmpdir(),limits:{fileSize:20*1024*1024,files:1,fields:
 router.post('/',(req,res,next)=>{upload(req,res,error=>{if(error instanceof multer.MulterError) return next(new AppError(error.code==='LIMIT_FILE_SIZE'?'文件容量过大':'上传参数无效',error.code==='LIMIT_FILE_SIZE'?413:400));next(error);});},asyncHandler(async(req,res)=>{
  const file=req.file;if(!file) throw AppError.badRequest('请选择文件');
  try {
-  const input=parse(z.object({projectId:z.string().uuid(),category:z.enum(['image','attachment'])}),req.body);
+  const input=parse(z.object({projectId:z.string().min(1).max(255),category:z.enum(['image','attachment'])}),req.body);
   await requireContentOwner(req.user!,input.projectId);
   if(input.category==='image') {
    const handle=await open(file.path,'r');const header=Buffer.alloc(12);try {await handle.read(header,0,12,0);}finally {await handle.close();}

@@ -1,3 +1,4 @@
+import {randomUUID} from 'crypto';
 import {it,expect} from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
@@ -33,3 +34,14 @@ it('utf8_bytes_enforce_limits with independent payload and transport caps and in
  await request(app).post('/api/v1/documents').set('Authorization',token(fx.owner.id)).set('Content-Type','application/json').send('{').expect(400);
  expect(await fx.db.document.count({where:{projectId:fx.project.id}})).toBe(1);
 }));
+
+it('legacy project identifiers work for documents, drawings, preferences and uploads without weakening ownership',()=>withContentFixture(async fx=>{
+ const owner=token(fx.owner.id),viewer=token(fx.viewer.id);
+ await request(app).post('/api/v1/documents').set('Authorization',owner).send({projectId:fx.project.id,title:'旧项目文档',payload:fx.body}).expect(201);
+ await request(app).post('/api/v1/drawings').set('Authorization',owner).send({projectId:fx.project.id,title:'旧项目绘图',payload:fx.scene}).expect(201);
+ for(const route of ['/api/v1/documents','/api/v1/drawings','/api/v1/content-preferences/document']) await request(app).get(route).set('Authorization',owner).query({projectId:fx.project.id}).expect(200);
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT1sAAAAASUVORK5CYII=','base64');
+ await request(app).post('/api/v1/content-assets').set('Authorization',owner).field('projectId',fx.project.id).field('category','image').attach('file',png,{filename:'legacy.png',contentType:'image/png'}).expect(201);
+ await request(app).post('/api/v1/documents').set('Authorization',token(fx.otherOwner.id)).send({projectId:fx.project.id,title:'无权写入',payload:fx.body}).expect(403);
+ await request(app).post('/api/v1/documents').set('Authorization',viewer).send({projectId:fx.project.id,title:'只读',payload:fx.body}).expect(403);
+},'legacy-project-'+randomUUID()));

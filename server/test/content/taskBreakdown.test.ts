@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {parseTaskBreakdown,parseTaskBatch} from '../../src/ai/taskBreakdown';
+import {parseTaskBreakdown,parseTaskBatch,breakdownInput} from '../../src/ai/taskBreakdown';
 it('accepts structured task previews and strips model-controlled project and assignee fields',()=>{
  const parsed=parseTaskBreakdown('```json\n'+JSON.stringify({summary:'两项任务',tasks:[{title:'准备环境',description:'验证服务可访问',type:'deploy',priority:'high',dueDate:null,projectId:'foreign',assigneeId:'invented'}]})+'\n```');expect(parsed.tasks[0]).toEqual({title:'准备环境',description:'验证服务可访问',type:'deploy',priority:'high',dueDate:null});
 });
@@ -9,4 +9,11 @@ it('rejects malformed AI output and impossible dates instead of importing partia
 it('requires a nonempty, bounded, validated reviewed task batch with an idempotency key',()=>{
  expect(()=>parseTaskBatch({projectId:'project',tasks:[]})).toThrow();expect(()=>parseTaskBatch({projectId:'project',requestId:'x',tasks:[]})).toThrow();
  expect(parseTaskBatch({projectId:'a717df13-fba4-4b09-9a76-f81598c322ba',requestId:'86682350-ff75-4f15-a9af-05fbff232634',tasks:[{title:'评审方案',description:'完成评审',type:'review',priority:'med',dueDate:'2026-11-01'}]}).tasks).toHaveLength(1);
+});
+
+it('AI task preview and confirmed import retain legacy project identifiers',()=>{
+ for(const projectId of ['legacy','5f8d0d55b54764421b7156a1']) {
+  expect(breakdownInput.parse({projectId,text:'整理方案'}).projectId).toBe(projectId);
+  expect(parseTaskBatch({projectId,requestId:'86682350-ff75-4f15-a9af-05fbff232634',tasks:[{title:'评审方案',type:'review',priority:'med'}]}).projectId).toBe(projectId);
+ }
 });
