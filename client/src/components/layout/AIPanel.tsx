@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAIChat, type ToolCallInfo } from '../../hooks/useAIChat';
 import {useAuth} from '../../contexts/AuthContext';
 import {DocumentExpansionPanel} from '../../features/documents/DocumentExpansionPanel';
+import {builtinTemplates,decodeTemplate,type CatalogTemplate} from '../../features/documents/documentTemplateCatalog';
+import {documentsApi} from '../../features/content/api';
 import {useDocumentAssistant} from '../../features/documents/DocumentAssistantContext';
 import {TaskBreakdownPanel} from '../../features/tasks/TaskBreakdownPanel';
 import { useProjectContext } from '../../contexts/ProjectContext';
@@ -40,11 +42,7 @@ const priorityColors: Record<string, string> = {
   low: '#6b7280',
 };
 
-interface TemplateItem {
-  id: string;
-  name: string;
-  category?: string;
-}
+type TemplateItem=CatalogTemplate;
 
 interface SelectedTemplate {
   id: string;
@@ -446,8 +444,9 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  const [templates, setTemplates] = useState<TemplateItem[]>(builtinTemplates);
+  const [templateError,setTemplateError]=useState(''),[startingDocument,setStartingDocument]=useState(false);
+  const startingRef=useRef(false),actorRef=useRef(user?.id);actorRef.current=user?.id;
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [selectedTemplates, setSelectedTemplates] = useState<SelectedTemplate[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
@@ -465,12 +464,15 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  useEffect(()=>{setTemplates(builtinTemplates);setSelectedTemplates([]);setShowMentionPicker(false);setTemplateError('');},[user?.id]);
   useEffect(() => {
-    if (!showMentionPicker || templatesLoaded) return;
+    if (!showMentionPicker) return;
+    let active=true;
     templatesApi.list().then(res => {
-      setTemplates((res.data as any[]).map(t => ({ id: t.id, name: t.name, category: t.category })));
-    }).catch(() => {}).finally(() => setTemplatesLoaded(true));
-  }, [showMentionPicker, templatesLoaded]);
+      if(active){setTemplates([...builtinTemplates,...res.data as CatalogTemplate[]]);setTemplateError('');}
+    }).catch(error=>{if(active) setTemplateError(error.message||'自定义模板读取失败，请重新输入 @ 重试');});
+    return()=>{active=false;};
+  }, [showMentionPicker,user?.id]);
 
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(mentionFilter.toLowerCase())
@@ -478,7 +480,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
 
   const handleInputChange = (value: string) => {
     setInput(value);
-    const atMatch = value.match(/@([^@\s]*)$/);
+    const atMatch = value.match(/@([^@\r\n]*)$/);
     if (atMatch) {
       setShowMentionPicker(true);
       setMentionFilter(atMatch[1]);
@@ -490,11 +492,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   };
 
   const selectTemplate = useCallback((template: TemplateItem) => {
-    setSelectedTemplates(prev => {
-      if (prev.some(t => t.id === template.id)) return prev;
-      return [...prev, { id: template.id, name: template.name }];
-    });
-    setInput(prev => prev.replace(/@[^@\s]*$/, ''));
+    setSelectedTemplates([{id:template.id,name:template.name}]);
+    setInput(prev => prev.replace(/@[^@\r\n]*$/, ''));
     setShowMentionPicker(false);
     setMentionFilter('');
   }, []);
@@ -504,6 +503,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if(e.nativeEvent.isComposing) return;
     if (showMentionPicker && filteredTemplates.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -569,12 +569,20 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
     }
   }, [input]);
 
-  const handleSend = () => {
-    if (!input.trim() || loading) return;
-    const tIds = selectedTemplates.length > 0 ? selectedTemplates.map(t => t.id) : undefined;
-    sendMessage(input.trim(), selectedProjectId || undefined, tIds);
-    setInput('');
-    setSelectedTemplates([]);
+  const handleSend = async () => {
+    if (!input.trim() || loading || startingRef.current) return;
+    if(!selectedTemplates.length){sendMessage(input.trim(),selectedProjectId||undefined);setInput('');return;}
+    const template=templates.find(item=>item.id===selectedTemplates[0].id),project=projects.find(item=>item.id===selectedProjectId),actor=user?.id,material=input.trim();
+    if(user?.role!=='admin'||!project||project.ownerId!==actor){setTemplateError('请先选择一个可编辑的项目，再按模板新建文档');return;}
+    if(!template){setTemplateError('模板已不可用，请重新输入 @ 选择');return;}
+    startingRef.current=true;setStartingDocument(true);setTemplateError('');
+    try{
+      const decoded=await decodeTemplate(template);if(actorRef.current!==actor) return;
+      const created=await documentsApi.create({projectId:project.id,title:template.name,payload:decoded.body});if(actorRef.current!==actor) return;
+      setInput('');setSelectedTemplates([]);setShowHistory(false);
+      navigate(`/documents/${created.id}`,{state:{aiExpand:true,aiAutoGenerate:true,aiMaterial:material,aiInstructions:decoded.instructions,importWarnings:decoded.warnings}});
+    }catch(error:any){if(actorRef.current===actor) setTemplateError(error.message||'新建文档失败，材料已保留，请重试');}
+    finally{startingRef.current=false;setStartingDocument(false);}
   };
 
   const handleSaveArtifact = (html: string) => {
@@ -795,7 +803,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
                 你好，我是 FlowCraft助手。我可以帮你管理项目、分析任务进度、生成报告等。
               </p>
               <p style={{ marginBottom: 0, color: 'var(--ink-3)', fontSize: 12 }}>
-                输入 @ 可引用模板，AI 将按模板结构生成内容。
+                输入 @ 选择模板，按材料生成文档预览，确认后保存到文档中心。
               </p>
             </div>
           </div>
@@ -877,7 +885,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               <button
                 key={i}
                 onClick={() => { sendMessage(s, selectedProjectId || undefined); }}
-                disabled={loading}
+                disabled={loading||startingDocument}
                 style={{
                   textAlign: 'left', fontSize: 12.5, padding: '7px 10px',
                   border: '1px solid var(--border-subtle)', borderRadius: 6,
@@ -908,6 +916,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
 
       {/* Footer */}
       <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border-subtle)' }}>
+        {templateError&&<p role="alert" style={{fontSize:12,color:'var(--ink-2)',margin:'0 0 8px'}}>{templateError}</p>}
+        {selectedTemplates.length>0&&<p style={{fontSize:12,color:'var(--ink-3)',margin:'0 0 8px'}}>将在当前项目新建独立文档，生成后确认应用。</p>}
         {/* Selected template tags */}
         {selectedTemplates.length > 0 && (
           <div style={{
@@ -925,6 +935,8 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               >
                 @{t.name}
                 <button
+                  disabled={startingDocument}
+                  aria-label={`移除模板 ${t.name}`}
                   onClick={() => removeTemplate(t.id)}
                   style={{
                     border: 'none', background: 'none', padding: 0, margin: 0,
@@ -946,6 +958,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
         {showMentionPicker && (
           <div
             ref={mentionRef}
+            role="listbox" aria-label="选择文档模板"
             style={{
               marginBottom: 8, padding: 4,
               border: '1px solid var(--border-subtle)', borderRadius: 8,
@@ -961,7 +974,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               filteredTemplates.map((t, i) => (
                 <div
                   key={t.id}
-                  data-index={i}
+                  data-index={i} role="option" aria-label={t.name} aria-selected={i===mentionHighlightIdx}
                   onClick={() => selectTemplate(t)}
                   style={{
                     padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
@@ -997,7 +1010,7 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="输入问题或 @ 引用模板..."
-            disabled={loading}
+            disabled={loading||startingDocument}
             rows={1}
             style={{
               flex: 1, border: 'none', outline: 'none', boxShadow: 'none',
@@ -1017,7 +1030,9 @@ export function AIPanel({ isOpen, onClose }: AIPanelProps) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 150ms',
             }}
-            onClick={handleSend}
+            aria-label={selectedTemplates.length?'按模板生成文档':'发送消息'}
+            disabled={loading||startingDocument||!input.trim()}
+            onClick={()=>void handleSend()}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <line x1="22" y1="2" x2="11" y2="13"/>
