@@ -59,6 +59,13 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: browser-failure-${{ github.sha }}
+          path: client/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Clean isolated test services
         if: always()
         run: docker compose -f compose.content-test.yml down --volumes

@@ -30,7 +30,7 @@
 1. 核对版本提交、镜像 digest、前端归档和 SHA256SUMS；核对 CPU 架构（当前 CI 镜像 linux/amd64），镜像可拉取性和角色权限。首次切换先检查现有 Nginx 拓扑；标准片段假定宿主机 Nginx，不能直接套用到隔离网络的 Nginx 容器。
 2. 备份数据库、MinIO 对象和当前部署配置，记录校验值和旧后端/前端版本；隔离恢复演练通过才继续。保留旧进程及配置作为首次容器化回退入口。
 3. 下载同一 Release 的配置和前端包到新版本目录，保留上一份 Compose/.env.prod/Nginx。填写现有配置，确认固定 digest。前端解压到 `/opt/flowcraft/frontend/releases/<version>`，把新版本 assets 增量复制到 `/opt/flowcraft/frontend/assets/`（保留旧哈希资源供打开的页面及回退使用）。其他静态文件由 `frontend/current` 指向对应版本；切换使用同目录临时软链再 rename，不删除旧版本目录。
-4. 如旧库未建立迁移历史，先用随镜像编译的只读预检工具比对 8cde088 基线；仅在结果完全匹配、备份与恢复已确认后显式标记旧基线；然后迁移。两步分别执行，不能自动推断可标记。
+4. 如旧库未建立迁移历史，先用随镜像编译的只读预检工具比对 8cde088 基线；仅在基线原有表的字段、索引和外键完全匹配、备份与恢复已确认后显式标记旧基线。预检额外发现的旧 Document/Todo/TodoGroup/TodoNote 表必须按本次旧库兼容附录人工逐项核对并保留；仅这类已记录的纯额外旧表差异可在记录审阅结论后接受，即使 baselineCanBeMarked=false。其他差异一律停止，不得直接执行预检输出中的 DROP SQL；审阅通过才显式标记；然后迁移。两步分别执行，不能自动推断可标记。
 
 ```sh
 docker compose --env-file .env.prod -f compose.prod.yaml run --rm --no-deps migrate sh -c 'CONTENT_PREFLIGHT_DATABASE_URL="$DATABASE_URL" exec /app/bin/schema-preflight --baseline /app/prisma/baseline.prisma'
