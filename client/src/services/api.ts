@@ -212,11 +212,12 @@ export const authApi = {
 };
 
 export interface TaskProposal {title:string;description:string;type:string;priority:'high'|'med'|'low';dueDate:string|null}
+export interface DocumentExpansionValidation {count:number;max:number|null;unit:'han'|'characters';unsupportedLines:number}
 export interface TaskPreview {summary:string;tasks:TaskProposal[];sourceTitle:string}
 export const aiApi = {
   expandDocument:(input:{documentId:string;baseVersion:number;text:string;instructions:string},signal?:AbortSignal,files:File[]=[])=>{
     const form=new FormData();Object.entries(input).forEach(([key,value])=>form.append(key,String(value)));files.forEach(file=>form.append('files',file));
-    return api.post<{documentId:string;baseVersion:number;title:string;markdown:string}>('/ai/document-expansion',form,{signal,timeout:70000});
+    return api.post<{documentId:string;baseVersion:number;title:string;markdown:string;validation?:DocumentExpansionValidation}>('/ai/document-expansion',form,{signal,timeout:70000});
   },
   previewTasks:(input:{projectId:string;text?:string;documentId?:string;instructions?:string},signal?:AbortSignal,files:File[]=[])=>{
     if(!files.length) return api.post<TaskPreview>('/ai/task-breakdown',input,{signal,timeout:70000});

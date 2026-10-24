@@ -28,12 +28,14 @@ export type StreamEvent =
   | { type: 'tool_calls'; toolCalls: ToolCall[] }
   | { type: 'done'; finishReason: string };
 
-export async function chatComplete(messages: ChatMessage[], options?: {signal?:AbortSignal;timeout?:number;maxRetries?:number}): Promise<string> {
+export async function chatComplete(messages: ChatMessage[], options?: {signal?:AbortSignal;timeout?:number;maxRetries?:number;jsonMode?:boolean}): Promise<string> {
+  const {jsonMode,...requestOptions}=options||{};
   const response = await client.chat.completions.create({
+    ...(jsonMode?{response_format:{type:'json_object' as const}}:{}),
     model: aiConfig.deepseek.model,
     messages: messages as any,
     stream: false,
-  },options);
+  },requestOptions);
   return response.choices[0]?.message?.content || '';
 }
 
