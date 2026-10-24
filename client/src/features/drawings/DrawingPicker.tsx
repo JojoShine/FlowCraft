@@ -1,0 +1,9 @@
+import {useEffect,useState} from 'react';
+import {drawingsApi} from '../content/api';
+import type {ContentSummary,DrawingReference} from '../content/types';
+export function DrawingPicker({projectId,onPick,onClose}:{projectId:string;onPick:(reference:DrawingReference)=>void;onClose:()=>void}) {
+ const [items,setItems]=useState<ContentSummary[]>([]),[q,setQ]=useState(''),[name,setName]=useState('未命名绘图'),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ useEffect(()=>{let active=true;drawingsApi.list({projectId,q}).then(result=>{if(active) setItems(result.items);}).catch(e=>{if(active) setError(e.message);});return ()=>{active=false;};},[projectId,q]);
+ const pick=(id:string)=>onPick({blockId:crypto.randomUUID(),drawingId:id,mode:'latest',revision:null});
+ return <div className="content-modal-backdrop"><section className="content-modal" role="dialog" aria-modal="true" aria-label="插入绘图"><header className="content-toolbar"><h2>插入本项目绘图</h2><button onClick={onClose}>取消插入</button></header><input aria-label="搜索绘图" placeholder="搜索已有绘图" value={q} onChange={event=>setQ(event.target.value)}/>{error&&<p role="alert">{error}</p>}<ul className="content-picker-list">{items.map(item=><li key={item.id}><button onClick={()=>pick(item.id)}>{item.title}</button></li>)}</ul><hr/><label className="content-field">新图名称<input aria-label="新图名称" value={name} onChange={event=>setName(event.target.value)}/></label><p className="content-picker-hint">新图创建后会保留在绘图中心。之后可在正文中打开并编辑原图。</p><footer className="content-modal-actions"><button className="content-primary" disabled={busy||!name.trim()} onClick={()=>{setBusy(true);void drawingsApi.create({projectId,title:name.trim(),payload:{formatVersion:1,elements:[],appState:{viewBackgroundColor:'#ffffff'},files:{}}}).then(drawing=>pick(drawing.id)).catch(e=>setError(e.message)).finally(()=>setBusy(false));}}>新建独立绘图并插入</button></footer></section></div>;
+}

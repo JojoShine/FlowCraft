@@ -191,20 +191,9 @@ VITE_API_BASE_URL=https://example.com/api/v1
 
 ## 构建与部署
 
-分别验证前后端生产构建：
+后端使用 Docker，前端以 `/flowcraft/` 静态文件部署到现有 Nginx，保留外部 PostgreSQL 和 MinIO。GitHub Actions 完成锁文件安装、测试、构建和镜像验收；主分支发布候选镜像，版本标签提升同一 digest，Release 同时提供匹配的前端静态包、配置和校验和。生产只拉镜像，不上传业务源码或安装 npm 依赖。
 
-```bash
-cd client && npm run build
-cd ../server && npm run build
-```
-
-项目根目录的脚本会构建两端代码，并把静态资源、服务端产物、PM2 配置和 Nginx 示例打包到 `deploy/`：
-
-```bash
-./build.sh
-```
-
-生产环境建议由 Nginx 托管 `client/dist`，将 `/flowcraft/api/` 反向代理到后端，并使用 PM2 或其他进程管理器运行服务。部署前请按实际域名、目录和后端地址调整 `nginx.conf` 与环境变量。
+完整步骤、旧库迁移前置核对、备份与回退见 [Docker 发布与部署](docs/operations/docker-deployment.md)。`build.sh` 仅用于本地构建验收，不复制真实环境文件、不删除既有验收证据，也不代表正式发布。
 
 ## 技术栈
 
@@ -216,8 +205,14 @@ cd ../server && npm run build
 | 文件 | MinIO |
 | AI | DeepSeek（OpenAI 兼容接口） |
 | 文档 | Mammoth、docx-preview、SheetJS、html-to-docx、jsPDF |
-| 部署 | Nginx、PM2 |
+| 部署 | Docker、GHCR、GitHub Actions、Nginx 静态前端 |
 
 ## License
 
 当前仓库尚未声明开源许可证。公开部署或二次分发前，请先与项目维护者确认授权范围。
+
+### 文档中心与绘图中心（本地开发分支）
+
+新增独立的文档中心和原生 Excalidraw 绘图中心。文档按项目平铺，一篇 Markdown 对应一篇文档，正文标题形成文章目录；支持文档嵌图、自动保存、本地草稿、历史版本及离线导出。owner 编辑、项目 viewer 阅读，暂不支持多人实时协作。
+
+隔离测试、迁移预检、备份与回退步骤见 [文档与绘图发布准备](docs/operations/document-drawing-release.md)。本分支仅供本地验证，发布须另行授权；不要把测试配置替换到现有生产 MinIO 或部署环境。

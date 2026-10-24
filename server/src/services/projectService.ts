@@ -115,6 +115,18 @@ export const projectService = {
   async delete(id: string) {
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) throw AppError.notFound('Project not found');
-    await prisma.project.delete({ where: { id } });
+    try {
+      await prisma.$transaction(async tx => {
+        const [documents, drawings] = await Promise.all([
+          tx.document.count({ where: { projectId: id } }),
+          tx.drawing.count({ where: { projectId: id } }),
+        ]);
+        if (documents || drawings) throw AppError.conflict('项目包含文档或绘图（包括回收站），请保留或归档项目');
+        await tx.project.delete({ where: { id } });
+      });
+    } catch (error: any) {
+      if (error.code === 'P2003') throw AppError.conflict('项目仍有内容或文件，请先归档');
+      throw error;
+    }
   },
 };

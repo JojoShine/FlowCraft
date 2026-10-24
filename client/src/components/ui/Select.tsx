@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 
 interface SelectOption {
@@ -8,6 +8,8 @@ interface SelectOption {
 
 interface SelectProps {
   label?: string;
+  'aria-label'?: string;
+  className?: string;
   placeholder?: string;
   value?: string;
   onValueChange?: (value: string) => void;
@@ -18,7 +20,8 @@ interface SelectProps {
   onFocus?: () => void;
 }
 
-export function Select({ label, placeholder = '请选择', value, onValueChange, options, error, disabled, searchable = false, onFocus }: SelectProps) {
+export function Select({ label, 'aria-label': ariaLabel, className, placeholder = '请选择', value, onValueChange, options, error, disabled, searchable = false, onFocus }: SelectProps) {
+  const controlId = useId();
   const [search, setSearch] = useState('');
 
   const filteredOptions = searchable && search
@@ -26,9 +29,9 @@ export function Select({ label, placeholder = '请选择', value, onValueChange,
     : options;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+    <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
       {label && (
-        <label style={{
+        <label htmlFor={controlId} style={{
           fontSize: 12,
           fontWeight: 500,
           color: 'var(--ink-2)',
@@ -39,6 +42,8 @@ export function Select({ label, placeholder = '请选择', value, onValueChange,
       )}
       <SelectPrimitive.Root value={value} onValueChange={(v) => { onValueChange?.(v); setSearch(''); }} disabled={disabled} onOpenChange={(open) => { if (open) onFocus?.(); if (!open) setSearch(''); }}>
         <SelectPrimitive.Trigger
+          id={controlId}
+          aria-label={ariaLabel}
           style={{
             width: '100%',
             boxSizing: 'border-box',

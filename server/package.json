@@ -9,7 +9,11 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "dev:content-test": "tsx test/runtime.ts",
+    "content:schema-preflight": "tsx scripts/content-schema-preflight.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -24,9 +28,11 @@
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
+    "dompurify": "3.4.13",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "html-to-docx": "^1.8.0",
+    "jsdom": "26.1.0",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.1",
     "minio": "^8.0.7",
@@ -45,10 +51,14 @@
     "@types/archiver": "^8.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsdom": "21.1.7",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.2.0",
+    "@types/supertest": "7.2.1",
     "@types/word-extractor": "^1.0.6",
+    "supertest": "7.3.1",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "4.0.18"
   }
 }

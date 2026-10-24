@@ -167,3 +167,6 @@ button, a, input, select, textarea {
   to { transform: scale(1); opacity: 1; }
 }
 
+
+/* Hide the content navigation before lazy content styles load. */
+.content-mobile-nav { display: none; }

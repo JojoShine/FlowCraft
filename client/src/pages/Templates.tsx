@@ -352,7 +352,7 @@ export function Templates() {
   );
 }
 
-function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdit, isViewer }: {
+export function TemplateDrawer({ isOpen, mode, template, onSave, onClose, onSwitchToEdit, isViewer }: {
   isOpen: boolean;
   mode: 'view' | 'edit' | 'create';
   template: Template | null;

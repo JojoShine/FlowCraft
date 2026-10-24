@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
 });
 
@@ -30,8 +30,12 @@ api.interceptors.response.use(
       : serverError?.message;
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.dispatchEvent(new Event('auth:logout'));
+      const currentToken = localStorage.getItem('token');
+      const requestToken = error.config?.headers?.get?.('Authorization') || error.config?.headers?.Authorization;
+      if (!currentToken || requestToken === `Bearer ${currentToken}`) {
+        localStorage.removeItem('token');
+        window.dispatchEvent(new Event('auth:logout'));
+      }
       return Promise.reject(error);
     }
 
@@ -207,7 +211,21 @@ export const authApi = {
   getMe: () => api.get('/auth/me'),
 };
 
+export interface TaskProposal {title:string;description:string;type:string;priority:'high'|'med'|'low';dueDate:string|null}
+export interface DocumentExpansionValidation {count:number;max:number|null;unit:'han'|'characters';unsupportedLines:number}
+export interface TaskPreview {summary:string;tasks:TaskProposal[];sourceTitle:string}
 export const aiApi = {
+  expandDocument:(input:{documentId:string;baseVersion:number;text:string;instructions:string},signal?:AbortSignal,files:File[]=[])=>{
+    const form=new FormData();Object.entries(input).forEach(([key,value])=>form.append(key,String(value)));files.forEach(file=>form.append('files',file));
+    return api.post<{documentId:string;baseVersion:number;title:string;markdown:string;validation?:DocumentExpansionValidation}>('/ai/document-expansion',form,{signal,timeout:70000});
+  },
+  previewTasks:(input:{projectId:string;text?:string;documentId?:string;instructions?:string},signal?:AbortSignal,files:File[]=[])=>{
+    if(!files.length) return api.post<TaskPreview>('/ai/task-breakdown',input,{signal,timeout:70000});
+    const form=new FormData();Object.entries(input).forEach(([key,value])=>{if(value) form.append(key,value);});files.forEach(file=>form.append('files',file));
+    return api.post<TaskPreview>('/ai/task-breakdown',form,{signal,timeout:70000});
+  },
+  importTasks:(input:{projectId:string;requestId:string;tasks:TaskProposal[]})=>api.post<{count:number;taskIds:string[]}>('/ai/task-breakdown/import',input),
+
   chat(conversationId: string | null, message: string, projectId?: string, templateIds?: string[], signal?: AbortSignal) {
     const token = localStorage.getItem('token');
     return fetch(`${baseURL}/ai/chat`, {
