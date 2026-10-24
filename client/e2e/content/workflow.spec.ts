@@ -17,7 +17,7 @@ test('server document, editable embedded drawing, refresh, immutable history and
  const drawingSaved=await(await request.get(`${API}/drawings/${drawingId}`,{headers})).json();const originalElement=drawingSaved.data.payload.elements[0];
  await drawer.getByRole('button',{name:'← 返回文档',exact:true}).click();await expect(drawer).toBeHidden();await expect(page.getByText('跟随最新 v2',{exact:true})).toBeVisible();
  await page.reload();await expect(page.getByText('跟随最新 v2',{exact:true})).toBeVisible();await page.screenshot({path:testInfo.outputPath('document-with-drawing.png'),fullPage:true});
- await page.getByRole('button',{name:'更多操作',exact:true}).click();await page.getByRole('button',{name:'历史版本',exact:true}).click();const history=page.getByRole('dialog',{name:'历史版本',exact:true});await expect(history.getByText('图为该次正文保存时的快照')).toBeVisible();await history.getByRole('button',{name:/^v1 ·/}).click();await expect(history.getByText('所选版本 v1')).toBeVisible();await history.getByRole('button',{name:'恢复到此版本',exact:true}).click();await expect(history).toBeHidden();
+ await page.getByRole('button',{name:'历史版本',exact:true}).click();const history=page.getByRole('dialog',{name:'历史版本',exact:true});await expect(history.getByText('图为该次正文保存时的快照')).toBeVisible();await history.getByRole('button',{name:/^v1 ·/}).click();await expect(history.getByText('所选版本 v1')).toBeVisible();await history.getByRole('button',{name:'恢复到此版本',exact:true}).click();await expect(history).toBeHidden();
  const after=await(await request.get(`${API}/drawings/${drawingId}`,{headers})).json();expect(after.data.payload.elements[0]).toEqual(originalElement);expect(after.data.version).toBe(2);
  expect(errors).toEqual([]);
 });
