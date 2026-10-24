@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "Document" (
+CREATE TABLE "ContentDocument" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE "Document" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ContentDocument_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -129,7 +129,7 @@ CREATE TABLE "ContentPreference" (
 );
 
 -- CreateIndex
-CREATE INDEX "Document_projectId_deletedAt_updatedAt_idx" ON "Document"("projectId", "deletedAt", "updatedAt");
+CREATE INDEX "ContentDocument_projectId_deletedAt_updatedAt_idx" ON "ContentDocument"("projectId", "deletedAt", "updatedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "DocumentRevision_documentId_version_key" ON "DocumentRevision"("documentId", "version");
@@ -159,10 +159,10 @@ CREATE UNIQUE INDEX "ContentSaveReceipt_kind_entityId_requestId_key" ON "Content
 CREATE UNIQUE INDEX "ContentPreference_userId_kind_entityId_key" ON "ContentPreference"("userId", "kind", "entityId");
 
 -- AddForeignKey
-ALTER TABLE "Document" ADD CONSTRAINT "Document_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ContentDocument" ADD CONSTRAINT "ContentDocument_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "DocumentRevision" ADD CONSTRAINT "DocumentRevision_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "Document"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "DocumentRevision" ADD CONSTRAINT "DocumentRevision_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "ContentDocument"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Drawing" ADD CONSTRAINT "Drawing_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

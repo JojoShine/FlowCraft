@@ -61,3 +61,9 @@ docker compose --env-file .env.prod --env-file .env.bootstrap -f compose.prod.ya
 迁移失败停止更新，旧后端保持运行。新后端健康或业务验证失败时恢复上一版本 Compose/.env.prod 的镜像 digest、前端软链与 Nginx 片段，重新健康检查。首次容器切换可回原 PM2/3800 配置。回退应用不自动回滚数据库，不删除新增文档、版本或 MinIO 对象；数据库恢复是单独步骤，需停止写入并使用一致时间点的数据库/MinIO 备份。
 
 Compose 配置 Docker 日志轮转 10 MB × 3。应用旧文件日志位于容器内 logs，随容器替换丢弃；日常运维以 Docker 输出收集并按需接入已有日志服务。维护备份保留、磁盘空间和证书续期。默认单实例替换，允许短暂中断。
+
+## 本次旧库兼容
+
+线上存在旧版 Document 表（3 条记录，含 content/shareToken/fileKey 等字段）及 Todo/TodoGroup/TodoNote 表，当前旧 API 未注册文档/待办路由。新文档中心的 ORM 模型仍叫 Document，物理表改为 ContentDocument，避免与旧表冲突；旧 Document 及待办表不删除、不改名、不改内容。此次新增内容迁移尚未在生产执行，因此在首次发布前调整新增表名。CI 以旧表保留字节的情形执行迁移验收。基线预检显示的额外旧表应审阅记录，不能把其 DROP 差异当迁移脚本执行。
+
+MinIO 官方旧容器仓库在 GitHub CI 已无法拉取，隔离测试服务改由 CI 从 MinIO 官方固定提交 0d7408fc9969caf07de6a8c3a84f9fbb10a6739e（2025-04-22）构建，不发布该测试镜像。线上继续使用既有 MinIO，不升级或替换。

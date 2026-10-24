@@ -34,7 +34,8 @@ jobs:
           npm --prefix client run build
       - name: Isolated integration and browser tests
         run: |
-          docker compose -f compose.content-test.yml up -d --wait
+          docker compose -f compose.content-test.yml up -d --build --wait
+          DATABASE_URL=postgresql://flowcraft_test:local-test-only@127.0.0.1:55439/flowcraft_test npm --prefix server exec -- prisma migrate deploy --schema server/prisma/schema.prisma
           npm --prefix server run test:integration
           npm --prefix client exec -- playwright install --with-deps chromium
           npm --prefix client run test:e2e
@@ -91,6 +92,7 @@ jobs:
             ref="$image@$digest"
             docker pull "$ref"
             test "$(docker image inspect "$ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$SOURCE_SHA"
+            docker compose -f ../compose.content-test.yml build minio
             ../scripts/verify-image.sh "$ref"
           else
             status=$?

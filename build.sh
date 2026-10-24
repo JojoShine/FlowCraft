@@ -9,6 +9,7 @@ npm --prefix server run build
 npm --prefix client run build
 revision=$(git rev-parse HEAD)
 docker build --target runtime --build-arg VCS_REF="$revision" -t "flowcraft-local:$revision" .
+docker compose -f compose.content-test.yml build minio
 scripts/verify-image.sh "flowcraft-local:$revision"
 mkdir -p deploy
 output="deploy/local-build-$(date +%Y%m%d%H%M%S)-$$"

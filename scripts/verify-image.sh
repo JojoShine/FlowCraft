@@ -20,6 +20,19 @@ GRANT USAGE ON SCHEMA public TO flowcraft_runtime;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO flowcraft_runtime;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO flowcraft_runtime;
 SQL
+# A reviewed old schema can retain its legacy Document table without naming collisions.
+docker exec "$db" createdb -U flowcraft_test flowcraft_legacy
+legacy_url="postgresql://flowcraft_test:image-test-only@$db:5432/flowcraft_legacy"
+docker run --rm --network "$network" -e DATABASE_URL="$legacy_url" "$image" node node_modules/prisma/build/index.js db execute --file prisma/migrations/00000000000000_baseline/migration.sql --schema prisma/schema.prisma
+docker exec -i "$db" psql -U flowcraft_test -d flowcraft_legacy -v ON_ERROR_STOP=1 <<'SQL'
+CREATE TABLE "Document" (id text PRIMARY KEY, title text NOT NULL, content text NOT NULL);
+INSERT INTO "Document" VALUES ('legacy-document','Existing document','Keep existing bytes');
+SQL
+docker run --rm --network "$network" -e DATABASE_URL="$legacy_url" "$image" node node_modules/prisma/build/index.js migrate resolve --applied 00000000000000_baseline
+docker run --rm --network "$network" -e DATABASE_URL="$legacy_url" "$image" /app/bin/migrate
+[[ "$(docker exec "$db" psql -U flowcraft_test -d flowcraft_legacy -At -c 'SELECT content FROM "Document"')" == 'Keep existing bytes' ]]
+[[ "$(docker exec "$db" psql -U flowcraft_test -d flowcraft_legacy -At -c "SELECT to_regclass('public.\"ContentDocument\"') IS NOT NULL")" == t ]]
+
 # Both invocations use the same immutable local image; no schema push or baseline auto-resolution.
 for attempt in 1 2; do docker run --rm --network "$network" -e DATABASE_URL="$migration_url" "$image" /app/bin/migrate; done
 if docker exec "$db" psql -U flowcraft_runtime -d flowcraft_test -v ON_ERROR_STOP=1 -c 'CREATE TABLE forbidden_ddl(id int)' >/dev/null 2>&1; then echo 'Runtime unexpectedly has DDL permissions' >&2; exit 1; fi
@@ -31,7 +44,7 @@ docker exec "$db" psql -U flowcraft_test -d flowcraft_test -v ON_ERROR_STOP=1 -c
 docker run --rm --network "$network" -e DATABASE_URL="$runtime_url" -e BOOTSTRAP_USERNAME=another-admin -e BOOTSTRAP_PASSWORD=different-test-password "$image" /app/bin/bootstrap
 [[ "$before" == "$(snapshot)" ]]
 [[ "$(docker exec "$db" psql -U flowcraft_test -d flowcraft_test -At -c 'SELECT count(*) FROM "Project"')" == 1 ]]
-docker run -d --name "$storage" --network "$network" --tmpfs /data -e MINIO_ROOT_USER=image-test-storage -e MINIO_ROOT_PASSWORD=image-test-storage-password minio/minio:RELEASE.2025-04-22T22-12-26Z server /data >/dev/null
+docker run -d --name "$storage" --network "$network" --tmpfs /data -e MINIO_ROOT_USER=image-test-storage -e MINIO_ROOT_PASSWORD=image-test-storage-password flowcraft-minio-test:2025-04-22 server /data >/dev/null
 docker run -d --name "$app" --network "$network" -e BASE_PATH=/flowcraft -e DATABASE_URL="$runtime_url" -e JWT_SECRET=image-test-jwt-secret -e MINIO_ENDPOINT="$storage" -e MINIO_ACCESS_KEY=image-test-storage -e MINIO_SECRET_KEY=image-test-storage-password -e MINIO_BUCKET=image-test -e DEEPSEEK_API_KEY=image-test-disabled -e DEEPSEEK_BASE_URL=http://127.0.0.1:9 "$image" >/dev/null
 [[ "$(docker exec "$app" id -u)" != 0 ]]
 for attempt in {1..45}; do if docker exec "$app" /app/bin/healthcheck; then break; fi; if [[ "$(docker inspect "$app" --format '{{.State.Running}}')" != true ]]; then docker logs "$app" >&2; exit 1; fi; sleep 1; done

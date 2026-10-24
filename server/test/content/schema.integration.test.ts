@@ -10,3 +10,9 @@ it('keeps legacy projects and restricts deletion plus unique revision/request ke
  await expect(fx.db.project.delete({where:{id:fx.project.id}})).rejects.toMatchObject({code:'P2003'});
  expect(await fx.db.project.findUnique({where:{id:fx.project.id}})).not.toBeNull();
 }));
+
+it('stores new editor documents in a separate table from legacy documents',()=>withContentFixture(async fx=>{
+ const document=await fx.db.document.create({data:{projectId:fx.project.id,title:'隔离旧文档'}});
+ const rows=await fx.db.$queryRaw<Array<{id:string}>>`SELECT id FROM "ContentDocument" WHERE id=${document.id}`;
+ expect(rows).toEqual([{id:document.id}]);
+}));

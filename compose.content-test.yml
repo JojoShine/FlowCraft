@@ -13,7 +13,10 @@ services:
       interval: 2s
       retries: 30
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: flowcraft-minio-test:2025-04-22
+    build:
+      context: .
+      dockerfile: server/test/minio.Dockerfile
     command: server /data
     environment:
       MINIO_ROOT_USER: flowcraft-test
