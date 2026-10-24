@@ -1,3 +1,4 @@
+import {contentSharingRouter} from './contentSharing';
 import express,{Router} from 'express';
 import {z} from 'zod';
 import {streamDrawingExport} from '../content/exportService';
@@ -9,6 +10,7 @@ import {listDrawingReferences} from '../content/referenceResolver';
 import {duplicateDrawing,trashContent,listTrashContent,undeleteContent} from '../content/lifecycleService';
 import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from './contentHttp';
 const router=Router();
+router.use('/:id/share',contentSharingRouter('drawing'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.list(req.user!,parse(listInput,req.query))));}));
 router.post('/',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await drawingService.create(req.user!,parse(createInput,req.body) as any)));}));
 router.get('/trash',asyncHandler(async(req,res)=>{res.json(successResponse(await listTrashContent(req.user!,'drawing',parse(listInput,req.query))));}));

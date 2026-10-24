@@ -1,3 +1,4 @@
+import {publicContentRouter} from './contentSharing';
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
@@ -8,6 +9,7 @@ import path from 'path';
 import { ZipArchive } from 'archiver';
 
 const router = Router();
+router.use('/content',publicContentRouter);
 
 async function getArtifactByToken(token: string) {
   const artifact = await prisma.artifact.findUnique({ where: { shareToken: token } });

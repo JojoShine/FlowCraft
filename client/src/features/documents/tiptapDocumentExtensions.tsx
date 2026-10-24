@@ -8,7 +8,7 @@ import {DocumentLinkBlock} from './DocumentLinkBlock';
 import {safeLinkUrl} from './linkSafety';
 import {changeListIndent} from './tiptapListEditing';
 import type {DrawingReference} from '../content/types';
-export interface DocumentNodeServices {renderDrawing:(ref:DrawingReference)=>ReactNode;resolveMedia:(id:string,props:Record<string,any>)=>Promise<string>;onError:(message:string)=>void}
+export interface DocumentNodeServices {renderDrawing:(ref:DrawingReference)=>ReactNode;renderDocumentLink?:(documentId:string)=>ReactNode;resolveMedia:(id:string,props:Record<string,any>)=>Promise<string>;onError:(message:string)=>void}
 export function selectedFlowBlock(editor:Editor,selection=editor.state.selection) {
  const {$from}=selection;for(let depth=$from.depth;depth>0;depth--) if($from.node(depth).type.name==='flowBlock') return {node:$from.node(depth),pos:$from.before(depth),depth};return null;
 }
@@ -88,7 +88,7 @@ export function createDocumentExtensions(services:MutableRefObject<DocumentNodeS
  });
  const FlowFile=atom('flowFile',function FileView({node}:NodeViewProps){const props=node.attrs.props;return <NodeViewWrapper className="flow-file" data-flow-atom="flowFile" data-flow-resource={JSON.stringify(node.attrs)} contentEditable={false}><button type="button" className="document-download" disabled={props.url?.startsWith('pending:')} onClick={()=>void services.current.resolveMedia(node.attrs.blockId,props).then(url=>{const a=document.createElement('a');a.href=url;a.download=props.name||'附件';a.rel='noopener noreferrer';a.click();}).catch(e=>services.current.onError(e.message))}>↓ {props.name||'下载附件'}{props.url?.startsWith('pending:')?' · 上传中':''}</button>{props.caption&&<span>{props.caption}</span>}</NodeViewWrapper>;});
  const FlowDrawing=atom('flowDrawing',({node}:NodeViewProps)=><NodeViewWrapper data-flow-atom="flowDrawing" data-flow-resource={JSON.stringify(node.attrs)} contentEditable={false}>{services.current.renderDrawing({blockId:node.attrs.blockId,drawingId:node.attrs.props.drawingId,mode:node.attrs.props.mode,revision:node.attrs.props.revision||null})}</NodeViewWrapper>);
- const FlowDocumentLink=atom('flowDocumentLink',({node}:NodeViewProps)=><NodeViewWrapper data-flow-atom="flowDocumentLink" data-flow-resource={JSON.stringify(node.attrs)} contentEditable={false}><DocumentLinkBlock documentId={node.attrs.props.documentId}/></NodeViewWrapper>);
+ const FlowDocumentLink=atom('flowDocumentLink',({node}:NodeViewProps)=><NodeViewWrapper data-flow-atom="flowDocumentLink" data-flow-resource={JSON.stringify(node.attrs)} contentEditable={false}>{services.current.renderDocumentLink?services.current.renderDocumentLink(node.attrs.props.documentId):<DocumentLinkBlock documentId={node.attrs.props.documentId}/>}</NodeViewWrapper>);
  const cellAttrs={flowCell:{default:null,parseHTML:(element:HTMLElement)=>readJSON(element,'data-flow-cell',null),renderHTML:(attrs:any)=>({'data-flow-cell':JSON.stringify(attrs.flowCell),style:`text-align:${attrs.flowCell?.props?.textAlignment||'left'};color:${flowColor(attrs.flowCell?.props?.textColor)||'inherit'};background-color:${flowColor(attrs.flowCell?.props?.backgroundColor,true)||'transparent'}`})}};
  return [StarterKit.configure({document:false,trailingNode:false,heading:{levels:[1,2,3]},bulletList:false,orderedList:false,listItem:false,listKeymap:false,link:{openOnClick:'whenNotEditable',isAllowedUri:safeLinkUrl}}),
   Node.create({name:'doc',topNode:true,content:'flowBlock+'}),FlowBlock,FlowChildren,FlowCallout,FlowStyle,FlowImage,FlowFile,FlowDrawing,FlowDocumentLink,

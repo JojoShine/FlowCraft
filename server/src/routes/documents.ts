@@ -1,3 +1,4 @@
+import {contentSharingRouter} from './contentSharing';
 import {Router} from 'express';
 import {createExportManifest,streamDocumentExport,streamMarkdownExport} from '../content/exportService';
 import {z} from 'zod';
@@ -8,6 +9,7 @@ import {resolveDocumentEmbed} from '../content/referenceResolver';
 import {duplicateDocument,trashContent,listTrashContent,undeleteContent} from '../content/lifecycleService';
 import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from './contentHttp';
 const router=Router();
+router.use('/:id/share',contentSharingRouter('document'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.list(req.user!,parse(listInput,req.query))));}));
 router.post('/',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await documentService.create(req.user!,parse(createInput,req.body) as any)));}));
 router.get('/trash',asyncHandler(async(req,res)=>{res.json(successResponse(await listTrashContent(req.user!,'document',parse(listInput,req.query))));}));
