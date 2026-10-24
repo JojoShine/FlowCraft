@@ -13,7 +13,7 @@
 
 ## 生产配置
 
-业务目录 `/opt/flowcraft`，项目名 `flowcraft-production`。新后端宿主端口建议 **31008**，仅绑定 127.0.0.1，实际分配须检查服务器冲突；原 3800 不自动替换。容器监听 0.0.0.0:8080，BASE_PATH 固定 `/flowcraft`，健康 `/flowcraft/healthz` 校验数据库连接，不依赖外部 AI。
+业务目录 `/opt/flowcraft`，项目名 `flowcraft-production`。新后端宿主端口建议 **31008**，仅绑定 127.0.0.1，实际分配须检查服务器冲突；原 3800 不自动替换。容器监听 0.0.0.0:8080，BASE_PATH 固定 `/flowcraft`，健康 `/flowcraft/healthz` 校验数据库连接，不依赖外部 AI。显式保留现有 PM2 的 `TZ=Asia/Shanghai`，避免容器默认 UTC 改变每日、每周和月末汇报时间；镜像验收核对进程时区与 UTC+8 偏移。
 
 数据库和 MinIO 沿用现有外部服务，不纳入生产 Compose。容器地址不能直接照抄旧进程的 localhost，须使用可达主机名/网络；采用 host.docker.internal 时已配置 host-gateway，仍须核对数据库监听、pg_hba、Docker 子网与实际角色权限。保留现有数据库、MinIO 桶/密钥、JWT_SECRET 和 AI 配置；既有 AI 客户端启动要求 API key，因此 Compose 要求保留该值，隔离验收使用仅连接回环拒绝端口的假 key。初始化秘密不传给 app。
 
