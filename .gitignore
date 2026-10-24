@@ -21,3 +21,9 @@ server/scripts/sync-task-status.ts
 client/public/excalidraw/
 client/test-results/
 client/playwright-report/
+
+# Production configuration and backups stay on the deployment host.
+.env.prod
+.env.bootstrap
+backups/
+server/ops/

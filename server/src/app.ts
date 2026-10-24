@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import {prisma} from './lib/prisma';
 import { requestLogger } from './middleware/requestLogger';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/auth';
@@ -24,6 +25,10 @@ import contentPreferenceRoutes from './routes/contentPreferences';
 import {contentAuthenticate,contentParserError} from './routes/contentHttp';
 const app = express();
 
+app.get('/healthz',async(_req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try {await prisma.$queryRaw`SELECT 1`;res.json({status:'ok'});} catch {res.status(503).json({status:'unavailable'});}
+});
 app.use(cors());
 const contentPaths=['/api/v1/documents','/api/v1/drawings','/api/v1/content-assets','/api/v1/content-preferences'];
 app.use(contentPaths,contentAuthenticate);
@@ -57,4 +62,7 @@ app.use('/api/v1/content-preferences',contentPreferenceRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-export default app;
+const basePath=(process.env.BASE_PATH||'').replace(/\/+$/,'');
+if(basePath&&!/^\/[a-zA-Z0-9/_-]+$/.test(basePath)) throw new Error('Invalid BASE_PATH');
+const root=express();root.use(basePath||'/',app);
+export default root;

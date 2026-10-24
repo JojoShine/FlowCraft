@@ -1,0 +1,86 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Locate successful default-branch CI for the exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          source_sha=$(git rev-parse HEAD)
+          git merge-base --is-ancestor "$source_sha" origin/master
+          run_id=$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?branch=master&event=push&status=success&head_sha=$source_sha" --jq '.workflow_runs[0].id // empty')
+          test -n "$run_id"
+          gh run download "$run_id" --repo "$REPOSITORY" --name "release-candidate-$source_sha" --dir release-files
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+          echo "CI_RUN_ID=$run_id" >> "$GITHUB_ENV"
+      - name: Verify candidate assets and promote without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          IMAGE_REF=$(python3 - <<'PY'
+          import hashlib,json,os,pathlib,re
+          root=pathlib.Path('release-files'); meta=json.loads((root/'candidate.json').read_text())
+          assert meta['commit']==os.environ['SOURCE_SHA'] and str(meta['ciRunId'])==os.environ['CI_RUN_ID']
+          assert re.fullmatch('ghcr.io/'+re.escape(os.environ['REPOSITORY'].lower())+r'@sha256:[0-9a-f]{64}',meta['image'])
+          for name,digest in meta['files'].items():
+              assert pathlib.Path(name).name==name and hashlib.sha256((root/name).read_bytes()).hexdigest()==digest
+          print(meta['image'])
+          PY
+          )
+          export IMAGE_REF
+          image="${IMAGE_REF%@*}"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          if existing=$(scripts/registry-digest.sh "$image:$VERSION"); then
+            test "$existing" = "${IMAGE_REF#*@}"
+          else
+            status=$?
+            test "$status" = 3
+            docker buildx imagetools create --prefer-index=false --tag "$image:$VERSION" "$IMAGE_REF"
+          fi
+          promoted=$(docker buildx imagetools inspect "$image:$VERSION" --format '{{.Manifest.Digest}}')
+          test "$promoted" = "${IMAGE_REF#*@}"
+          python3 - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path('release-files'); ref=os.environ['IMAGE_REF']
+          example=root/'.env.prod.example';example.write_text(example.read_text().replace('ghcr.io/jojoshine/flowcraft@sha256:REPLACE_WITH_RELEASE_DIGEST',ref))
+          meta=json.loads((root/'candidate.json').read_text());meta['version']=os.environ['VERSION'];meta['files']={p.name:__import__('hashlib').sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file() and p.name!='candidate.json'};(root/'release.json').write_text(json.dumps(meta,indent=2)+'\n')
+          (root/'RELEASE_NOTES.md').write_text('Commit: '+os.environ['SOURCE_SHA']+'\n\nImage: `'+ref+'`\n\nFrontend and deployment files come from the same accepted CI run '+os.environ['CI_RUN_ID']+'. Verify SHA256SUMS, back up, migrate, then deploy.\n')
+          PY
+          rm release-files/candidate.json
+          cd release-files
+          sha256sum .env.prod.example .env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md > SHA256SUMS
+          if metadata=$(gh release view "$VERSION" --repo "$REPOSITORY" --json isDraft,targetCommitish 2>/dev/null); then
+            if test "$(jq -r .isDraft <<< "$metadata")" = false; then
+              mkdir published
+              gh release download "$VERSION" --repo "$REPOSITORY" --pattern SHA256SUMS --dir published
+              cmp SHA256SUMS published/SHA256SUMS
+              exit 0
+            fi
+            test "$(jq -r .targetCommitish <<< "$metadata")" = "$SOURCE_SHA"
+          else
+            gh release create "$VERSION" --repo "$REPOSITORY" --verify-tag --target "$SOURCE_SHA" --draft --title "FlowCraft $VERSION" --notes-file RELEASE_NOTES.md
+          fi
+          gh release upload "$VERSION" --repo "$REPOSITORY" --clobber .env.prod.example .env.bootstrap.example compose.prod.yaml flowcraft.nginx.conf.example flowcraft-client.tar.gz DEPLOYMENT.md release.json RELEASE_NOTES.md SHA256SUMS
+          gh release edit "$VERSION" --repo "$REPOSITORY" --draft=false

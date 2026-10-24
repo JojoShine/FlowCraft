@@ -1,0 +1,116 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.19.5
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - name: Locked dependencies and checks
+        run: |
+          npm --prefix server ci
+          npm --prefix client ci
+          npm --prefix server exec -- prisma generate --schema server/prisma/schema.prisma
+          npm --prefix server test
+          npm --prefix client test
+          npm --prefix server run build
+          npm --prefix client run build
+      - name: Isolated integration and browser tests
+        run: |
+          docker compose -f compose.content-test.yml up -d --wait
+          npm --prefix server run test:integration
+          npm --prefix client exec -- playwright install --with-deps chromium
+          npm --prefix client run test:e2e
+      - name: Build and accept the single runtime image
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          docker build --target runtime --build-arg VCS_REF="$SOURCE_SHA" -t "flowcraft-ci:$SOURCE_SHA" .
+          scripts/verify-image.sh "flowcraft-ci:$SOURCE_SHA"
+          scripts/package-release.sh "$RUNNER_TEMP/release-files"
+          docker save "flowcraft-ci:$SOURCE_SHA" | gzip > "$RUNNER_TEMP/image.tar.gz"
+          cd "$RUNNER_TEMP"
+          sha256sum image.tar.gz > image.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: accepted-build-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/image.tar.gz
+            ${{ runner.temp }}/image.sha256
+            ${{ runner.temp }}/release-files/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - name: Clean isolated test services
+        if: always()
+        run: docker compose -f compose.content-test.yml down --volumes
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: checks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: accepted-build-${{ github.sha }}
+          path: accepted
+      - name: Publish exactly the accepted image and record digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          cd accepted
+          sha256sum -c image.sha256
+          gunzip -c image.tar.gz | docker load
+          image="ghcr.io/${REPOSITORY,,}"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          if digest=$(../scripts/registry-digest.sh "$image:sha-$SOURCE_SHA"); then
+            ref="$image@$digest"
+            docker pull "$ref"
+            test "$(docker image inspect "$ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$SOURCE_SHA"
+            ../scripts/verify-image.sh "$ref"
+          else
+            status=$?
+            test "$status" = 3
+            docker tag "flowcraft-ci:$SOURCE_SHA" "$image:sha-$SOURCE_SHA"
+            docker push "$image:sha-$SOURCE_SHA"
+            ref=$(docker image inspect "$image:sha-$SOURCE_SHA" --format '{{index .RepoDigests 0}}')
+            test "${ref%%@*}" = "$image"
+          fi
+          export IMAGE_REF="$ref"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path('release-files')
+          files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()}
+          (root/'candidate.json').write_text(json.dumps({'commit':os.environ['SOURCE_SHA'],'image':os.environ['IMAGE_REF'],'ciRunId':os.environ['GITHUB_RUN_ID'],'files':files},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: accepted/release-files/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90
