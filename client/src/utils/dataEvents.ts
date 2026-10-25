@@ -1,6 +1,6 @@
 const EVENT_NAME = 'flowcraft:data-changed';
 
-export type DataType = 'tasks' | 'artifacts' | 'projects';
+export type DataType = 'tasks' | 'artifacts' | 'projects' | 'documents' | 'drawings';
 
 export function notifyDataChange(type: DataType) {
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { type } }));

@@ -12,6 +12,7 @@ import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from '.
 const router=Router();
 router.use('/:id/share',contentSharingRouter('drawing'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.list(req.user!,parse(listInput,req.query))));}));
+router.get('/count',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.count(req.user!,parse(listInput,req.query).projectId)));}));
 router.post('/',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await drawingService.create(req.user!,parse(createInput,req.body) as any)));}));
 router.get('/trash',asyncHandler(async(req,res)=>{res.json(successResponse(await listTrashContent(req.user!,'drawing',parse(listInput,req.query))));}));
 router.get('/:id/revisions',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.history(req.user!,req.params.id as string,parse(listInput,req.query).page)));}));
