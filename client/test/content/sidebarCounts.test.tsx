@@ -1,0 +1,23 @@
+import {it,expect,vi} from 'vitest';
+import {render,screen,waitFor,act} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+const state=vi.hoisted(()=>({projectId:'p1',docs:vi.fn(),drawings:vi.fn()}));
+vi.mock('../../src/contexts/ProjectContext',()=>({useProjectContext:()=>({selectedProjectId:state.projectId,selectProject:()=>{},projects:[]})}));
+vi.mock('../../src/contexts/ThemeContext',()=>({useTheme:()=>({theme:'light',toggleTheme:()=>{}})}));
+vi.mock('../../src/contexts/AuthContext',()=>({useAuth:()=>({user:{role:'admin'}})}));
+vi.mock('../../src/components/ui/ProjectDrawer',()=>({ProjectDrawer:()=>null}));
+vi.mock('../../src/services/api',()=>({tasksApi:{count:async()=>({data:{total:8}})},artifactsApi:{count:async()=>({data:{total:36}})}}));
+vi.mock('../../src/features/content/api',()=>({documentsApi:{count:state.docs},drawingsApi:{count:state.drawings}}));
+import {Sidebar} from '../../src/components/layout/Sidebar';
+import {notifyDataChange} from '../../src/utils/dataEvents';
+it('sidebar shows project totals and refreshes content counts without stale project responses',async()=>{
+ state.docs.mockResolvedValue({total:62});state.drawings.mockResolvedValue({total:7});
+ const {rerender}=render(<MemoryRouter><Sidebar/></MemoryRouter>);
+ const docs=screen.getByRole('link',{name:/文档中心/}),drawings=screen.getByRole('link',{name:/绘图中心/});
+ await waitFor(()=>expect(docs.textContent).toBe('文档中心62'));expect(drawings.textContent).toBe('绘图中心7');
+ state.docs.mockResolvedValue({total:61});act(()=>notifyDataChange('documents'));await waitFor(()=>expect(docs.textContent).toBe('文档中心61'));
+ let resolveOld!:(value:{total:number})=>void;state.docs.mockImplementationOnce(()=>new Promise(resolve=>{resolveOld=resolve;}));act(()=>notifyDataChange('documents'));
+ state.projectId='p2';state.docs.mockResolvedValue({total:2});state.drawings.mockResolvedValue({total:0});rerender(<MemoryRouter><Sidebar/></MemoryRouter>);
+ await waitFor(()=>expect(docs.textContent).toBe('文档中心2'));expect(drawings.textContent).toBe('绘图中心');
+ await act(async()=>resolveOld({total:99}));expect(docs.textContent).toBe('文档中心2');
+});

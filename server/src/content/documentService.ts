@@ -56,6 +56,10 @@ export const documentService={
    return view(d,d.revisions[0],actor);
   });
  },
+ async count(actor:Actor,projectId?:string) {
+  if(projectId) await requireContentRead(actor,projectId);
+  return {total:await prisma.document.count({where:{project:{...readableProjectWhere(actor)},deletedAt:null,...(projectId?{projectId}:{})}})};
+ },
  async list(actor:Actor,query:ContentListQuery={}) {
   if(query.projectId) await requireContentRead(actor,query.projectId);
   const preferences=query.favorite||query.recent?await prisma.contentPreference.findMany({where:{userId:actor.id,kind:'document',...(query.favorite?{favorite:true}:{lastViewedAt:{not:null}})},orderBy:{lastViewedAt:'desc'}}):null;

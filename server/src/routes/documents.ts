@@ -11,6 +11,7 @@ import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from '.
 const router=Router();
 router.use('/:id/share',contentSharingRouter('document'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.list(req.user!,parse(listInput,req.query))));}));
+router.get('/count',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.count(req.user!,parse(listInput,req.query).projectId)));}));
 router.post('/',asyncHandler(async(req,res)=>{res.status(201).json(successResponse(await documentService.create(req.user!,parse(createInput,req.body) as any)));}));
 router.get('/trash',asyncHandler(async(req,res)=>{res.json(successResponse(await listTrashContent(req.user!,'document',parse(listInput,req.query))));}));
 router.get('/:id/revisions',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.history(req.user!,req.params.id as string,parse(listInput,req.query).page)));}));
