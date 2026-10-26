@@ -4,6 +4,7 @@ import {Plugin,TextSelection,type Transaction} from '@tiptap/pm/state';
 import {NodeViewWrapper,NodeViewContent,ReactNodeViewRenderer,type NodeViewProps} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {Table,TableRow,TableCell,TableHeader} from '@tiptap/extension-table';
+import {MermaidPreview} from './MermaidPreview';
 import {DocumentLinkBlock} from './DocumentLinkBlock';
 import {safeLinkUrl} from './linkSafety';
 import {changeListIndent} from './tiptapListEditing';
@@ -38,11 +39,15 @@ export function createDocumentExtensions(services:MutableRefObject<DocumentNodeS
   addAttributes(){return {id:{default:null,rendered:false},listNumber:{default:0,rendered:false},source:{default:{},rendered:false},hasContent:{default:true,rendered:false},hasChildren:{default:false,rendered:false},contentShape:{default:'array',rendered:false},originalContent:{default:null,rendered:false}};},
   parseHTML(){return [{tag:'div[data-flow-block]',contentElement:element=>element.querySelector('.flow-block-body')||element,getAttrs:element=>readJSON(element as HTMLElement,'data-flow-block')}];},renderHTML({node}){return ['div',{'data-flow-block':JSON.stringify(node.attrs),'data-id':node.attrs.id},0];},
   addNodeView(){return ReactNodeViewRenderer(function FlowBlockView({node,editor,updateAttributes}:NodeViewProps){
-   const [copied,setCopied]=useState(false);const source=node.attrs.source||{},props=source.props||{},kind=source.type||'paragraph';
-   return <NodeViewWrapper className="flow-block" data-flow-block={JSON.stringify(node.attrs)} data-id={node.attrs.id} data-kind={kind} data-list-number={node.attrs.listNumber} style={{color:flowColor(props.textColor),backgroundColor:flowColor(props.backgroundColor,true),textAlign:props.textAlignment||undefined}}>
+   const [copied,setCopied]=useState(false),[editingMermaid,setEditingMermaid]=useState(false);const isMermaid=node.firstChild?.type.name==='codeBlock'&&typeof node.firstChild.attrs.language==='string'&&node.firstChild.attrs.language.toLowerCase()==='mermaid';
+   useEffect(()=>{if(isMermaid&&editor.isEditable&&!node.firstChild?.textContent.trim())setEditingMermaid(true);},[isMermaid,editor]);
+   const source=node.attrs.source||{},props=source.props||{},kind=source.type||'paragraph';
+   return <NodeViewWrapper className={`flow-block${isMermaid?' flow-block-mermaid':''}${isMermaid&&!editingMermaid?' flow-block-mermaid-preview':''}`} data-flow-block={JSON.stringify(node.attrs)} data-id={node.attrs.id} data-kind={kind} data-list-number={node.attrs.listNumber} style={{color:flowColor(props.textColor),backgroundColor:flowColor(props.backgroundColor,true),textAlign:props.textAlignment||undefined}}>
     {editor.isEditable&&<span className="flow-drag-handle" data-drag-handle draggable contentEditable={false} aria-label="拖动段落">⠿</span>}
     {kind==='checkListItem'&&<input className="flow-check" type="checkbox" aria-label="完成事项" contentEditable={false} checked={!!props.checked} disabled={!editor.isEditable} onChange={event=>{if(editor.isEditable) updateAttributes({source:{...source,props:{...props,checked:event.target.checked}}});}}/>}
-    <NodeViewContent className="flow-block-body"/>{node.firstChild?.type.name==='codeBlock'&&<button type="button" className="document-copy-code" contentEditable={false} onClick={()=>void navigator.clipboard.writeText(node.firstChild!.textContent).then(()=>setCopied(true)).catch(e=>services.current.onError(e.message))}>{copied?'已复制':'复制代码'}</button>}
+    {isMermaid&&!editingMermaid&&<MermaidPreview source={node.firstChild!.textContent}/>}
+    <NodeViewContent className="flow-block-body"/>
+    {isMermaid&&<button type="button" className="document-copy-code" contentEditable={false} onClick={()=>setEditingMermaid(!editingMermaid)}>{editingMermaid?'预览图表':editor.isEditable?'编辑源码':'查看源码'}</button>}{node.firstChild?.type.name==='codeBlock'&&<button type="button" className="document-copy-code" contentEditable={false} onClick={()=>void navigator.clipboard.writeText(node.firstChild!.textContent).then(()=>setCopied(true)).catch(e=>services.current.onError(e.message))}>{copied?'已复制':'复制代码'}</button>}
    </NodeViewWrapper>;
   },{stopEvent:({event})=>{const target=event.target as HTMLElement;return !!target.closest?.('button,input,select,textarea');}});},
   addInputRules(){

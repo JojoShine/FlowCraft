@@ -38,3 +38,10 @@
 .flow-block.ProseMirror-selectednode{outline:1px solid var(--border-strong);outline-offset:4px;border-radius:4px}
 .document-slash-menu{position:absolute;z-index:50;width:240px;max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-md);padding:4px;font-size:13px}.content-workspace .document-slash-menu button{display:block;width:100%;text-align:left;border:0;padding:0 12px;font-weight:400}.document-slash-menu button[aria-selected=true]{background:var(--surface-raised)}
 @media(max-width:900px){.flow-drag-handle{left:-16px}.document-formatbar{gap:8px}.document-format-hint{width:100%}.flow-document-content{padding-bottom:40px}}
+
+.flow-block-mermaid-preview>.flow-block-body>[data-node-view-content-react]>pre{display:none}
+.document-mermaid{margin:12px 0;padding:16px;background:var(--surface);border:1px solid var(--border-subtle);border-radius:8px;overflow:auto}
+.document-mermaid svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.document-mermaid p{font-size:13px;color:var(--ink-3)}
+
+.flow-block-mermaid>.document-copy-code+.document-copy-code{margin-left:8px}
