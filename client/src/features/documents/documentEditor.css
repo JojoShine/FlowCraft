@@ -15,7 +15,7 @@
 
 /* Tiptap uses the same application controls and spacing as the rest of FlowCraft. */
 .tiptap-document{width:100%;position:relative}
-.document-formatbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;margin-bottom:24px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
+.document-formatbar{position:sticky;top:0;z-index:30;background:var(--canvas);display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;margin-bottom:24px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
 .document-style-select{width:144px}.document-format-hint{font-size:12px;color:var(--ink-3);line-height:1.5}
 .document-formatbar button[aria-pressed=true]{background:var(--surface-raised)!important;color:var(--ink)!important}
 .flow-document-content{outline:none;min-height:320px;padding:0 0 64px;color:var(--ink-1);font-size:15px;line-height:1.85;overflow-wrap:anywhere}
@@ -36,7 +36,7 @@
 .flow-image{margin:16px 0}.flow-image img{display:block;max-width:100%;height:auto;border-radius:6px}.flow-image figcaption,.flow-image small{font-size:12px;color:var(--ink-3);display:block;margin-top:8px}.flow-file{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;font-size:13px}
 .content-workspace .document-download,.content-workspace .document-copy-code,.content-modal .document-download,.content-modal .document-copy-code{height:28px;min-height:28px;padding:0 10px;font-size:11px;border-radius:6px;line-height:1}
 .flow-block.ProseMirror-selectednode{outline:1px solid var(--border-strong);outline-offset:4px;border-radius:4px}
-.document-slash-menu{position:absolute;z-index:50;width:240px;max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-md);padding:4px;font-size:13px}.content-workspace .document-slash-menu button{display:block;width:100%;text-align:left;border:0;padding:0 12px;font-weight:400}.document-slash-menu button[aria-selected=true]{background:var(--surface-raised)}
+.document-slash-menu{position:absolute;z-index:50;width:240px;max-width:calc(100vw - 16px);max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--border-default);border-radius:8px;box-shadow:var(--shadow-md);padding:4px;font-size:13px}.content-workspace .document-slash-menu button{display:block;width:100%;text-align:left;border:0;padding:0 12px;font-weight:400}.document-slash-menu button[aria-selected=true]{background:var(--surface-raised)}
 @media(max-width:900px){.flow-drag-handle{left:-16px}.document-formatbar{gap:8px}.document-format-hint{width:100%}.flow-document-content{padding-bottom:40px}}
 
 .flow-block-mermaid-preview>.flow-block-body>[data-node-view-content-react]>pre{display:none}
