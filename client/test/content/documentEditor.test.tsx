@@ -36,3 +36,24 @@ it('inserts a drawing after the active table without putting unsupported blocks 
  render(<MemoryRouter><DocumentEditor view={view} onChange={change} onComposition={()=>{}} renderDrawing={()=>null} chooseDrawing={chooseDrawing}/></MemoryRouter>);const root=await screen.findByRole('textbox',{name:'文档正文'}),editor=(root as any).editor;let position=0;editor.state.doc.descendants((node:any,at:number)=>{if(node.type.name==='paragraph'&&node.textContent==='保留单元格') position=at+1;});act(()=>editor.commands.setTextSelection(position));fireEvent.click(screen.getByRole('button',{name:'插入绘图',exact:true}));
  await waitFor(()=>expect(change).toHaveBeenCalled());const body=change.mock.calls.at(-1)![1];expect(body.blocks.map((block:any)=>block.type)).toEqual(['table','drawing','paragraph']);expect(body.blocks[0].content).toEqual(table.content);expect(root.querySelector('table [data-id="inserted-drawing"]')).toBeNull();expect(screen.queryByRole('alert')).toBeNull();
 });
+
+// Missing caret coordinates used to leave this menu at the start of the editor.
+it('anchors the slash menu to the caret and updates it when the document scrolls',async()=>{
+ const {act}=await import('@testing-library/react');
+ const view={id:'slash-position',projectId:'p',version:1,title:'定位验证',payload:{formatVersion:1 as const,blocks:[{id:'command',type:'paragraph',content:[]}]},canEdit:true,savedAt:'2026-11-08T00:00:00Z',deletedAt:null};
+ render(<MemoryRouter><DocumentEditor view={view} onChange={()=>{}} onComposition={()=>{}} renderDrawing={()=>null}/></MemoryRouter>);
+ const root=await screen.findByRole('textbox',{name:'文档正文'}),editor=(root as any).editor;
+ const coords=vi.spyOn(editor.view,'coordsAtPos').mockReturnValue({left:100,right:100,top:400,bottom:424});
+ act(()=>{editor.commands.focus(undefined,{scrollIntoView:false});editor.commands.insertContent('/');});
+ const menu=await screen.findByRole('listbox',{name:'插入内容'});
+ expect(menu.style.left).toBe('100px');expect(menu.style.top).toBe('428px');
+ coords.mockReturnValue({left:100,right:100,top:200,bottom:224});
+ fireEvent.scroll(document);
+ expect(menu.style.top).toBe('228px');
+ Object.defineProperties(menu,{scrollHeight:{value:300},offsetHeight:{value:300},offsetWidth:{value:240}});
+ coords.mockReturnValue({left:100,right:100,top:716,bottom:740});fireEvent.resize(window);
+ expect(menu.style.top).toBe('412px');
+ fireEvent.click(screen.getByRole('option',{name:'表格',exact:true}));
+ expect(screen.queryByRole('listbox',{name:'插入内容'})).toBeNull();expect(root.querySelector('table')).not.toBeNull();
+ coords.mockRestore();
+});

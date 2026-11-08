@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {EditorContent,useEditor,useEditorState} from '@tiptap/react';
 import type {Editor,JSONContent} from '@tiptap/core';
 import {TextSelection} from '@tiptap/pm/state';
@@ -79,6 +79,21 @@ function TiptapDocument(props:Props&{initial:JSONContent;invalid:string;onInvali
   else if(selected.offsetTop<menu.scrollTop) menu.scrollTop=selected.offsetTop;
   else if(selected.offsetTop+selected.offsetHeight>menu.scrollTop+menu.clientHeight) menu.scrollTop=selected.offsetTop+selected.offsetHeight-menu.clientHeight;
  },[slash,slashIndex]);
+ useLayoutEffect(()=>{
+  const menu=slashMenu.current,container=menu?.closest<HTMLElement>('.document-editor');if(!editor||!slash||!menu||!container) return;
+  function positionMenu(){
+   const caret=editor!.view.coordsAtPos(slash!.to),bounds=container!.getBoundingClientRect(),margin=8,gap=4;
+   const below=Math.max(0,window.innerHeight-caret.bottom-gap-margin),above=Math.max(0,caret.top-gap-margin);
+   const openAbove=below<Math.min(300,menu!.scrollHeight)&&above>below;
+   menu!.style.maxHeight=`${Math.min(300,openAbove?above:below)}px`;
+   const left=Math.max(margin,Math.min(caret.left,window.innerWidth-menu!.offsetWidth-margin));
+   const top=openAbove?caret.top-gap-menu!.offsetHeight:caret.bottom+gap;
+   menu!.style.left=`${left-bounds.left+container!.scrollLeft}px`;
+   menu!.style.top=`${top-bounds.top+container!.scrollTop}px`;
+  }
+  positionMenu();window.addEventListener('scroll',positionMenu,true);window.addEventListener('resize',positionMenu);
+  return()=>{window.removeEventListener('scroll',positionMenu,true);window.removeEventListener('resize',positionMenu);};
+ },[editor,slash]);
  function runSlash(run:()=>void){const match=slashRef.current;if(!editor||!match) return;editor.chain().focus().deleteRange({from:match.from,to:match.to}).run();setSlash(null);run();}
  return <section className="document-editor tiptap-document" data-read-only={!props.view.canEdit} onClick={event=>{if(!props.view.canEdit&&event.target instanceof HTMLImageElement) setZoom(event.target.src);}}>
   {props.view.canEdit?<input className="document-title" aria-label="文档标题" value={props.view.title} maxLength={300} onChange={event=>props.onChange(event.target.value,props.view.payload)}/>:<h1>{props.view.title}</h1>}
