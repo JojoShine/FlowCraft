@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { inviteApi } from '../../services/api';
+import { inviteApi, type CollaboratorPermissions, type ProjectCollaborator } from '../../services/api';
 import { useToast } from './Toast';
+import { Select } from './Select';
 
-interface Viewer {
-  id: string;
-  username: string;
-  name: string;
-  createdAt: string;
-}
+const permissions = [
+  {field: 'canEditDocuments', label: '文档'},
+  {field: 'canEditDrawings', label: '绘图'},
+] as const;
+const permissionOptions = [{value: 'read', label: '只读'}, {value: 'write', label: '可编辑'}];
 
 interface InviteDialogProps {
   projectId: string;
@@ -15,20 +15,26 @@ interface InviteDialogProps {
 }
 
 export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
-  const [viewers, setViewers] = useState<Viewer[]>([]);
+  const [viewers, setViewers] = useState<ProjectCollaborator[]>([]);
+  const [newPermissions, setNewPermissions] = useState<CollaboratorPermissions>({canEditDocuments: false, canEditDrawings: false});
   const [newCredential, setNewCredential] = useState<{ username: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [updatingViewer, setUpdatingViewer] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
-    inviteApi.list(projectId).then(res => setViewers(res.data));
+    let active = true;
+    inviteApi.list(projectId).then(res => { if (active) setViewers(res.data); }).catch(err => {
+      if (active) addToast(err instanceof Error ? err.message : '读取协作者失败', 'error');
+    });
+    return () => { active = false; };
   }, [projectId]);
 
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const res = await inviteApi.create(projectId);
+      const res = await inviteApi.create(projectId, newPermissions);
       setNewCredential(res.data);
       const updated = await inviteApi.list(projectId);
       setViewers(updated.data);
@@ -39,12 +45,27 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
     }
   };
 
+  const handlePermission = async (userId: string, field: keyof CollaboratorPermissions, canEdit: boolean) => {
+    setUpdatingViewer(true);
+    try {
+      const { data } = await inviteApi.updatePermissions(projectId, userId, { [field]: canEdit });
+      setViewers(rows => rows.map(row => row.id === userId ? data : row));
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : '更新权限失败', 'error');
+    } finally {
+      setUpdatingViewer(false);
+    }
+  };
+
   const handleRevoke = async (userId: string) => {
+    setUpdatingViewer(true);
     try {
       await inviteApi.revoke(projectId, userId);
       setViewers(v => v.filter(x => x.id !== userId));
     } catch (err: any) {
       addToast(err?.message || '撤销失败', 'error');
+    } finally {
+      setUpdatingViewer(false);
     }
   };
 
@@ -58,14 +79,14 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', backdropFilter: 'blur(4px)', zIndex: 998 }} onClick={onClose} />
-      <div style={{
+      <div role="dialog" aria-modal="true" aria-label="邀请协作者" style={{
         position: 'fixed',
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         background: 'var(--surface)',
         borderRadius: 12,
-        width: 420,
+        width: 'min(460px, calc(100vw - 32px))',
         maxHeight: '80vh',
         boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         zIndex: 999,
@@ -80,7 +101,7 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
           justifyContent: 'space-between',
         }}>
           <span style={{ fontSize: 15, fontWeight: 600 }}>邀请协作者</span>
-          <button onClick={onClose} style={{
+          <button aria-label="关闭" onClick={onClose} style={{
             width: 28, height: 28, border: 'none', borderRadius: 6, background: 'transparent',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)',
           }}>
@@ -91,6 +112,10 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div role="group" aria-label="新协作者权限" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
+            {permissions.map(({field, label}) => <Select key={field} label={`${label}权限`} value={newPermissions[field] ? 'write' : 'read'} options={permissionOptions} disabled={loading} onValueChange={value => setNewPermissions(current => ({...current, [field]: value === 'write'}))} />)}
+          </div>
+          <p style={{margin: 0, fontSize: 12, color: 'var(--ink-3)'}}>有编辑权限的协作者可以修改列表中已开启「允许协作者编辑」的文档和绘图。</p>
           {newCredential && (
             <div style={{
               padding: 14,
@@ -126,31 +151,33 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {viewers.map(v => (
                   <div key={v.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
                     padding: '8px 12px',
                     background: 'var(--canvas)',
                     borderRadius: 6,
                     border: '1px solid var(--border-subtle)',
                   }}>
-                    <div>
-                      <div style={{ fontSize: 13, color: 'var(--ink-1)' }}>{v.username}</div>
-                      <div style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
-                        {new Date(v.createdAt).toLocaleDateString('zh-CN')}
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
+                      <div>
+                        <div style={{ fontSize: 13, color: 'var(--ink-1)' }}>{v.username || v.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace" }}>
+                          {new Date(v.createdAt).toLocaleDateString('zh-CN')}
+                        </div>
                       </div>
+                      <button disabled={loading || updatingViewer} onClick={() => handleRevoke(v.id)} style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        border: '1px solid rgba(239,68,68,0.2)',
+                        borderRadius: 4,
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: '#ef4444',
+                      }}>
+                        撤销
+                      </button>
                     </div>
-                    <button onClick={() => handleRevoke(v.id)} style={{
-                      padding: '4px 10px',
-                      fontSize: 11,
-                      border: '1px solid rgba(239,68,68,0.2)',
-                      borderRadius: 4,
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      color: '#ef4444',
-                    }}>
-                      撤销
-                    </button>
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
+                      {permissions.map(({field, label}) => <Select key={field} label={label} aria-label={`${v.username || v.name || v.id}的${label}权限`} value={v[field] ? 'write' : 'read'} options={permissionOptions} disabled={loading || updatingViewer} onValueChange={value => void handlePermission(v.id, field, value === 'write')} />)}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -165,7 +192,7 @@ export function InviteDialog({ projectId, onClose }: InviteDialogProps) {
           justifyContent: 'flex-end',
           gap: 8,
         }}>
-          <button onClick={handleCreate} disabled={loading} style={{
+          <button onClick={handleCreate} disabled={loading || updatingViewer} style={{
             height: 32,
             padding: '0 16px',
             borderRadius: 6,

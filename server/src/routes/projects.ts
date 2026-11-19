@@ -1,13 +1,20 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { asyncHandler } from '../middleware/errorHandler';
+import { z } from 'zod';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { projectService } from '../services/projectService';
 import { requireRole } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+import { parse } from './contentHttp';
 
 const router = Router();
+const collaboratorPermissions = z.strictObject({
+  canEditDocuments: z.boolean().optional(),
+  canEditDrawings: z.boolean().optional(),
+});
+const collaboratorFields = { id: true, username: true, name: true, createdAt: true, canEditDocuments: true, canEditDrawings: true } as const;
 
 router.get('/', asyncHandler(async (req, res) => {
   const projects = req.user?.role === 'viewer'
@@ -72,6 +79,7 @@ router.post('/:id/invite', requireRole('admin'), asyncHandler(async (req, res) =
     return;
   }
 
+  const permissions = parse(collaboratorPermissions, req.body ?? {});
   const suffix = crypto.randomBytes(4).toString('hex');
   const username = `viewer_${suffix}`;
   const password = crypto.randomBytes(6).toString('base64url');
@@ -84,6 +92,7 @@ router.post('/:id/invite', requireRole('admin'), asyncHandler(async (req, res) =
       name: `临时用户`,
       role: 'viewer',
       projectId,
+      ...permissions,
     },
   });
 
@@ -99,10 +108,26 @@ router.get('/:id/viewers', requireRole('admin'), asyncHandler(async (req, res) =
   }
   const viewers = await prisma.user.findMany({
     where: { projectId, role: 'viewer' },
-    select: { id: true, username: true, name: true, createdAt: true },
+    select: collaboratorFields,
     orderBy: { createdAt: 'desc' },
   });
   res.json(successResponse(viewers));
+}));
+
+router.patch('/:id/viewers/:userId', requireRole('admin'), asyncHandler(async (req, res) => {
+  const projectId = req.params.id as string;
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { ownerId: true } });
+  if (project?.ownerId !== req.user!.id) throw new AppError('无权操作该项目', 403);
+
+  const data = parse(collaboratorPermissions, req.body);
+  if (data.canEditDocuments === undefined && data.canEditDrawings === undefined) throw AppError.badRequest('请选择要更新的协作者权限');
+  const [viewer] = await prisma.user.updateManyAndReturn({
+    where: { id: req.params.userId as string, projectId, role: 'viewer' },
+    data,
+    select: collaboratorFields,
+  });
+  if (!viewer) throw AppError.notFound('用户不存在');
+  res.json(successResponse(viewer));
 }));
 
 router.delete('/:id/invite/:userId', requireRole('admin'), asyncHandler(async (req, res) => {
@@ -112,13 +137,11 @@ router.delete('/:id/invite/:userId', requireRole('admin'), asyncHandler(async (r
     res.status(403).json({ success: false, error: '无权操作该项目' });
     return;
   }
-  const userId = req.params.userId as string;
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || user.role !== 'viewer') {
+  const deleted = await prisma.user.deleteMany({ where: { id: req.params.userId as string, projectId, role: 'viewer' } });
+  if (!deleted.count) {
     res.status(404).json({ success: false, error: '用户不存在' });
     return;
   }
-  await prisma.user.delete({ where: { id: userId } });
   res.status(204).send();
 }));
 

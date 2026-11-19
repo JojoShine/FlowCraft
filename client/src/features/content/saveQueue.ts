@@ -1,7 +1,7 @@
 import type {DraftKey,BlobDraft,LocalDraft,SaveAck,SaveEnvelope} from './types';
 import type {DraftStore} from './draftStore';
 export interface SaveState {
- phase:'saved'|'dirty'|'saving'|'offline'|'error'|'conflict'|'auth-paused'|'deleted';
+ phase:'saved'|'dirty'|'saving'|'offline'|'error'|'conflict'|'auth-paused'|'permission-paused'|'deleted';
  localSequence:number;ackedSequence:number;version:number;savedAt:string|null;draftPersisted:boolean;lastAck:SaveAck|null;error?:string;draftError?:string;
 }
 export interface SaveQueueOptions<T> {identity:DraftKey;initialVersion:number;initialTitle?:string;initialPayload?:T;save:(input:SaveEnvelope<T>,signal:AbortSignal)=>Promise<SaveAck>;draftStore:DraftStore}
@@ -16,7 +16,7 @@ export function createSaveQueue<T>(options:SaveQueueOptions<T>) {
  let draftChain:Promise<void>=Promise.resolve();
  const listeners=new Set<()=>void>();
  const emit=(patch:Partial<SaveState>)=>{state={...state,...patch};for(const fn of listeners) fn();};
- const paused=()=>['auth-paused','conflict','deleted'].includes(state.phase);
+ const paused=()=>['auth-paused','permission-paused','conflict','deleted'].includes(state.phase);
  const stopTimers=()=>{clearTimeout(idle);clearTimeout(max);clearTimeout(local);idle=max=local=undefined;};
  function getDraft():LocalDraft<T>|null {return latest?{key:options.identity,baseVersion:state.version,localSequence:state.localSequence,...latest,updatedAt:Date.now()}:null;}
  function persist():Promise<void> {
@@ -56,12 +56,12 @@ export function createSaveQueue<T>(options:SaveQueueOptions<T>) {
     if(disposed||capturedEpoch!==epoch) return null;
     const status=error.response?.status;
     if([400,413].includes(status)) attempt=null;
-    emit({phase:status===409?'conflict':status===401?'auth-paused':status===410||status===404?'deleted':navigator.onLine?'error':'offline',error:error.message||'保存失败，请重试'});
+    emit({phase:status===409?'conflict':status===401?'auth-paused':status===403?'permission-paused':status===410||status===404?'deleted':navigator.onLine?'error':'offline',error:error.message||'保存失败，请重试'});
     await persist();return null;
    } finally {inFlight=null;if(confirmed&&!disposed&&!paused()&&state.localSequence!==state.ackedSequence) {emit({phase:'dirty'});schedule();}}
   })();return inFlight;
  }
- function pause(reason:'auth'|'conflict'|'deleted') {epoch++;stopTimers();attempt?.controller.abort();emit({phase:reason==='auth'?'auth-paused':reason});void persist();}
+ function pause(reason:'auth'|'permission'|'conflict'|'deleted') {epoch++;stopTimers();attempt?.controller.abort();emit({phase:reason==='auth'?'auth-paused':reason==='permission'?'permission-paused':reason});void persist();}
  return {
   update,flush,getDraft,
   getSnapshot:()=>state,

@@ -15,7 +15,8 @@
 
 /* Tiptap uses the same application controls and spacing as the rest of FlowCraft. */
 .tiptap-document{width:100%;position:relative}
-.document-formatbar{position:sticky;top:0;z-index:30;background:var(--canvas);display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;margin-bottom:24px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
+.document-edit-header{margin-bottom:24px}
+.document-formatbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)}
 .document-style-select{width:144px}.document-format-hint{font-size:12px;color:var(--ink-3);line-height:1.5}
 .document-formatbar button[aria-pressed=true]{background:var(--surface-raised)!important;color:var(--ink)!important}
 .flow-document-content{outline:none;min-height:320px;padding:0 0 64px;color:var(--ink-1);font-size:15px;line-height:1.85;overflow-wrap:anywhere}

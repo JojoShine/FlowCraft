@@ -11,6 +11,17 @@ async function owned(tx:Prisma.TransactionClient,actor:Actor,kind:ContentKind,id
  const row=kind==='document'?await tx.document.findUnique({where:{id}}):await tx.drawing.findUnique({where:{id}});
  if(!row||active&&row.deletedAt) throw AppError.notFound('内容不存在');await requireContentOwner(actor,row.projectId,tx);return row;
 }
+export async function setCollaboratorEditing(actor:Actor,kind:ContentKind,id:string,allowCollaboratorEditing:boolean) {
+ return runContentTransaction(async tx=>{
+  const row=await owned(tx,actor,kind,id,true);
+  if(row.allowCollaboratorEditing!==allowCollaboratorEditing) {
+   const data={allowCollaboratorEditing,updatedAt:row.updatedAt};
+   if(kind==='document') await tx.document.update({where:{id},data});
+   else await tx.drawing.update({where:{id},data});
+  }
+  return {allowCollaboratorEditing};
+ });
+}
 export async function trashContent(actor:Actor,kind:ContentKind,id:string):Promise<void> {
  await runContentTransaction(async tx=>{
   await owned(tx,actor,kind,id,true);
@@ -33,7 +44,7 @@ export async function listTrashContent(actor:Actor,kind:ContentKind,query:Conten
  const where={project:{ownerId:actor.id},deletedAt:{not:null},...(query.projectId?{projectId:query.projectId}:{})};const page=pageNumber(query.page);
  const rows=kind==='document'?await prisma.document.findMany({where,orderBy:{deletedAt:'desc'},skip:(page-1)*50,take:50}):await prisma.drawing.findMany({where,orderBy:{deletedAt:'desc'},skip:(page-1)*50,take:50});
  const total=kind==='document'?await prisma.document.count({where}):await prisma.drawing.count({where});
- return {items:rows.map(r=>({id:r.id,projectId:r.projectId,title:r.title,version:r.currentVersion,updatedAt:r.updatedAt.toISOString()})),total,page,pageSize:50};
+ return {items:rows.map(r=>({id:r.id,projectId:r.projectId,title:r.title,version:r.currentVersion,updatedAt:r.updatedAt.toISOString(),allowCollaboratorEditing:r.allowCollaboratorEditing})),total,page,pageSize:50};
 }
 async function copyDrawing(tx:Prisma.TransactionClient,actor:Actor,id:string,version?:number) {
  const row=await owned(tx,actor,'drawing',id,true);const r=await tx.drawingRevision.findUnique({where:{drawingId_version:{drawingId:id,version:version??row.currentVersion}},include:{assets:true}});if(!r) throw AppError.notFound('绘图版本不存在');

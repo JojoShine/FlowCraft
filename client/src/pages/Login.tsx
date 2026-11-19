@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Input } from '../components/ui/Input';
@@ -8,6 +8,8 @@ export function Login() {
   const { login, register, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const returnTo: unknown = useLocation().state?.returnTo;
+  const destination = typeof returnTo === 'string' && /^\/share\/(document|drawing)\/[A-Za-z0-9_-]{43}$/.test(returnTo) ? returnTo : '/workbench';
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -19,9 +21,9 @@ export function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/workbench', { replace: true });
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, destination]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +41,7 @@ export function Login() {
       } else {
         await login(username, password);
       }
-      navigate('/workbench', { replace: true });
+      navigate(destination, { replace: true });
     } catch (err: any) {
       const apiError = err.response?.data?.error;
       const msg = typeof apiError === 'string' ? apiError : apiError?.message || err.message || '操作失败';

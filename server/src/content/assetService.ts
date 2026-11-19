@@ -5,7 +5,7 @@ import {Prisma} from '@prisma/client';
 import {prisma} from '../lib/prisma';
 import {uploadFileStream,deleteFile} from '../lib/minio';
 import {AppError} from '../middleware/errorHandler';
-import {requireContentOwner} from './authorization';
+import {requireContentUpload} from './authorization';
 import type {Actor,AssetDto,AssetUploadInput} from './contracts';
 export async function validateAssetReferences(db:Prisma.TransactionClient,projectId:string,ids:string[]):Promise<void> {
  const unique=[...new Set(ids)];
@@ -13,7 +13,7 @@ export async function validateAssetReferences(db:Prisma.TransactionClient,projec
  if(count!==unique.length) throw AppError.badRequest('引用的文件尚未上传完成或不属于本项目');
 }
 export async function uploadContentAsset(actor:Actor,input:AssetUploadInput):Promise<AssetDto> {
- await requireContentOwner(actor,input.projectId);
+ await requireContentUpload(actor,input.projectId,input.context);
  if(!['image','attachment'].includes(input.category)) throw AppError.badRequest('预览需通过专用接口上传');
  const limit=(input.category==='image'?10:20)*1024*1024;
  if(!Number.isSafeInteger(input.bytes)||input.bytes<1) throw AppError.badRequest('文件大小无效');
@@ -38,8 +38,8 @@ export async function uploadContentAsset(actor:Actor,input:AssetUploadInput):Pro
  }
 }
 
-export async function storeDrawingPreviewAsset(actor:Actor,projectId:string,svg:Buffer):Promise<AssetDto> {
- await requireContentOwner(actor,projectId);
+export async function storeDrawingPreviewAsset(actor:Actor,{id:drawingId,projectId}:{id:string;projectId:string},svg:Buffer):Promise<AssetDto> {
+ await requireContentUpload(actor,projectId,{kind:'drawing',id:drawingId});
  const id=randomUUID(),objectKey=`content/${projectId}/${id}`;
  const data={id,projectId,creatorId:actor.id,objectKey,category:'preview',originalName:'preview.svg',mimeType:'image/svg+xml',bytes:svg.length,digest:createHash('sha256').update(svg).digest('hex'),state:'uploading'};
  await prisma.contentAsset.create({data});

@@ -18,6 +18,8 @@ model User {
   wechatUnionId String?  @unique
   role          String   @default("admin")
   projectId     String?
+  canEditDocuments Boolean @default(false)
+  canEditDrawings   Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -189,6 +191,7 @@ model Document {
   title String
   searchText String @default("")
   shareToken String? @unique
+  allowCollaboratorEditing Boolean @default(false)
   currentVersion Int @default(1)
   deletedAt DateTime?
   createdAt DateTime @default(now())
@@ -218,6 +221,7 @@ model Drawing {
   project Project @relation(fields:[projectId],references:[id],onDelete:Restrict)
   title String
   shareToken String? @unique
+  allowCollaboratorEditing Boolean @default(false)
   currentVersion Int @default(1)
   deletedAt DateTime?
   createdAt DateTime @default(now())

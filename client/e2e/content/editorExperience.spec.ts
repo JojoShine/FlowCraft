@@ -1,4 +1,46 @@
 import {test,expect,API} from './fixtures';
+test('the entire document header and outline stay still while the text scrolls',async({page,request,content,token})=>{
+ const headers={Authorization:`Bearer ${token}`};
+ const payload={formatVersion:1,blocks:Array.from({length:80},(_,index)=>index===35
+  ?{id:'section',type:'heading',props:{level:2},content:'滚动后的章节'}
+  :{id:`paragraph-${index}`,type:'paragraph',content:`第 ${index+1} 段正文`})};
+ const created=await request.post(`${API}/documents`,{headers,data:{projectId:content.project.id,title:'固定标题验证',payload}});
+ expect(created.status()).toBe(201);
+ const {id}=(await created.json()).data;
+ await page.addInitScript(value=>localStorage.setItem('token',value),token);
+ const title=page.getByRole('textbox',{name:'文档标题'}),format=page.getByLabel('正文格式');
+ const main=page.locator('main'),heading=page.getByRole('heading',{name:'滚动后的章节'});
+ const fixed=[page.getByRole('link',{name:'← 返回文档列表'}),page.getByText('已保存到服务器',{exact:true}),page.getByRole('group',{name:'文档操作'}),title,format,page.getByRole('navigation',{name:'文章目录'})];
+ const verticalPositions=()=>Promise.all(fixed.map(async element=>(await element.boundingBox())!.y));
+ for(const width of [1366,390]) {
+  await page.setViewportSize({width,height:844});
+  await page.goto(`documents/${id}`);
+  await expect(title).toBeVisible();
+  await page.locator('.flowcraft-main').evaluate(node=>Promise.allSettled(node.getAnimations().map(animation=>animation.finished)).then(()=>{}));
+  const initialPositions=await verticalPositions();
+  const headingTop=(await heading.boundingBox())!.y;
+  const scrollArea=await page.getByRole('textbox',{name:'文档正文'}).evaluateHandle(node=>{
+   let parent=node.parentElement;
+   while(parent&&!(getComputedStyle(parent).overflowY==='auto'&&parent.scrollHeight>parent.clientHeight)) parent=parent.parentElement;
+   return parent;
+  });
+  for(const scrollTop of [450,900,450,0]) {
+   await scrollArea.evaluate((node,top)=>node?.scrollTo(0,top),scrollTop);
+   expect(await verticalPositions()).toEqual(initialPositions);
+   expect((await heading.boundingBox())!.y).toBeCloseTo(headingTop-scrollTop,0);
+   expect(await main.evaluate(node=>node.scrollTop)).toBe(0);
+  }
+  if(width===1366) {
+   await Promise.all([
+    scrollArea.evaluate(node=>new Promise<void>(resolve=>node?.addEventListener('scrollend',()=>resolve(),{once:true}))),
+    page.getByRole('link',{name:'滚动后的章节'}).click(),
+   ]);
+   await expect(heading).toBeInViewport();
+   const formatBox=(await format.boundingBox())!;
+   expect((await heading.boundingBox())!.y).toBeGreaterThanOrEqual(formatBox.y+formatBox.height-1);
+  }
+ }
+});
 test('typed Markdown transforms immediately, persists, and the quiet header returns to the list',async({page,request,content,token},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));const headers={Authorization:`Bearer ${token}`};
  const markers=[['heading','# Heading'],['bullet','- bullet'],['number','1. number'],['task','- [ ] todo'],['quote','> quote'],['code','```bash'],['rule','---'],['inline','**bold** *italic* ~~strike~~ `code` ']];

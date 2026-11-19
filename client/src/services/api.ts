@@ -188,9 +188,22 @@ export const reportsApi = {
     api.post('/reports/generate', data),
 };
 
+export interface CollaboratorPermissions {
+  canEditDocuments: boolean;
+  canEditDrawings: boolean;
+}
+
+export interface ProjectCollaborator extends CollaboratorPermissions {
+  id: string;
+  username: string | null;
+  name: string | null;
+  createdAt: string;
+}
+
 export const inviteApi = {
-  create: (projectId: string) => api.post(`/projects/${projectId}/invite`),
-  list: (projectId: string) => api.get(`/projects/${projectId}/viewers`),
+  create: (projectId: string, permissions: CollaboratorPermissions) => api.post<{id: string; username: string; password: string}>(`/projects/${projectId}/invite`, permissions),
+  list: (projectId: string) => api.get<ProjectCollaborator[]>(`/projects/${projectId}/viewers`),
+  updatePermissions: (projectId: string, userId: string, permissions: Partial<CollaboratorPermissions>) => api.patch<ProjectCollaborator>(`/projects/${projectId}/viewers/${userId}`, permissions),
   revoke: (projectId: string, userId: string) => api.delete(`/projects/${projectId}/invite/${userId}`),
 };
 

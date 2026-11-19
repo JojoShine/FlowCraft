@@ -44,12 +44,12 @@ function visibleScene(scene:DrawingScene):DrawingScene {
 }
 export async function readSharedContent(kind:ContentKind,token:string) {
  const {row,actor}=await scope(kind,token);
- if(kind==='document') return documentService.read(actor,row.id);
- const view=await drawingService.read(actor,row.id);return {...view,payload:visibleScene(view.payload)};
+ if(kind==='document') return {...await documentService.read(actor,row.id),canEdit:false};
+ const view=await drawingService.read(actor,row.id);return {...view,canEdit:false,payload:visibleScene(view.payload)};
 }
 export async function readSharedEmbed(token:string,blockId:string) {
  const {row,actor}=await scope('document',token),embed=await resolveDocumentEmbed(actor,row.id,blockId);
- return {...embed,scene:embed.scene?visibleScene(embed.scene):null,previewAssetId:null,status:embed.scene?'preview-pending' as const:embed.status};
+ return {...embed,scene:embed.scene?visibleScene(embed.scene):null,previewAssetId:null,canEditDrawing:false,status:embed.scene?'preview-pending' as const:embed.status};
 }
 export async function openSharedAsset(kind:ContentKind,token:string,assetId:string,blockId?:string) {
  const {row,actor}=await scope(kind,token);

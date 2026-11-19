@@ -10,6 +10,20 @@ it('serializes in-flight saves and old ack never marks a newer draft saved',asyn
 it('lost response retries the same request before sending a newer pending payload',async()=>{const save=vi.fn().mockRejectedValueOnce(new Error('network')).mockImplementation(async(input:any)=>ack(input));const {queue}=setup(save);queue.update('A',{text:1},[]);await queue.flush();queue.update('B',{text:2},[]);await queue.flush();expect(save.mock.calls[0][0]).toEqual(save.mock.calls[1][0]);await queue.flush();expect(save.mock.calls[2][0].title).toBe('B');queue.dispose();});
 it('composition_defers_server_save and pending files prevent saved status',async()=>{vi.useFakeTimers();const {queue,save,store}=setup();queue.setComposing(true);queue.update('中文',{text:'组'},[]);await vi.advanceTimersByTimeAsync(11000);expect(save).not.toHaveBeenCalled();expect(store.put).toHaveBeenCalled();queue.setComposing(false);await queue.flush();expect(save).toHaveBeenCalledTimes(1);queue.update('图',{text:'pic'},[{localId:'f',targetId:'b',fileName:'a.png',mimeType:'image/png',blob:new Blob(['pic'])}]);await queue.flush();expect(queue.getSnapshot().phase).not.toBe('saved');expect(save).toHaveBeenCalledTimes(1);queue.dispose();});
 it('409 and forced 401 preserve the original identity draft and pause writes',async()=>{for(const status of [409,401]) {const save=vi.fn().mockRejectedValue({response:{status}});const {queue,store}=setup(save);queue.update('old',{text:1},[]);await queue.flush();expect(queue.getSnapshot().phase).toBe(status===409?'conflict':'auth-paused');expect(store.put.mock.calls.at(-1)?.[0].key).toEqual(identity);await queue.flush();expect(save).toHaveBeenCalledTimes(1);queue.dispose();}});
+it('preserves an unsaved draft and pauses retries when editing permission is revoked',async()=>{
+ const save=vi.fn().mockRejectedValueOnce({response:{status:403}}).mockImplementation(async(input)=>ack(input));
+ const {queue}=setup(save);
+ queue.update('待保存正文',{text:'draft'});
+ await queue.flush();
+ expect(queue.getSnapshot()).toMatchObject({phase:'permission-paused',draftPersisted:true,version:1});
+ expect(queue.getDraft()).toMatchObject({title:'待保存正文',payload:{text:'draft'}});
+ await queue.flush();
+ expect(save).toHaveBeenCalledTimes(1);
+ queue.resume(1);
+ await queue.flush();
+ expect(queue.getSnapshot()).toMatchObject({phase:'saved',version:2});
+ queue.dispose();
+});
 it('quota failure remains visible and restoring a draft never silently saves',async()=>{vi.useFakeTimers();const {queue,save}=setup(undefined,vi.fn().mockRejectedValue(new DOMException('full','QuotaExceededError')));queue.update('A',{text:1},[]);await vi.advanceTimersByTimeAsync(500);expect(queue.getSnapshot().draftError).toMatch(/full/);expect(queue.getSnapshot().draftPersisted).toBe(false);queue.dispose();const other=setup();other.queue.restoreDraft({key:identity,baseVersion:1,localSequence:2,title:'restored',payload:{text:2},pendingFiles:[],updatedAt:Date.now()});await vi.advanceTimersByTimeAsync(20000);expect(other.save).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();other.queue.dispose();});
 
 it('corrected content replaces a definitively rejected 400 or 413 save attempt',async()=>{

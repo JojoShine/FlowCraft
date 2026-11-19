@@ -9,17 +9,21 @@ export function useContentEditor<T extends DocumentBody|DrawingScene>(kind:Conte
  const {user}=useAuth();const identity=useMemo(()=>contentDraftIdentity(user!.id,initial.projectId,kind,initial.id),[user!.id,initial.projectId,kind,initial.id]);
  const [view,setView]=useState(initial),current=useRef(initial),pending=useRef<BlobDraft[]>([]),pendingArchive=useRef(new Map<string,BlobDraft>()),[error,setError]=useState(''),[newVersion,setNewVersion]=useState(false);
  const api=kind==='document'?documentsApi:drawingsApi;
- const autosave=useContentAutosave(identity,initial,(input:SaveEnvelope<T>,signal)=>kind==='document'?documentsApi.save(initial.id,input as SaveEnvelope<DocumentBody>,signal):drawingsApi.save(initial.id,input as SaveEnvelope<DrawingScene>,signal));
+ const autosave=useContentAutosave(identity,view,(input:SaveEnvelope<T>,signal)=>kind==='document'?documentsApi.save(initial.id,input as SaveEnvelope<DocumentBody>,signal):drawingsApi.save(initial.id,input as SaveEnvelope<DrawingScene>,signal));
  const {queue,state}=autosave,assets=useContentAssets(identity);
- function update(title:string,payload:T) {if(kind==='document') {const ids=new Set<string>();function collect(blocks:DocumentBody['blocks']) {for(const block of blocks) {ids.add(block.id);if(block.props?.url?.startsWith('pending:')) ids.add(block.props.url.slice(8));collect(block.children||[]);}}collect((payload as DocumentBody).blocks);pending.current=Array.from(pendingArchive.current.values()).filter(record=>ids.has(record.targetId));if(!pending.current.length) setError('');}const next={...current.current,title,payload};current.current=next;setView(next);queue.update(title,payload,pending.current);}
+ const context={kind,id:initial.id};
+ const canEdit=view.canEdit&&!['auth-paused','permission-paused','deleted'].includes(state.phase);
+ function update(title:string,payload:T) {if(!canEdit) return;if(kind==='document') {const ids=new Set<string>();function collect(blocks:DocumentBody['blocks']) {for(const block of blocks) {ids.add(block.id);if(block.props?.url?.startsWith('pending:')) ids.add(block.props.url.slice(8));collect(block.children||[]);}}collect((payload as DocumentBody).blocks);pending.current=Array.from(pendingArchive.current.values()).filter(record=>ids.has(record.targetId));if(!pending.current.length) setError('');}const next={...current.current,title,payload};current.current=next;setView(next);queue.update(title,payload,pending.current);}
  async function upload(file:File,targetId:string) {
+  if(!canEdit) throw new Error('当前没有编辑权限');
   const record:BlobDraft={localId:crypto.randomUUID(),targetId,fileName:file.name,mimeType:file.type,blob:file};pendingArchive.current.set(record.localId,record);pending.current=[...pending.current,record];queue.update(current.current.title,current.current.payload,pending.current);
-  try {const result=await assets.upload(file,initial.projectId,file.type.startsWith('image/')?'image':'attachment');pendingArchive.current.delete(record.localId);pending.current=pending.current.filter(p=>p.localId!==record.localId);queue.update(current.current.title,current.current.payload,pending.current);return result;}
+  try {const result=await assets.upload(file,initial.projectId,file.type.startsWith('image/')?'image':'attachment',context);pendingArchive.current.delete(record.localId);pending.current=pending.current.filter(p=>p.localId!==record.localId);queue.update(current.current.title,current.current.payload,pending.current);return result;}
   catch(e:any){setError(e.message);throw e;}
  }
  async function retryUploads() {
+  if(!canEdit) return;
   setError('');try {for(const record of [...pending.current]) {
-   const result=await assets.upload(new File([record.blob],record.fileName,{type:record.mimeType}),initial.projectId,record.mimeType.startsWith('image/')?'image':'attachment');
+   const result=await assets.upload(new File([record.blob],record.fileName,{type:record.mimeType}),initial.projectId,record.mimeType.startsWith('image/')?'image':'attachment',context);
    const payload=structuredClone(current.current.payload);
    if(kind==='drawing') (payload as DrawingScene).files[record.targetId]={assetId:result.id};
    else {function patch(blocks:DocumentBody['blocks']) {for(const block of blocks) {if(block.id===record.targetId||block.props?.url===`pending:${record.targetId}`) block.props={...block.props,assetId:result.id,url:`asset:${result.id}`,name:record.fileName};patch(block.children||[]);}}patch((payload as DocumentBody).blocks);}
@@ -31,8 +35,30 @@ export function useContentEditor<T extends DocumentBody|DrawingScene>(kind:Conte
  function acceptServer(next:ContentView<T>) {pending.current=[];pendingArchive.current.clear();current.current=next;setView(next);queue.acceptServer(next.title,next.payload,next.version);setNewVersion(false);}
  async function reload() {const next=await api.get(initial.id) as ContentView<T>;acceptServer(next);}
  function restoreDraft(draft:LocalDraft<T>) {pending.current=draft.pendingFiles;pendingArchive.current=new Map(draft.pendingFiles.map(record=>[record.localId,record]));const next={...current.current,title:draft.title,payload:draft.payload};current.current=next;setView(next);autosave.restoreDraft(draft);}
- useEffect(()=>{void contentPreferencesApi.set(kind,initial.id,{lastViewedAt:new Date().toISOString()}).catch(()=>{});const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s') {event.preventDefault();if(initial.canEdit) void queue.flush();}};const focus=()=>{api.get(initial.id).then(next=>{if(next.version!==queue.getSnapshot().version) setNewVersion(true);}).catch(e=>{if([404,410].includes(e.response?.status)) queue.pause('deleted');});};window.addEventListener('keydown',key);window.addEventListener('focus',focus);return ()=>{window.removeEventListener('keydown',key);window.removeEventListener('focus',focus);};},[queue]);
- return {view,current,identity,queue,state,update,upload,readAsset,readAssetUrl:(assetId:string)=>assets.readUrl(assetId,{kind,id:initial.id}),retryUploads,pendingFiles:pending.current,error,setError,newVersion,reload,acceptServer,drain,restoreDraft,drafts:autosave.drafts,discardDraft:autosave.discardDraft,recoveryError:autosave.recoveryError,
+ useEffect(()=>{
+  void contentPreferencesApi.set(kind,initial.id,{lastViewedAt:new Date().toISOString()}).catch(()=>{});
+  const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s') {event.preventDefault();if(current.current.canEdit) void queue.flush();}};
+  let activeRequest:AbortController|undefined;
+  const focus=()=>{
+   activeRequest?.abort();const request=new AbortController();activeRequest=request;
+   void api.get(initial.id,request.signal).then(next=>{
+    if(request.signal.aborted) return;
+    const snapshot=queue.getSnapshot();
+    if(next.version!==snapshot.version) setNewVersion(true);
+    if(next.canEdit!==current.current.canEdit) {
+     current.current={...current.current,canEdit:next.canEdit};setView(current.current);
+    }
+    if(!next.canEdit&&snapshot.localSequence!==snapshot.ackedSequence&&snapshot.phase!=='permission-paused') queue.pause('permission');
+    if(next.canEdit&&snapshot.phase==='permission-paused') {
+     if(next.version===snapshot.version) queue.resume(snapshot.version);
+     else queue.pause('conflict');
+    }
+   }).catch(e=>{if(!request.signal.aborted&&[404,410].includes(e.response?.status)) queue.pause('deleted');});
+  };
+  window.addEventListener('keydown',key);window.addEventListener('focus',focus);
+  return ()=>{activeRequest?.abort();window.removeEventListener('keydown',key);window.removeEventListener('focus',focus);};
+ },[queue]);
+ return {view,current,identity,queue,state,canEdit,update,upload,readAsset,readAssetUrl:(assetId:string)=>assets.readUrl(assetId,{kind,id:initial.id}),retryUploads,pendingFiles:pending.current,error,setError,newVersion,reload,acceptServer,drain,restoreDraft,drafts:autosave.drafts,discardDraft:autosave.discardDraft,recoveryError:autosave.recoveryError,
   exportRecovery:()=>exportRecoveryDraft(queue),
   overwrite:async()=>{const fresh=await api.get(initial.id);if(!fresh.canEdit) throw new Error('当前没有编辑权限');queue.resume(fresh.version);await queue.flush();},
   localCopy:async()=>{if(pending.current.length) throw new Error('请先重试文件上传，或导出恢复草稿');const input={projectId:initial.projectId,title:`${current.current.title.slice(0,290)} 副本`,payload:current.current.payload};const copy=kind==='document'?await documentsApi.create(input as any):await drawingsApi.create(input as any);await reload();return copy;},

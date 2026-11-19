@@ -1,6 +1,6 @@
 import {notifyDataChange} from '../../utils/dataEvents';
 import {api} from '../../services/api';
-import type {ContentKind,DocumentBody,DrawingScene,ContentView,ContentListQuery,ContentSummary,Page,SaveEnvelope,SaveAck,RestoreInput,RevisionPage,CreateContentInput,DocumentRevisionDto,DrawingRevisionDto,ResolvedEmbed,DocumentReferenceDto,AssetDto,ContentContext,PreferencePatch,PreferenceDto} from './types';
+import type {ContentKind,DocumentBody,DrawingScene,ContentView,ContentListQuery,ContentSummary,Page,SaveEnvelope,SaveAck,RestoreInput,RevisionPage,CreateContentInput,DocumentRevisionDto,DrawingRevisionDto,ResolvedEmbed,DocumentReferenceDto,AssetDto,ContentContext,ContentUploadContext,PreferencePatch,PreferenceDto} from './types';
 function resource<T,R>(path:string) {
  const changed=()=>notifyDataChange(path==='/documents'?'documents':'drawings');
  return {
@@ -9,6 +9,7 @@ function resource<T,R>(path:string) {
   get:async(id:string,signal?:AbortSignal):Promise<ContentView<T>>=>(await api.get(`${path}/${id}`,{signal})).data,
   create:async(input:CreateContentInput<T>):Promise<ContentView<T>>=>{const result=(await api.post(path,input)).data;changed();return result;},
   save:async(id:string,input:SaveEnvelope<T>,signal?:AbortSignal):Promise<SaveAck>=>(await api.patch(`${path}/${id}`,input,{signal})).data,
+  setCollaboratorEditing:async(id:string,allowCollaboratorEditing:boolean):Promise<Pick<ContentSummary,'allowCollaboratorEditing'>>=>(await api.put(`${path}/${id}/collaborator-editing`,{allowCollaboratorEditing})).data,
   history:async(id:string,page=1):Promise<RevisionPage>=>(await api.get(`${path}/${id}/revisions`,{params:{page}})).data,
   revision:async(id:string,version:number,signal?:AbortSignal):Promise<R>=>(await api.get(`${path}/${id}/revisions/${version}`,{signal})).data,
   restore:async(id:string,input:RestoreInput):Promise<SaveAck>=>(await api.post(`${path}/${id}/restore`,input)).data,
@@ -31,7 +32,7 @@ export const drawingsApi={...resource<DrawingScene,DrawingRevisionDto>('/drawing
  references:async(id:string):Promise<DocumentReferenceDto[]>=>(await api.get(`/drawings/${id}/references`)).data,
 };
 export const contentAssetsApi={
- upload:async(file:File,projectId:string,category:'image'|'attachment',signal?:AbortSignal):Promise<AssetDto>=>{const form=new FormData();form.append('projectId',projectId);form.append('category',category);form.append('file',file);return (await api.post('/content-assets',form,{signal})).data;},
+ upload:async(file:File,projectId:string,category:'image'|'attachment',signal?:AbortSignal,context?:ContentUploadContext):Promise<AssetDto>=>{const form=new FormData();form.append('projectId',projectId);form.append('category',category);if(context) form.append('context',JSON.stringify(context));form.append('file',file);return (await api.post('/content-assets',form,{signal})).data;},
  read:async(assetId:string,context:ContentContext,signal?:AbortSignal):Promise<Blob>=>(await api.get(`/content-assets/${assetId}`,{params:{context:JSON.stringify(context)},responseType:'blob',signal})).data,
 };
 export const contentPreferencesApi={

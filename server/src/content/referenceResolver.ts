@@ -1,10 +1,10 @@
 import {Prisma} from '@prisma/client';
 import {prisma} from '../lib/prisma';
 import {AppError} from '../middleware/errorHandler';
-import {requireContentRead,requireContentOwner} from './authorization';
+import {canWriteContent,requireContentRead,requireContentOwner} from './authorization';
 import {drawingReferences} from './validation';
 import {runContentTransaction} from './revisions';
-import type {Actor,DocumentBody,ResolvedEmbed,DocumentReferenceDto} from './contracts';
+import type {Actor,DocumentBody,DrawingScene,ResolvedEmbed,DocumentReferenceDto} from './contracts';
 export async function captureDrawingReferences(tx:Prisma.TransactionClient,projectId:string,body:DocumentBody,previousRevisionId?:string) {
  const previous=previousRevisionId?await tx.documentDrawingReference.findMany({where:{documentRevisionId:previousRevisionId}}):[];
  const rows=[];
@@ -31,13 +31,14 @@ export async function resolveDocumentEmbed(actor:Actor,documentId:string,blockId
   const ref=await tx.documentDrawingReference.findFirst({where:{documentRevision:{documentId,version},blockId}});
   if(!ref) throw AppError.notFound('绘图块不存在');
   const d=await tx.drawing.findUnique({where:{id:ref.drawingId}});
-  const base={blockId,drawingId:ref.drawingId,revision:ref.revision,title:d?.title||'绘图',scene:null,previewAssetId:null};
+  const base={blockId,drawingId:ref.drawingId,revision:ref.revision,title:d?.title||'绘图',scene:null,previewAssetId:null,canEditDrawing:false};
   if(!d||d.projectId!==doc.projectId) return {...base,status:'unavailable'};
   if(d.deletedAt&&documentVersion===undefined) return {...base,status:'deleted'};
   const drawingVersion=documentVersion!==undefined||ref.mode==='pinned'?ref.revision:d.currentVersion;
   const r=await tx.drawingRevision.findUnique({where:{drawingId_version:{drawingId:d.id,version:drawingVersion}}});
   if(!r) return {...base,status:'unavailable'};
-  return {...base,revision:r.version,title:r.title,scene:r.payload as any,previewAssetId:r.previewAssetId,status:r.previewAssetId?'ready':'preview-pending'};
+  const canEditDrawing=documentVersion===undefined&&(actor.role==='admin'||await canWriteContent(actor,d,'drawing',tx));
+  return {...base,revision:r.version,title:r.title,scene:r.payload as unknown as DrawingScene,canEditDrawing,previewAssetId:r.previewAssetId,status:r.previewAssetId?'ready':'preview-pending'};
  });
 }
 export async function listDrawingReferences(actor:Actor,drawingId:string):Promise<DocumentReferenceDto[]> {

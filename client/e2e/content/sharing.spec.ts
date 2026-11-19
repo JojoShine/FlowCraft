@@ -1,6 +1,34 @@
 import {test,expect,API} from './fixtures';
 import {readFile} from 'node:fs/promises';
 const token='A'.repeat(43),base='/api/v1/public/content/document/'+token;
+test('the shared document header and edit link stay visible while the document scrolls',async({page,request,content,token:ownerToken})=>{
+ const headers={Authorization:`Bearer ${ownerToken}`};
+ const blocks=Array.from({length:80},(_,index)=>({id:`paragraph-${index}`,type:'paragraph',content:`分享正文第 ${index+1} 段`}));
+ const created=await request.post(API+'/documents',{headers,data:{projectId:content.project.id,title:'长文档分享',payload:{formatVersion:1,blocks}}});
+ expect(created.status()).toBe(201);
+ const {id}=(await created.json()).data;
+ const shared=await request.post(`${API}/documents/${id}/share`,{headers});
+ expect(shared.status()).toBe(200);
+ const {shareToken}=(await shared.json()).data;
+ await page.addInitScript(value=>localStorage.setItem('token',value),ownerToken);
+ const header=page.locator('.shared-content-header'),editLink=page.getByRole('link',{name:'编辑文档',exact:true});
+ const paragraph=page.getByText('分享正文第 30 段',{exact:true});
+ for(const width of [1366,390]) {
+  await page.setViewportSize({width,height:844});await page.goto(`share/document/${shareToken}`);
+  await expect(editLink).toBeVisible();
+  const originalHeader=(await header.boundingBox())!,originalText=(await paragraph.boundingBox())!;
+  const scrollArea=await paragraph.evaluateHandle(node=>{
+   for(let parent=node.parentElement;parent;parent=parent.parentElement) {
+    if(getComputedStyle(parent).overflowY==='auto'&&parent.scrollHeight>parent.clientHeight) return parent;
+   }
+   return document.scrollingElement!;
+  });
+  await scrollArea.evaluate(node=>node.scrollTo(0,450));
+  expect((await paragraph.boundingBox())!.y).toBeCloseTo(originalText.y-450,0);
+  expect((await header.boundingBox())!.y).toBe(originalHeader.y);
+  await expect(editLink).toBeInViewport();
+ }
+});
 test('anonymous document share renders real editor content read-only without private requests',async({page})=>{
  const privateRequests:string[]=[];page.on('request',req=>{if(/\/api\/v1\/(documents|drawings|content-assets|ai|projects)/.test(req.url()))privateRequests.push(req.url());});
  await page.route('**'+base,route=>route.fulfill({json:{success:true,data:{id:'public-doc',projectId:'opaque-project',version:1,title:'匿名分享测试',savedAt:'2026-10-24T00:00:00.000Z',canEdit:false,deletedAt:null,payload:{formatVersion:1,blocks:[{id:'p',type:'paragraph',content:[{type:'text',text:'访客能直接读取正文',styles:{}}],children:[]},{id:'link',type:'documentLink',props:{documentId:'private-related-doc'},children:[]}]}}}}));

@@ -1,8 +1,10 @@
 import {lazy,Suspense,useEffect,useMemo,useState} from 'react';
-import {useParams} from 'react-router-dom';
+import {Link,useLocation,useParams} from 'react-router-dom';
+import {useAuth} from '../contexts/AuthContext';
 import {DocumentEditor} from '../features/documents/DocumentEditor';
 import {DocumentOutline} from '../features/documents/DocumentOutline';
 import {publicSharingApi} from '../features/content/sharingApi';
+import {documentsApi,drawingsApi} from '../features/content/api';
 import type {ContentView,DocumentBody,DrawingScene,DrawingReference,ResolvedEmbed} from '../features/content/types';
 import '../features/content/content.css';
 const ExcalidrawEditor=lazy(()=>import('../features/drawings/ExcalidrawEditor').then(m=>({default:m.ExcalidrawEditor})));
@@ -22,6 +24,8 @@ function SharedDocument({view,token}:{view:ContentView<DocumentBody>;token:strin
 }
 export function SharedContent() {
  const {kind='',token=''}=useParams(),[view,setView]=useState<ContentView<DocumentBody|DrawingScene>>(),[error,setError]=useState('');
+ const {user,loading}=useAuth(),{pathname}=useLocation();
+ const [editAccess,setEditAccess]=useState<{sharePath:string;userId:string;href:string}>();
  useEffect(()=>{
   const referrer=document.querySelector<HTMLMetaElement>('meta[name="referrer"]'),previous=referrer?.content,meta=referrer||document.createElement('meta');meta.name='referrer';meta.content='no-referrer';if(!referrer)document.head.append(meta);
   const robots=document.createElement('meta');robots.name='robots';robots.content='noindex,nofollow,noarchive';document.head.append(robots);
@@ -29,9 +33,30 @@ export function SharedContent() {
  },[]);
  useEffect(()=>{
   if(kind!=='document'&&kind!=='drawing'){setError('分享已关闭或内容不存在');return;}
-  const controller=new AbortController();setView(undefined);setError('');
-  const load=()=>publicSharingApi.read(kind,token,controller.signal).then(result=>{if(!controller.signal.aborted){setView(result);setError('');}}).catch(e=>{if(!controller.signal.aborted){setView(undefined);setError(e.message);}});
-  void load();window.addEventListener('focus',load);return()=>{controller.abort();window.removeEventListener('focus',load);};
- },[kind,token]);
- return <main className="shared-content-page"><header className="shared-content-header"><strong>FlowCraft</strong><span>只读分享</span></header><section className="content-workspace">{error?<p className="content-warning" role="alert">{error}</p>:!view?<p role="status">正在读取分享内容…</p>:kind==='document'?<SharedDocument key={token+':'+view.version} token={token} view={view as ContentView<DocumentBody>}/>:<><h1 className="shared-content-title">{view.title}</h1><SharedDrawing key={token+':'+view.version} token={token} view={view as ContentView<DrawingScene>}/></>}</section></main>;
+  setView(undefined);setError('');setEditAccess(undefined);
+  let activeRequest:AbortController|undefined;
+  const load=async()=>{
+   activeRequest?.abort();const request=new AbortController();activeRequest=request;
+   try {
+    const result=await publicSharingApi.read(kind,token,request.signal);
+    if(request.signal.aborted) return;
+    setView(result);setError('');
+    if(!user||(user.role==='viewer'&&user.projectId!==result.projectId)) return;
+    const api=kind==='document'?documentsApi:drawingsApi;
+    const editable=await api.get(result.id,request.signal).then(item=>item.canEdit,()=>false);
+    if(!request.signal.aborted) setEditAccess(editable?{sharePath:pathname,userId:user.id,href:`/${kind}s/${encodeURIComponent(result.id)}`}:undefined);
+   }catch(e){if(!request.signal.aborted){setView(undefined);setEditAccess(undefined);setError(e instanceof Error?e.message:'分享暂时无法读取');}}
+  };
+  void load();window.addEventListener('focus',load);return()=>{activeRequest?.abort();window.removeEventListener('focus',load);};
+ },[kind,token,pathname,user?.id,user?.role,user?.projectId]);
+ const mayEdit=editAccess?.sharePath===pathname&&editAccess.userId===user?.id;
+ return <main className="shared-content-page">
+  <header className="shared-content-header"><strong>FlowCraft</strong><div className="shared-content-actions"><span>只读分享</span>
+   {view&&mayEdit&&<Link className="content-header-action" to={editAccess.href}>{kind==='document'?'编辑文档':'编辑绘图'}</Link>}
+   {view&&!user&&!loading&&<Link className="content-header-action" to="/login" state={{returnTo:pathname}}>登录后编辑</Link>}
+  </div></header>
+  <div className="shared-content-scroll">
+   <section className="content-workspace">{error?<p className="content-warning" role="alert">{error}</p>:!view?<p role="status">正在读取分享内容…</p>:kind==='document'?<SharedDocument key={token+':'+view.version} token={token} view={view as ContentView<DocumentBody>}/>:<><h1 className="shared-content-title">{view.title}</h1><SharedDrawing key={token+':'+view.version} token={token} view={view as ContentView<DrawingScene>}/></>}</section>
+  </div>
+ </main>;
 }

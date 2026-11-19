@@ -8,8 +8,9 @@ export interface SaveEnvelope<T> {baseVersion:number;requestId:string;source:'au
 export interface SaveAck {version:number;digest:string;savedAt:string;requestId:string}
 export interface ContentView<T> {id:string;projectId:string;version:number;title:string;payload:T;savedAt:string;canEdit:boolean;deletedAt:string|null}
 export interface DrawingReference {blockId:string;drawingId:string;mode:'latest'|'pinned';revision:number|null}
-export interface ResolvedEmbed {blockId:string;drawingId:string;revision:number;title:string;scene:DrawingScene|null;previewAssetId:string|null;status:'ready'|'preview-pending'|'deleted'|'unavailable'}
+export interface ResolvedEmbed {blockId:string;drawingId:string;revision:number;title:string;scene:DrawingScene|null;previewAssetId:string|null;canEditDrawing:boolean;status:'ready'|'preview-pending'|'deleted'|'unavailable'}
 export interface ContentContext {kind:ContentKind;id:string;revision?:number;documentId?:string;blockId?:string}
+export type ContentUploadContext = Pick<ContentContext,'kind'|'id'>;
 export interface CreateContentInput<T> {projectId:string;title:string;payload:T}
 export interface ContentListQuery {projectId?:string;q?:string;page?:number;favorite?:boolean;recent?:boolean}
 export interface Page<T> {items:T[];total:number;page:number;pageSize:number}
@@ -19,8 +20,8 @@ export type DocumentRevisionDto = ContentView<DocumentBody>&{digest:string;sourc
 export type DrawingRevisionDto = ContentView<DrawingScene>&{digest:string;source:string;restoredFrom:number|null};
 export interface RestoreInput {baseVersion:number;requestId:string;revision:number}
 export interface AssetDto {id:string;mimeType:string;bytes:number;state:'complete'}
-export interface AssetUploadInput {projectId:string;category:'image'|'attachment'|'preview';mimeType:string;originalName:string;bytes:number;stream:Readable}
+export interface AssetUploadInput {projectId:string;context?:ContentUploadContext;category:'image'|'attachment'|'preview';mimeType:string;originalName:string;bytes:number;stream:Readable}
 export interface PreferencePatch {favorite?:boolean;lastViewedAt?:string;viewState?:Record<string,unknown>}
 export type PreferenceDto = PreferencePatch & {kind:ContentKind;entityId:string};
-export interface ContentSummary {id:string;projectId:string;title:string;version:number;updatedAt:string;previewAssetId?:string|null}
+export interface ContentSummary {id:string;projectId:string;title:string;version:number;updatedAt:string;allowCollaboratorEditing:boolean;previewAssetId?:string|null}
 export interface DocumentReferenceDto {documentId:string;title:string;blockId:string}

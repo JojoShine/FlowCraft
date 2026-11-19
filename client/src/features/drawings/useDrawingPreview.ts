@@ -5,7 +5,7 @@ import {exportPreview} from './exportPreview';
 export function useDrawingPreview({id,lastAck,canEdit}:{id:string;lastAck:SaveAck|null;canEdit:boolean}) {
  const [status,setStatus]=useState<'ready'|'pending'|'error'>('pending'),generation=useRef(0),current=useRef({id,lastAck,canEdit}),active=useRef<AbortController|null>(null),images=useRef(new Map<string,Blob>());current.current={id,lastAck,canEdit};
  const regenerate=useCallback(async(version:number)=>{
-  if(!current.current.canEdit) throw new Error('只有所有者可以生成预览');
+  if(!current.current.canEdit) throw new Error('当前没有生成预览的权限');
   active.current?.abort();const controller=new AbortController();active.current=controller;
   const drawingId=id,token=++generation.current;setStatus('pending');
   try {

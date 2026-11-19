@@ -10,10 +10,10 @@ export function useContentAutosave<T>(identity:DraftKey,view:ContentView<T>,save
  const queue=useMemo(()=>createSaveQueue({identity,initialVersion:view.version,initialTitle:view.title,initialPayload:view.payload,save:(input,signal)=>saveRef.current(input,signal),draftStore}),[identityKey]);
  const state=useSyncExternalStore(queue.subscribe,queue.getSnapshot);
  const [drafts,setDrafts]=useState<LocalDraft<T>[]>([]),[recoveryError,setRecoveryError]=useState<string>();
- const recovered=useRef<DraftKey|null>(null);
+ const recovered=useRef<DraftKey|null>(null),canEdit=useRef(view.canEdit);canEdit.current=view.canEdit;
  useEffect(()=>{
   let active=true;draftStore.list<T>(identity.userId).then(rows=>{if(active) setDrafts(rows.filter(d=>d.key.projectId===identity.projectId&&d.key.kind===identity.kind&&d.key.id===identity.id));}).catch(error=>{if(active) setRecoveryError(error.message);});
-  const auth=()=>queue.pause('auth'),online=()=>{if(view.canEdit) void queue.flush();};window.addEventListener('auth:logout',auth);window.addEventListener('online',online);
+  const auth=()=>queue.pause('auth'),online=()=>{if(canEdit.current) void queue.flush();};window.addEventListener('auth:logout',auth);window.addEventListener('online',online);
   return ()=>{active=false;window.removeEventListener('auth:logout',auth);window.removeEventListener('online',online);queue.dispose();};
  },[queue]);
  useEffect(()=>{if(state.phase==='saved'&&state.lastAck&&recovered.current) {void draftStore.remove(recovered.current);recovered.current=null;}},[state.phase,state.lastAck]);

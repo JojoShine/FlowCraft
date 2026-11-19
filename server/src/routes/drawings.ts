@@ -7,8 +7,8 @@ import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
 import {drawingService,saveDrawingPreview} from '../content/drawingService';
 import {listDrawingReferences} from '../content/referenceResolver';
-import {duplicateDrawing,trashContent,listTrashContent,undeleteContent} from '../content/lifecycleService';
-import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from './contentHttp';
+import {duplicateDrawing,trashContent,listTrashContent,undeleteContent,setCollaboratorEditing} from '../content/lifecycleService';
+import {parse,createInput,saveInput,restoreInput,listInput,versionInput,collaboratorEditingInput} from './contentHttp';
 const router=Router();
 router.use('/:id/share',contentSharingRouter('drawing'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.list(req.user!,parse(listInput,req.query))));}));
@@ -23,6 +23,10 @@ router.post('/:id/duplicate',asyncHandler(async(req,res)=>{res.status(201).json(
 router.post('/:id/undelete',asyncHandler(async(req,res)=>{res.json(successResponse(await undeleteContent(req.user!,'drawing',req.params.id as string)));}));
 router.get('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.read(req.user!,req.params.id as string)));}));
 router.patch('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await drawingService.save(req.user!,req.params.id as string,parse(saveInput,req.body) as any)));}));
+router.put('/:id/collaborator-editing',asyncHandler(async(req,res)=>{
+ const {allowCollaboratorEditing}=parse(collaboratorEditingInput,req.body);
+ res.json(successResponse(await setCollaboratorEditing(req.user!,'drawing',req.params.id as string,allowCollaboratorEditing)));
+}));
 router.delete('/:id',asyncHandler(async(req,res)=>{await trashContent(req.user!,'drawing',req.params.id as string);res.json(successResponse(null));}));
 router.put('/:id/revisions/:version/preview',express.raw({type:'image/svg+xml',limit:10*1024*1024}),asyncHandler(async(req,res)=>{
  const digest=req.headers['x-content-digest'];if(typeof digest!=='string'||!Buffer.isBuffer(req.body)) throw AppError.badRequest('缺少场景摘要或 SVG');

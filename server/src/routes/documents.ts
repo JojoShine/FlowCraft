@@ -6,8 +6,8 @@ import {asyncHandler} from '../middleware/errorHandler';
 import {successResponse} from '../lib/response';
 import {documentService} from '../content/documentService';
 import {resolveDocumentEmbed} from '../content/referenceResolver';
-import {duplicateDocument,trashContent,listTrashContent,undeleteContent} from '../content/lifecycleService';
-import {parse,createInput,saveInput,restoreInput,listInput,versionInput} from './contentHttp';
+import {duplicateDocument,trashContent,listTrashContent,undeleteContent,setCollaboratorEditing} from '../content/lifecycleService';
+import {parse,createInput,saveInput,restoreInput,listInput,versionInput,collaboratorEditingInput} from './contentHttp';
 const router=Router();
 router.use('/:id/share',contentSharingRouter('document'));
 router.get('/',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.list(req.user!,parse(listInput,req.query))));}));
@@ -22,6 +22,10 @@ router.post('/:id/duplicate',asyncHandler(async(req,res)=>{const {drawingMode}=p
 router.post('/:id/undelete',asyncHandler(async(req,res)=>{res.json(successResponse(await undeleteContent(req.user!,'document',req.params.id as string)));}));
 router.get('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.read(req.user!,req.params.id as string)));}));
 router.patch('/:id',asyncHandler(async(req,res)=>{res.json(successResponse(await documentService.save(req.user!,req.params.id as string,parse(saveInput,req.body) as any)));}));
+router.put('/:id/collaborator-editing',asyncHandler(async(req,res)=>{
+ const {allowCollaboratorEditing}=parse(collaboratorEditingInput,req.body);
+ res.json(successResponse(await setCollaboratorEditing(req.user!,'document',req.params.id as string,allowCollaboratorEditing)));
+}));
 router.delete('/:id',asyncHandler(async(req,res)=>{await trashContent(req.user!,'document',req.params.id as string);res.json(successResponse(null));}));
 router.post('/:id/export-manifest',asyncHandler(async(req,res)=>{const input=parse(z.object({version:versionInput.optional()}),req.body||{});res.json(successResponse(await createExportManifest(req.user!,req.params.id as string,input.version)));}));
 router.post('/:id/export',asyncHandler(async(req,res)=>{const {snapshotToken}=parse(z.object({snapshotToken:z.string()}),req.body);res.set({'Content-Type':'application/zip','Content-Disposition':'attachment; filename="document.zip"','Cache-Control':'no-store'});try {await streamDocumentExport(req.user!,req.params.id as string,snapshotToken,res);}catch(error){if(res.headersSent) res.destroy();else throw error;}}));

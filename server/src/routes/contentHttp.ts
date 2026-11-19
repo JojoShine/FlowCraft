@@ -13,6 +13,7 @@ export const restoreInput=z.object({baseVersion:z.number().int().positive(),requ
 export const listInput=z.object({projectId:z.string().min(1).max(255).optional(),q:z.string().max(200).optional(),page:z.coerce.number().int().positive().optional(),favorite:z.enum(['true','false']).transform(v=>v==='true').optional(),recent:z.enum(['true','false']).transform(v=>v==='true').optional()});
 export const versionInput=z.coerce.number().int().positive();
 export const kindInput=z.enum(['document','drawing']);
+export const collaboratorEditingInput=z.strictObject({allowCollaboratorEditing:z.boolean()});
 export const contextInput=z.object({kind:kindInput,id:z.string(),revision:versionInput.optional(),documentId:z.string().uuid().optional(),blockId:z.string().optional()});
 export function contentParserError(error:any,_req:Request,_res:Response,next:NextFunction) {
  if(error?.type==='entity.too.large') return next(new AppError('内容容量过大',413));
