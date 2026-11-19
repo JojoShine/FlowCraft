@@ -51,6 +51,12 @@ export async function uploadFile(
   return objectName;
 }
 
+export async function uploadFileStream(stream: Readable, objectName: string, mimeType: string, bytes: number): Promise<string> {
+  await ensureBucket();
+  await getClient().putObject(getBucketName(), objectName, stream, bytes, {'Content-Type': mimeType});
+  return objectName;
+}
+
 export async function getFileStream(
   objectName: string
 ): Promise<{ stream: Readable; contentType: string }> {

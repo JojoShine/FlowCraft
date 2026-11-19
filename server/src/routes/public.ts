@@ -1,3 +1,4 @@
+import {publicContentRouter} from './contentSharing';
 import { Router } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
@@ -8,6 +9,7 @@ import path from 'path';
 import { ZipArchive } from 'archiver';
 
 const router = Router();
+router.use('/content',publicContentRouter);
 
 async function getArtifactByToken(token: string) {
   const artifact = await prisma.artifact.findUnique({ where: { shareToken: token } });
@@ -34,6 +36,16 @@ router.get('/artifacts/:token/file', asyncHandler(async (req, res) => {
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(artifact.name)}"`);
   stream.pipe(res);
+}));
+
+router.get('/artifacts/:token/html-file', asyncHandler(async (req, res) => {
+  const artifact = await getArtifactByToken(req.params.token as string);
+  if (!artifact.content) throw AppError.badRequest('该产物没有 HTML 内容');
+
+  const fileName = `${artifact.name}.html`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+  res.send(artifact.content);
 }));
 
 router.get('/artifacts/:token/download', asyncHandler(async (req, res) => {

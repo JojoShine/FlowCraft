@@ -1,0 +1,10 @@
+import {it,expect,beforeAll,afterEach,afterAll,vi} from 'vitest';
+import request from 'supertest';
+let app:typeof import('../../src/app').default;
+let prisma:typeof import('../../src/lib/prisma').prisma;
+beforeAll(async()=>{vi.stubEnv('BASE_PATH','/flowcraft');app=(await import('../../src/app')).default;prisma=(await import('../../src/lib/prisma')).prisma;});
+afterEach(()=>vi.restoreAllMocks());
+afterAll(()=>vi.unstubAllEnvs());
+it('reports database readiness without authentication at the production prefix',async()=>{const res=await request(app).get('/flowcraft/healthz').expect(200);expect(res.body).toEqual({status:'ok'});expect(res.headers['cache-control']).toBe('no-store');});
+it('returns an unavailable status without exposing database errors',async()=>{const query=prisma.$queryRaw;prisma.$queryRaw=vi.fn().mockRejectedValue(new Error('private database connection details'));try {const res=await request(app).get('/flowcraft/healthz').expect(503);expect(res.body).toEqual({status:'unavailable'});expect(res.text).not.toContain('private');} finally {prisma.$queryRaw=query;}});
+it('mounts the existing API under the same production prefix',async()=>{await request(app).post('/flowcraft/api/v1/auth/login').send({}).expect(400);await request(app).post('/api/v1/auth/login').send({}).expect(404);});

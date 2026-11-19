@@ -973,6 +973,33 @@ export function ArtifactViewer({ isOpen, onClose, artifact }: ArtifactViewerProp
                 )}
               </button>
             )}
+            {mode === 'docx' && artifact.content && (
+              <button
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = artifactsApi.getHtmlFileUrl(artifact.id);
+                  a.download = `${artifact.name}.html`;
+                  a.target = '_blank';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}
+                style={{
+                  height: 30, padding: '0 12px', borderRadius: 6,
+                  border: '1px solid var(--border-default)', background: 'transparent',
+                  fontSize: 12, color: 'var(--ink-2)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                下载 HTML
+              </button>
+            )}
             <button
               onClick={handleDownload}
               disabled={downloading}

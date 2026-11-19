@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { authApi } from '../services/api';
 import type { User } from '../types';
 
@@ -8,7 +8,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, name?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  registerLogoutGuard: (guard:()=>Promise<boolean>)=>()=>void;
   setUser: (user: User) => void;
 }
 
@@ -18,7 +19,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(() => {
+  const guards = useRef(new Set<()=>Promise<boolean>>());
+  const registerLogoutGuard = useCallback((guard:()=>Promise<boolean>) => {
+    guards.current.add(guard);
+    return () => { guards.current.delete(guard); };
+  }, []);
+  const logout = useCallback(async () => {
+    for (const guard of guards.current) if (!await guard()) return;
     localStorage.removeItem('token');
     localStorage.removeItem('flowcraft_selected_project');
     window.dispatchEvent(new Event('auth:logout'));
@@ -31,9 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     authApi.getMe()
-      .then((res) => setUser(res.data))
+      .then((res) => { if (localStorage.getItem('token') === token) setUser(res.data); })
       .catch(() => {
-        localStorage.removeItem('token');
+        if (localStorage.getItem('token') === token) localStorage.removeItem('token');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -62,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, register, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, register, logout, registerLogoutGuard, setUser }}>
       {children}
     </AuthContext.Provider>
   );

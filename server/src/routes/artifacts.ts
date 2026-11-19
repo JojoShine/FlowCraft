@@ -151,6 +151,24 @@ router.get('/:id/file', asyncHandler(async (req, res) => {
   stream.pipe(res);
 }));
 
+router.get('/:id/html-file', asyncHandler(async (req, res) => {
+  const artifact = await prisma.artifact.findUnique({
+    where: { id: req.params.id as string },
+    select: { projectId: true, name: true, content: true },
+  });
+  if (!artifact || !(await checkProjectOwnership(req.user!, artifact.projectId))) {
+    res.status(403).json({ success: false, error: '无权访问该产物' });
+    return;
+  }
+  if (!artifact.content) {
+    throw AppError.badRequest('该产物没有 HTML 内容');
+  }
+  const fileName = `${artifact.name}.html`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+  res.send(artifact.content);
+}));
+
 router.get('/:id/preview', asyncHandler(async (req, res) => {
   const artifact = await prisma.artifact.findUnique({ where: { id: req.params.id as string }, select: { projectId: true, filePath: true } });
   if (!artifact || !(await checkProjectOwnership(req.user!, artifact.projectId))) {

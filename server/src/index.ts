@@ -80,7 +80,7 @@ async function startServer() {
     process.exit(1);
   }
   
-  const server = app.listen(PORT, () => {
+  const server = app.listen(Number(PORT), '0.0.0.0', () => {
     logger.info(`Server started on port ${PORT}`, { env: process.env.NODE_ENV || 'development' });
     logger.info('Service status', {
       database: dbOk ? '✓' : '✗',

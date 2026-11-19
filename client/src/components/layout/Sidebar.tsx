@@ -4,6 +4,7 @@ import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { artifactsApi, tasksApi } from '../../services/api';
+import { documentsApi, drawingsApi } from '../../features/content/api';
 import { onDataChange } from '../../utils/dataEvents';
 import { ProjectDrawer } from '../ui/ProjectDrawer';
 import logoSvg from '../../assets/logo.svg';
@@ -40,6 +41,12 @@ const navItems = [
       <path d="M9 20v-6h6v6"/>
     </svg>
   )},
+  { path: '/documents', label: '文档中心', icon: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h6"/></svg>
+  )},
+  { path: '/drawings', label: '绘图中心', icon: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16l6-8 4 5M8 8h.01"/></svg>
+  )},
   { path: '/artifacts', label: '产物', icon: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="8" y="2" width="8" height="4" rx="1"/>
@@ -51,14 +58,6 @@ const navItems = [
 ];
 
 const toolItems = [
-  { path: '/templates', label: '文档模板', icon: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>
-  )},
   { path: '/reports', label: '汇报', icon: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -75,6 +74,7 @@ export function Sidebar() {
   const isViewer = user?.role === 'viewer';
   const [taskCount, setTaskCount] = useState(0);
   const [artifactsTotal, setArtifactsTotal] = useState(0);
+  const [contentCounts, setContentCounts] = useState({ documents: 0, drawings: 0 });
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNewProjectDrawer, setShowNewProjectDrawer] = useState(false);
@@ -111,6 +111,27 @@ export function Sidebar() {
     return onDataChange((type) => {
       if (type === 'artifacts') fetchArtifactCount();
     });
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    setContentCounts({ documents: 0, drawings: 0 });
+    if (!selectedProjectId) return;
+    const controllers: Partial<Record<'documents' | 'drawings', AbortController>> = {};
+    const refresh = (kind: 'documents' | 'drawings') => {
+      controllers[kind]?.abort();
+      const controller = new AbortController();
+      controllers[kind] = controller;
+      const resource = kind === 'documents' ? documentsApi : drawingsApi;
+      resource.count(selectedProjectId, controller.signal).then(({ total }) => {
+        if (!controller.signal.aborted) setContentCounts(counts => ({ ...counts, [kind]: total }));
+      }).catch(() => {});
+    };
+    refresh('documents');
+    refresh('drawings');
+    const unsubscribe = onDataChange(type => {
+      if (type === 'documents' || type === 'drawings') refresh(type);
+    });
+    return () => { unsubscribe(); controllers.documents?.abort(); controllers.drawings?.abort(); };
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -247,6 +268,7 @@ export function Sidebar() {
           </div>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const contentCount = item.path === '/documents' ? contentCounts.documents : item.path === '/drawings' ? contentCounts.drawings : 0;
             return (
               <Link
                 key={item.path}
@@ -271,6 +293,17 @@ export function Sidebar() {
                   {item.icon}
                 </span>
                 {item.label}
+                {contentCount > 0 && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    fontFamily: "ui-monospace, SFMono-Regular, 'Cascadia Code', monospace",
+                    fontSize: 11,
+                    color: 'var(--ink-3)',
+                    fontWeight: 500,
+                  }}>
+                    {contentCount}
+                  </span>
+                )}
                 {item.path === '/kanban' && taskCount > 0 && (
                   <span style={{
                     marginLeft: 'auto',

@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+const base=(process.env.BASE_PATH||'').replace(/\/+$/,'');
+fetch(`http://127.0.0.1:${process.env.PORT||8080}${base}/healthz`,{signal:AbortSignal.timeout(4000)})
+ .then(response=>{process.exitCode=response.ok?0:1;}).catch(()=>{process.exitCode=1;});

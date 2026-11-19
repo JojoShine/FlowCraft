@@ -1,12 +1,31 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { successResponse } from '../lib/response';
 import { chatService } from '../services/chatService';
 import { type ChatMessage } from '../ai/llm';
 import { runAgent } from '../ai/agent';
 import { prisma } from '../lib/prisma';
+import {requireRole} from '../middleware/auth';
+import {taskBreakdownService} from '../services/taskBreakdownService';
+import {documentExpansionService} from '../services/documentExpansionService';
 
 const router = Router();
+const taskFiles=multer({storage:multer.memoryStorage(),defParamCharset:'utf8',limits:{fileSize:5*1024*1024,files:3,fields:4,fieldSize:128*1024}}).array('files',3);
+const taskUpload:import('express').RequestHandler=(req,res,next)=>taskFiles(req,res,error=>{if(error instanceof multer.MulterError) return next(new AppError(error.code==='LIMIT_FILE_SIZE'?'每个附件不能超过 5 MB':'最多添加 3 个附件，上传参数无效',error.code==='LIMIT_FILE_SIZE'?413:400));next(error);});
+router.post('/document-expansion',requireRole('admin'),taskUpload,asyncHandler(async(req,res)=>{
+ const controller=new AbortController(),close=()=>{if(!res.writableEnded) controller.abort();};res.on('close',close);
+ try{res.json(successResponse(await documentExpansionService.preview(req.user!,req.body,controller.signal,(req.files as Express.Multer.File[]|undefined)||[])));}finally{res.off('close',close);}
+}));
+router.post('/task-breakdown',requireRole('admin'),taskUpload,asyncHandler(async(req,res)=>{
+ const files=(req.files as Express.Multer.File[]|undefined)||[];
+ const controller=new AbortController();const close=()=>{if(!res.writableEnded) controller.abort();};res.on('close',close);
+ try {res.json(successResponse(await taskBreakdownService.preview(req.user!,req.body,controller.signal,files)));}finally{res.off('close',close);}
+}));
+router.post('/task-breakdown/import',requireRole('admin'),asyncHandler(async(req,res)=>{
+ res.json(successResponse(await taskBreakdownService.import(req.user!,req.body)));
+}));
+
 
 router.post('/chat', asyncHandler(async (req, res) => {
   const { conversationId, message, projectId, templateIds } = req.body;

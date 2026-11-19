@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./scripts",
+    "outDir": "./ops",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "scripts/content-schema-preflight.ts"
+  ]
+}

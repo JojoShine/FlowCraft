@@ -1,0 +1,21 @@
+import {it,expect} from 'vitest';
+import request from 'supertest';
+import jwt from 'jsonwebtoken';
+import app from '../../src/app';
+import {withContentFixture} from '../fixtures';
+for(const kind of ['documents','drawings']) it(`${kind} counts only readable active records and follows delete and restore`,()=>withContentFixture(async fx=>{
+ const auth=(id:string)=>`Bearer ${jwt.sign({userId:id},process.env.JWT_SECRET!)}`;
+ const count=()=>request(app).get(`/api/v1/${kind}/count`).set('Authorization',auth(fx.viewer.id)).query({projectId:fx.project.id});
+ await request(app).get(`/api/v1/${kind}/count`).expect(401);
+ expect((await count().expect(200)).body.data).toEqual({total:0});
+ const payload=kind==='documents'?fx.body:fx.scene;
+ const created=await request(app).post(`/api/v1/${kind}`).set('Authorization',auth(fx.owner.id)).send({projectId:fx.project.id,title:'计数验证',payload}).expect(201);
+ await request(app).post(`/api/v1/${kind}`).set('Authorization',auth(fx.otherOwner.id)).send({projectId:fx.otherProject.id,title:'其他项目',payload}).expect(201);
+ expect((await count().expect(200)).body.data.total).toBe(1);
+ expect((await request(app).get(`/api/v1/${kind}/count`).set('Authorization',auth(fx.viewer.id)).expect(200)).body.data.total).toBe(1);
+ await request(app).get(`/api/v1/${kind}/count`).set('Authorization',auth(fx.otherOwner.id)).query({projectId:fx.project.id}).expect(404);
+ await request(app).delete(`/api/v1/${kind}/${created.body.data.id}`).set('Authorization',auth(fx.owner.id)).expect(200);
+ expect((await count().expect(200)).body.data.total).toBe(0);
+ await request(app).post(`/api/v1/${kind}/${created.body.data.id}/undelete`).set('Authorization',auth(fx.owner.id)).expect(200);
+ expect((await count().expect(200)).body.data.total).toBe(1);
+}));

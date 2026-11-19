@@ -1,0 +1,12 @@
+import {it,expect,vi} from 'vitest';
+import {render,screen,fireEvent} from '@testing-library/react';
+import {MemoryRouter} from 'react-router-dom';
+Element.prototype.scrollIntoView=vi.fn();
+vi.mock('../../src/components/ui/ConfirmDialog',()=>({useConfirm:()=>vi.fn(async()=>true)}));
+vi.mock('../../src/contexts/AuthContext',()=>({useAuth:()=>({user:{id:'owner',role:'admin'}})}));
+vi.mock('../../src/contexts/ProjectContext',()=>({useProjectContext:()=>({selectedProjectId:'p',projects:[{id:'p',name:'项目'}],projectsLoading:false})}));
+const apis=vi.hoisted(()=>({list:vi.fn(async()=>({items:[],total:0})),preferences:vi.fn(async()=>[]),templates:vi.fn(async()=>({data:[{id:'legacy',name:'原有实施模板',fileType:'html',content:'<h1>原有内容</h1>',category:'技术',description:'旧模板'}]}))}));
+vi.mock('../../src/features/content/api',()=>({documentsApi:{list:apis.list},drawingsApi:{},contentPreferencesApi:{list:apis.preferences},contentAssetsApi:{}}));
+vi.mock('../../src/services/api',()=>({templatesApi:{list:apis.templates}}));
+import {Documents} from '../../src/pages/Documents';
+it('shows documents and a unified native/legacy template catalog in the document center',async()=>{render(<MemoryRouter><Documents/></MemoryRouter>);expect(screen.getByRole('tab',{name:'文档',exact:true}).getAttribute('aria-selected')).toBe('true');fireEvent.click(screen.getByRole('tab',{name:'模板',exact:true}));expect(await screen.findByRole('heading',{name:'原有实施模板',exact:true})).toBeTruthy();for(const title of ['可研报告','实施方案','会议纪要']) expect(screen.getByRole('heading',{name:title,exact:true})).toBeTruthy();expect(screen.getByRole('button',{name:'新建模板',exact:true})).toBeTruthy();});

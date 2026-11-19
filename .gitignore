@@ -16,3 +16,14 @@ deploy/
 
 # One-off maintenance scripts (not part of product runtime)
 server/scripts/sync-task-status.ts
+
+# Generated local Excalidraw font assets
+client/public/excalidraw/
+client/test-results/
+client/playwright-report/
+
+# Production configuration and backups stay on the deployment host.
+.env.prod
+.env.bootstrap
+backups/
+server/ops/
